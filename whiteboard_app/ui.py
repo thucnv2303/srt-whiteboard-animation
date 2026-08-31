@@ -47,8 +47,14 @@ class WhiteboardApp(tk.Tk):
 
         toolbar = ttk.Frame(outer)
         toolbar.pack(fill="x", pady=(0, 14))
-        self.open_button = ttk.Button(toolbar, text="Mở thư mục / ZIP", command=self._choose_project)
-        self.open_button.pack(side="left")
+        self.open_folder_button = ttk.Button(
+            toolbar, text="Mở thư mục", command=self._choose_project_folder
+        )
+        self.open_folder_button.pack(side="left")
+        self.open_file_button = ttk.Button(
+            toolbar, text="Mở ZIP / project.json", command=self._choose_project_file
+        )
+        self.open_file_button.pack(side="left", padx=(8, 0))
         self.output_button = ttk.Button(toolbar, text="Chọn nơi xuất", command=self._choose_output)
         self.output_button.pack(side="left", padx=8)
         self.render_button = ttk.Button(
@@ -97,16 +103,22 @@ class WhiteboardApp(tk.Tk):
         )
         self.log_text.pack(fill="both", expand=True)
 
-    def _choose_project(self) -> None:
+    def _choose_project_file(self) -> None:
         source = filedialog.askopenfilename(
             title="Chọn project.json hoặc gói ZIP",
             filetypes=[("Dự án video", "project.json *.zip"), ("Tất cả file", "*.*")],
         )
         if not source:
-            folder = filedialog.askdirectory(title="Hoặc chọn thư mục có project.json")
-            source = folder
+            return
+        self._open_project(source)
+
+    def _choose_project_folder(self) -> None:
+        source = filedialog.askdirectory(title="Chọn thư mục có project.json")
         if not source:
             return
+        self._open_project(source)
+
+    def _open_project(self, source: str) -> None:
         try:
             loaded = load_project(source)
         except ProjectError as exc:
@@ -169,7 +181,8 @@ class WhiteboardApp(tk.Tk):
 
     def _set_busy(self, busy: bool) -> None:
         state = "disabled" if busy else "normal"
-        self.open_button.configure(state=state)
+        self.open_folder_button.configure(state=state)
+        self.open_file_button.configure(state=state)
         self.output_button.configure(state=state)
         self.render_button.configure(state=state if self.project else "disabled")
         self.cancel_button.configure(state="normal" if busy else "disabled")
@@ -210,4 +223,3 @@ class WhiteboardApp(tk.Tk):
 
 def main() -> None:
     WhiteboardApp().mainloop()
-

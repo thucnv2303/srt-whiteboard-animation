@@ -33,13 +33,13 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 6 test pass.
+- Unit test local: 8 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
+- Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
 - Chưa chạy render MP4 đầy đủ trong môi trường Windows thật.
 - Chưa có nghiệm thu người dùng.
 
 ## Task an toàn tiếp theo
 
 Người dùng chạy app demo trên Windows và gửi ảnh/lỗi. Sau đó sửa theo nghiệm thu trước khi thêm tự tạo annotation hoặc đồng bộ ChatGPT.
-

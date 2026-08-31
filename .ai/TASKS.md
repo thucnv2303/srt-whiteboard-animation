@@ -30,6 +30,7 @@
 ### `TASK-007` — Nghiệm thu app MVP trên Windows
 
 - Người dùng chạy `run_app.bat`.
+- App đã mở thành công; lỗi hộp chọn dự án mở hai lần đã được sửa trên branch.
 - Mở gói demo, render và kiểm tra `final.mp4`.
 - Ghi nhận ảnh lỗi, log và trải nghiệm thao tác.
 
@@ -48,4 +49,3 @@
 
 - Fixture ảnh + annotation nhỏ.
 - Kiểm tra first/mid/final frame và duration.
-
