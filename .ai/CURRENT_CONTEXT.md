@@ -37,6 +37,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
+- Đã thêm gói fixture `examples/test-52s/` gồm 6 cảnh, thời lượng dự kiến 51,6 giây để người dùng kiểm tra render và merge trên Windows.
 - Chưa chạy render MP4 đầy đủ trong môi trường Windows thật.
 - Chưa có nghiệm thu người dùng.
 

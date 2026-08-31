@@ -68,3 +68,7 @@ Chưa bao gồm đồng bộ ChatGPT/MCP, tự tạo annotation, preview ảnh t
 python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
+
+## Gói kiểm thử 52 giây
+
+Sau khi mở app, chọn `examples/test-52s/project.json`. Gói gồm sáu cảnh × 8,6 giây, dùng để xác nhận render nhiều cảnh và ghép `final.mp4`. Đây là fixture kỹ thuật chưa có voice.
