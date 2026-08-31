@@ -4,38 +4,42 @@ Cập nhật: 2026-08-31 UTC
 
 ## Milestone hiện tại
 
-M0 — Khởi tạo repo riêng và thiết lập bộ kiến thức để Codex trực tiếp phát triển dự án.
+M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer local.
 
 ## Trạng thái repository
 
-- Upstream: `geeklee/srt-whiteboard-animation`
-- Upstream base branch: `main`
-- Upstream SHA đã khảo sát: `696a7243c0e6ffb6827676e539c2ca5ebae2bf6b`
-- GitHub user đã xác minh: `thucnv2303`
 - Repo làm việc: `thucnv2303/srt-whiteboard-animation`
-- Quyền GitHub đã xác minh: admin/push
-- Working branch: `docs/bootstrap-project-knowledge`
-- Active PR: `#1` — https://github.com/thucnv2303/srt-whiteboard-animation/pull/1
-- CI: chưa có
+- Base branch: `main`
+- Base SHA: `5eda67e6e52cc2575de4fc15277d0fc3c6d04d7c`
+- Working branch: `feat/desktop-app-mvp`
+- PR bootstrap `#1`: đã merge.
+- CI: workflow compile + unit test được bổ sung trong branch M1.
 
-## Việc đã hoàn thành trong phiên khởi tạo
+## Quyết định sản phẩm mới
 
-- Đã đọc gói `Agent File.rar` và xác định workflow cũ dùng ChatGPT làm supervisor, các agent khác làm executor.
-- Đã khảo sát repo upstream, README, `SKILL.md` và các script cốt lõi.
-- Đã thiết kế lại authority model: Codex trực tiếp code/GitHub; người dùng chạy app và nghiệm thu.
-- Đã tạo bộ file kiến thức chuyên biệt cho dự án trong bản clone local.
+- ChatGPT Project sẽ đảm nhiệm ý tưởng, kịch bản, voice và có thể cả ảnh.
+- App local không gọi AI; app nhận gói dữ liệu chuẩn, kiểm tra và dựng video.
+- App đầu tiên là desktop Windows dùng Python/Tkinter để tận dụng renderer hiện tại.
+- Đồng bộ ChatGPT/MCP làm sau khi hợp đồng `project.json` và pipeline local ổn định.
 
-## Blocker hiện tại
+## Phạm vi đã triển khai trong branch M1
 
-- Không có blocker cho bước đưa bộ kiến thức lên GitHub.
+- App shell tiếng Việt mở thư mục, `project.json` hoặc ZIP.
+- Hợp đồng dữ liệu `schemaVersion: 1`.
+- Chặn đường dẫn nguy hiểm, file thiếu, scene trùng và cặp tên sai.
+- Danh sách cảnh, chọn output, log, khóa thao tác và hủy render.
+- Điều phối render từng cảnh, ghép MP4 và gắn voice qua FFmpeg.
+- Script `run_app.bat`, tài liệu `APP.md`, unit test và CI.
+
+## Trạng thái kiểm tra
+
+- Unit test local: 6 test pass.
+- `py_compile`: pass cho app.
+- UI import smoke check: pass.
+- Chưa chạy render MP4 đầy đủ trong môi trường Windows thật.
+- Chưa có nghiệm thu người dùng.
 
 ## Task an toàn tiếp theo
 
-1. Người dùng xem và duyệt PR bootstrap `#1`.
-2. Thiết lập test nền và sửa lỗi font hard-code.
-3. Sau đó chốt hình thức app đầu tiên với người dùng: desktop local hay web local.
+Người dùng chạy app demo trên Windows và gửi ảnh/lỗi. Sau đó sửa theo nghiệm thu trước khi thêm tự tạo annotation hoặc đồng bộ ChatGPT.
 
-## Trạng thái runtime
-
-- Chưa chạy luồng render mẫu trong milestone này.
-- Chưa có nghiệm thu người dùng.

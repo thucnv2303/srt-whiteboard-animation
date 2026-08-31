@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+import threading
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
+
+from .project import VideoProject
+
+
+class RenderError(RuntimeError):
+    """Lỗi render có nội dung phù hợp để hiển thị trên UI."""
+
+
+@dataclass(frozen=True)
+class RenderCommand:
+    label: str
+    argv: list[str]
+
+
+def repository_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def build_commands(
+    project: VideoProject,
+    output_dir: Path,
+    python_executable: str | None = None,
+) -> tuple[list[RenderCommand], Path]:
+    repo = repository_root()
+    python = python_executable or sys.executable
+    renderer = repo / "scripts" / "render_stream_whiteboard.py"
+    merger = repo / "scripts" / "merge_scenes.py"
+    hand = repo / "assets" / "drawing-hand.png"
+    for required in (renderer, merger, hand):
+        if not required.exists():
+            raise RenderError(f"Thiếu thành phần renderer: {required}")
+
+    output_dir = output_dir.resolve()
+    scene_dir = output_dir / "scenes"
+    commands: list[RenderCommand] = []
+    scene_outputs: list[Path] = []
+    for index, scene in enumerate(project.scenes, start=1):
+        scene_output = scene_dir / f"{index:02d}-{scene.scene_id}.mp4"
+        scene_outputs.append(scene_output)
+        commands.append(
+            RenderCommand(
+                label=f"Dựng cảnh {index}/{len(project.scenes)} — {scene.title}",
+                argv=[
+                    python,
+                    str(renderer),
+                    str(scene.image),
+                    str(scene.annotation),
+                    str(scene_output),
+                    str(hand),
+                    "--ink-path",
+                    "grid",
+                    "--color-fill",
+                    "contour-wipe",
+                ],
+            )
+        )
+
+    final_output = output_dir / "final.mp4"
+    merged_output = output_dir / ("final-silent.mp4" if project.voice else "final.mp4")
+    commands.append(
+        RenderCommand(
+            label="Ghép các cảnh",
+            argv=[
+                python,
+                str(merger),
+                "--inputs",
+                *[str(path) for path in scene_outputs],
+                "--output",
+                str(merged_output),
+            ],
+        )
+    )
+    if project.voice:
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            raise RenderError(
+                "Dự án có voice nhưng máy chưa tìm thấy FFmpeg trong PATH. "
+                "Hãy cài FFmpeg rồi mở lại app."
+            )
+        commands.append(
+            RenderCommand(
+                label="Gắn voice vào video",
+                argv=[
+                    ffmpeg,
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(merged_output),
+                    "-i",
+                    str(project.voice),
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a:0",
+                    "-c:v",
+                    "copy",
+                    "-c:a",
+                    "aac",
+                    "-shortest",
+                    str(final_output),
+                ],
+            )
+        )
+    return commands, final_output
+
+
+def run_pipeline(
+    project: VideoProject,
+    output_dir: Path,
+    on_log: Callable[[str], None],
+    cancel_event: threading.Event | None = None,
+) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "scenes").mkdir(parents=True, exist_ok=True)
+    commands, final_output = build_commands(project, output_dir)
+    for command in commands:
+        if cancel_event and cancel_event.is_set():
+            raise RenderError("Đã hủy quá trình dựng video.")
+        on_log(command.label)
+        process = subprocess.Popen(
+            command.argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        assert process.stdout is not None
+        for line in process.stdout:
+            on_log(line.rstrip())
+            if cancel_event and cancel_event.is_set():
+                process.terminate()
+                process.wait(timeout=10)
+                raise RenderError("Đã hủy quá trình dựng video.")
+        code = process.wait()
+        if code != 0:
+            raise RenderError(f"Bước '{command.label}' thất bại với mã lỗi {code}.")
+    if not final_output.is_file():
+        raise RenderError("Renderer kết thúc nhưng không tạo được final.mp4.")
+    return final_output
