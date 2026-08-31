@@ -15,7 +15,7 @@ M0 — Khởi tạo repo riêng và thiết lập bộ kiến thức để Codex
 - Repo làm việc: `thucnv2303/srt-whiteboard-animation`
 - Quyền GitHub đã xác minh: admin/push
 - Working branch: `docs/bootstrap-project-knowledge`
-- Active PR: none
+- Active PR: `#1` — https://github.com/thucnv2303/srt-whiteboard-animation/pull/1
 - CI: chưa có
 
 ## Việc đã hoàn thành trong phiên khởi tạo
@@ -31,7 +31,7 @@ M0 — Khởi tạo repo riêng và thiết lập bộ kiến thức để Codex
 
 ## Task an toàn tiếp theo
 
-1. Push bộ file kiến thức trên branch riêng và mở PR bootstrap.
+1. Người dùng xem và duyệt PR bootstrap `#1`.
 2. Thiết lập test nền và sửa lỗi font hard-code.
 3. Sau đó chốt hình thức app đầu tiên với người dùng: desktop local hay web local.
 

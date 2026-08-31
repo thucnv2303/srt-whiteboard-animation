@@ -3,11 +3,11 @@
 ## Task đang hoạt động
 
 - ID: `TASK-001`
-- Trạng thái: `IN_PROGRESS`
+- Trạng thái: `WAITING_USER_REVIEW`
 - Mục tiêu: đưa bộ kiến thức dự án lên repo GitHub riêng của người dùng.
 - Branch: `docs/bootstrap-project-knowledge`
-- PR: none
-- Tiến độ: fork đã tồn tại và quyền push đã được xác minh; đang tạo branch/PR.
+- PR: https://github.com/thucnv2303/srt-whiteboard-animation/pull/1
+- Tiến độ: branch đã push và PR đã mở; chờ người dùng duyệt.
 
 ## Backlog ưu tiên
 
@@ -43,3 +43,4 @@
 ## Hoàn thành
 
 - Khảo sát repo upstream và chuyển đổi mô hình vận hành — tài liệu local ngày 2026-08-31.
+- Tạo fork làm việc, push branch và mở PR bootstrap `#1` — ngày 2026-08-31.
