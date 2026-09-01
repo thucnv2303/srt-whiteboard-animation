@@ -1,6 +1,6 @@
 # Bối cảnh hiện tại
 
-Cập nhật: 2026-08-31 UTC
+Cập nhật: 2026-09-01 UTC
 
 ## Milestone hiện tại
 
@@ -33,15 +33,15 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 8 test pass.
+- Unit test local: 11 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
 - Đã thêm gói fixture `examples/test-52s/` gồm 6 cảnh, thời lượng dự kiến 51,6 giây để người dùng kiểm tra render và merge trên Windows.
 - Nghiệm thu render lần 1 phát hiện child process dùng `cp1252` và lỗi khi script in ký tự CJK; đã ép `PYTHONIOENCODING=utf-8` và `PYTHONUTF8=1` cho toàn pipeline.
-- Đã tạo dự án nội dung `examples/beef-5-dishes/`: ảnh whiteboard có màu do ImageGen tạo, năm vùng vẽ trong 50 giây, kịch bản/phụ đề tiếng Việt và script tạo voice offline bằng Windows SAPI.
-- Chưa chạy render MP4 đầy đủ trong môi trường Windows thật.
-- Chưa có nghiệm thu người dùng.
+- Người dùng đã dựng được MP4 có màu bằng gói `examples/beef-5-dishes/`, sau đó yêu cầu ảnh chân thực hơn và sửa voice tiếng Việt.
+- Gói bò phiên bản 2 dùng ảnh món ăn bán chân thực do ImageGen tạo, voice neural `vi-VN-HoaiMyNeural` qua edge-tts và nhãn bút Unicode cấu hình bằng `penBrand`.
+- Chưa nghiệm thu phiên bản 2 trên Windows thật.
 
 ## Task an toàn tiếp theo
 

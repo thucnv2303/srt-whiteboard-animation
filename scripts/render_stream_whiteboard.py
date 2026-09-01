@@ -29,6 +29,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 # 复用 stream 渲染器的全部构件（同目录）
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -36,6 +37,58 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 import stream_render as sr  # noqa: E402
 
 DEFAULT_HAND = _SCRIPT_DIR.parent / "assets" / "drawing-hand.png"
+
+
+def _load_brand_font(size: int):
+    """Chọn font Unicode có sẵn trên Windows/Linux để giữ đúng dấu tiếng Việt."""
+    candidates = (
+        "C:/Windows/Fonts/arialbd.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "DejaVuSans-Bold.ttf",
+    )
+    for candidate in candidates:
+        try:
+            return ImageFont.truetype(candidate, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def _make_brand_label(text: str, hand_height: int) -> np.ndarray:
+    """Tạo nhãn RGBA bám theo bút; Pillow đảm bảo chữ Việt không mất dấu."""
+    font = _load_brand_font(max(16, hand_height // 13))
+    probe = Image.new("RGBA", (1, 1))
+    bbox = ImageDraw.Draw(probe).textbbox((0, 0), text, font=font)
+    pad_x, pad_y = 12, 7
+    width = bbox[2] - bbox[0] + pad_x * 2
+    height = bbox[3] - bbox[1] + pad_y * 2
+    label = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(label)
+    draw.rounded_rectangle(
+        (0, 0, width - 1, height - 1),
+        radius=max(8, height // 3),
+        fill=(255, 250, 240, 238),
+        outline=(196, 92, 72, 255),
+        width=2,
+    )
+    draw.text((pad_x, pad_y - bbox[1]), text, font=font, fill=(104, 45, 34, 255))
+    return cv2.cvtColor(np.array(label), cv2.COLOR_RGBA2BGRA)
+
+
+def _stamp_rgba(frame: np.ndarray, overlay: np.ndarray, x: int, y: int) -> None:
+    """Alpha-blend overlay BGRA vào frame BGR, có cắt biên an toàn."""
+    frame_h, frame_w = frame.shape[:2]
+    overlay_h, overlay_w = overlay.shape[:2]
+    x0, y0 = max(0, x), max(0, y)
+    x1, y1 = min(frame_w, x + overlay_w), min(frame_h, y + overlay_h)
+    if x0 >= x1 or y0 >= y1:
+        return
+    ox0, oy0 = x0 - x, y0 - y
+    crop = overlay[oy0:oy0 + (y1 - y0), ox0:ox0 + (x1 - x0)]
+    alpha = crop[:, :, 3:4].astype(np.float32) / 255.0
+    target = frame[y0:y1, x0:x1].astype(np.float32)
+    frame[y0:y1, x0:x1] = (crop[:, :, :3] * alpha + target * (1.0 - alpha)).astype(np.uint8)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -69,7 +122,7 @@ class RegionStreamRenderer:
     """持有整段渲染的共享状态；逐区域把 stream 笔迹画进同一张画布。"""
 
     def __init__(self, image_bgr: np.ndarray, annotation: dict, cfg: sr.Config,
-                 hand_png: Path | None, bare_tip: bool) -> None:
+                 hand_png: Path | None, bare_tip: bool, pen_brand: str | None = None) -> None:
         self.cfg = cfg
         self.ann = annotation
         self.canvas_bgr = sr._hex_to_bgr(cfg.canvas_hex)
@@ -108,6 +161,7 @@ class RegionStreamRenderer:
 
         # 笔尖覆盖
         self.tip: sr.TipOverlay | None = None
+        self.brand_label: np.ndarray | None = None
         if not bare_tip:
             hand_data = sr._load_hand(hand_png, cfg.target_hand_height) if hand_png else None
             ax, ay = cfg.tip_anchor_x, cfg.tip_anchor_y
@@ -115,6 +169,8 @@ class RegionStreamRenderer:
                 hand_data = sr._procedural_tip(cfg.target_hand_height)
                 ax, ay = 0.5, 0.70
             self.tip = sr.TipOverlay(hand_data[0], hand_data[1], tip_anchor_x=ax, tip_anchor_y=ay)
+            if pen_brand:
+                self.brand_label = _make_brand_label(pen_brand, cfg.target_hand_height)
 
     # 采样原图四角，把接近背景色的像素替换为画布底色
     def _match_original_background(self) -> None:
@@ -136,6 +192,10 @@ class RegionStreamRenderer:
         snap = self.drawn.astype(np.uint8)
         if self.tip is not None:
             self.tip.stamp(snap, px, py)
+        if self.brand_label is not None:
+            label_h, label_w = self.brand_label.shape[:2]
+            # Nhãn đi cùng đầu bút và nằm trên thân bút/viền bàn tay.
+            _stamp_rgba(snap, self.brand_label, px + 16, py - label_h - 20)
         return snap
 
     # ── 单区域的允许掩码：矩形 - 后续区域 - protectedRegions ──
@@ -462,6 +522,8 @@ def _parse_args(argv=None):
     p.add_argument("hand", nargs="?", default=str(DEFAULT_HAND), help="手部素材 PNG（默认内置）")
     p.add_argument("--total-ms", type=int, default=None, help="总时长；缺省用标注 sceneDurationMs")
     p.add_argument("--bare-tip", action="store_true", help="不叠加笔尖/手部")
+    p.add_argument("--pen-brand", default=None,
+                   help="Nhãn thương hiệu đi theo cây bút, ví dụ: Ăn dặm mẹ Dâu")
     p.add_argument("--ink-path", default="grid", choices=["grid", "skeleton"],
                    help="笔迹路径: grid 网格(默认); skeleton 骨架追踪")
     p.add_argument("--color-fill", default="contour-wipe", choices=["contour-wipe", "brush"],
@@ -523,7 +585,9 @@ def main(argv=None) -> int:
     raw_path = out_path.with_name(out_path.stem + "_raw.mp4")
 
     hand_png = Path(args.hand) if args.hand else None
-    renderer = RegionStreamRenderer(image_bgr, annotation, cfg, hand_png, args.bare_tip)
+    renderer = RegionStreamRenderer(
+        image_bgr, annotation, cfg, hand_png, args.bare_tip, args.pen_brand
+    )
     print(f"  输入: {args.image}")
     print(f"  输出尺寸: {renderer.out_w}x{renderer.out_h}, 帧率: {cfg.fps}")
     print(f"  区域数: {len(annotation['elements'])}, 总时长: {total_ms}ms, "

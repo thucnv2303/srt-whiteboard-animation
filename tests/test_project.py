@@ -41,6 +41,26 @@ class ProjectTests(unittest.TestCase):
             self.assertEqual(len(project.scenes), 1)
             self.assertEqual(project.voice, root / "voice.mp3")
 
+    def test_loads_pen_brand(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root)
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            data["penBrand"] = "Ăn dặm mẹ Dâu"
+            manifest.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            project = load_project(root)
+            self.assertEqual(project.pen_brand, "Ăn dặm mẹ Dâu")
+
+    def test_rejects_long_pen_brand(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root)
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            data["penBrand"] = "x" * 41
+            manifest.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ProjectError, "40 ký tự"):
+                load_project(root)
+
     def test_rejects_missing_asset(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -87,4 +107,3 @@ class ProjectTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

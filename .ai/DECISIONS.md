@@ -60,3 +60,17 @@
 - Decision: Đầu vào là folder/ZIP có đúng một `project.json`; mỗi scene tham chiếu ảnh và annotation cùng basename; voice tùy chọn.
 - Security: Chỉ cho đường dẫn tương đối nằm trong root; từ chối ZIP traversal và tài nguyên thiếu.
 
+## DEC-20260901-01 — Voice neural không API key cho bước nghiệm thu
+
+- Status: approved for testing
+- Decision owner: người dùng + Codex
+- Context: Windows SAPI đọc tiếng Việt sai hoặc rơi về voice không phải tiếng Việt.
+- Decision: Gói mẫu dùng edge-tts với `vi-VN-HoaiMyNeural`; app vẫn chỉ nhận file audio và không phụ thuộc dịch vụ TTS khi render.
+- Trade-offs: Không tốn API key nhưng cần Internet khi tạo voice; có thể thay bằng voice do ChatGPT Project xuất sau này.
+
+## DEC-20260901-02 — Nhãn bút là dữ liệu dự án
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Schema v1 cho phép trường tùy chọn `penBrand`; renderer dùng Pillow để giữ đúng dấu tiếng Việt và cho nhãn đi theo bút.
+- Reason: Đổi tên thương hiệu theo từng dự án mà không sửa code hay ghi chữ trực tiếp vào ảnh nguồn.

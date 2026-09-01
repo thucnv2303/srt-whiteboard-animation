@@ -47,11 +47,14 @@ class RendererCommandTests(unittest.TestCase):
                 encoding="utf-8",
             )
             project = load_project(project_dir)
+            project.pen_brand = "Ăn dặm mẹ Dâu"
             with patch("whiteboard_app.renderer.repository_root", return_value=repo):
                 commands, final = build_commands(project, root / "output", "python-fixture")
             self.assertEqual(len(commands), 2)
             self.assertEqual(commands[0].argv[0], "python-fixture")
             self.assertEqual(commands[0].label, "Dựng cảnh 1/1 — scene-01")
+            self.assertIn("--pen-brand", commands[0].argv)
+            self.assertIn("Ăn dặm mẹ Dâu", commands[0].argv)
             self.assertIn("--inputs", commands[1].argv)
             self.assertEqual(final, (root / "output" / "final.mp4").resolve())
 

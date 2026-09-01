@@ -38,6 +38,7 @@ Schema MVP:
   "title": "5 món thịt bò tốt cho bé",
   "version": 1,
   "voice": "audio/voice.mp3",
+  "penBrand": "Ăn dặm mẹ Dâu",
   "scenes": [
     {
       "id": "scene-01",
@@ -73,6 +74,6 @@ python -m py_compile whiteboard_app\*.py run_app.py
 
 Sau khi mở app, chọn `examples/test-52s/project.json`. Gói gồm sáu cảnh × 8,6 giây, dùng để xác nhận render nhiều cảnh và ghép `final.mp4`. Đây là fixture kỹ thuật chưa có voice.
 
-## Dự án nội dung có màu và voice
+## Dự án nội dung chân thực và voice Việt
 
-Thư mục `examples/beef-5-dishes/` chứa dự án khoảng 50 giây về năm món ăn từ thịt bò cho bé. Trên Windows, chạy `create-voice-windows.bat` một lần để tạo `voice.wav`, rồi mở `project.json` bằng app.
+Thư mục `examples/beef-5-dishes/` chứa dự án khoảng 50 giây về năm món ăn từ thịt bò cho bé. Trên Windows, chạy `create-voice-neural.bat` một lần để tạo `voice.mp3`, rồi mở `project.json` bằng app. Voice neural cần Internet lúc tạo nhưng không cần API key. Trường `penBrand` là nhãn Unicode đi theo cây bút trong lúc vẽ.

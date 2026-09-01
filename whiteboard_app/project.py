@@ -29,6 +29,7 @@ class VideoProject:
     version: int
     scenes: list[Scene]
     voice: Path | None = None
+    pen_brand: str | None = None
     temporary_root: Path | None = None
 
     def close(self) -> None:
@@ -117,6 +118,15 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
         if not voice.is_file():
             raise ProjectError(f"Không tìm thấy voice: {voice}")
 
+    pen_brand: str | None = None
+    if data.get("penBrand") is not None:
+        raw_pen_brand = data["penBrand"]
+        if not isinstance(raw_pen_brand, str) or not raw_pen_brand.strip():
+            raise ProjectError("penBrand phải là chuỗi không rỗng.")
+        pen_brand = raw_pen_brand.strip()
+        if len(pen_brand) > 40:
+            raise ProjectError("penBrand không được dài quá 40 ký tự.")
+
     return VideoProject(
         root=root,
         manifest_path=manifest_path.resolve(),
@@ -124,6 +134,7 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
         version=version,
         scenes=scenes,
         voice=voice,
+        pen_brand=pen_brand,
         temporary_root=temporary_root,
     )
 
@@ -172,4 +183,3 @@ def load_project(source: str | Path) -> VideoProject:
     if path.is_file() and path.name.lower() == "project.json":
         return _read_manifest(path)
     raise ProjectError("Hãy chọn thư mục dự án, project.json hoặc file ZIP.")
-

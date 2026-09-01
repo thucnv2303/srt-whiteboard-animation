@@ -55,21 +55,24 @@ def build_commands(
     for index, scene in enumerate(project.scenes, start=1):
         scene_output = scene_dir / f"{index:02d}-{scene.scene_id}.mp4"
         scene_outputs.append(scene_output)
+        scene_argv = [
+            python,
+            str(renderer),
+            str(scene.image),
+            str(scene.annotation),
+            str(scene_output),
+            str(hand),
+            "--ink-path",
+            "grid",
+            "--color-fill",
+            "contour-wipe",
+        ]
+        if project.pen_brand:
+            scene_argv.extend(["--pen-brand", project.pen_brand])
         commands.append(
             RenderCommand(
                 label=f"Dựng cảnh {index}/{len(project.scenes)} — {scene.title}",
-                argv=[
-                    python,
-                    str(renderer),
-                    str(scene.image),
-                    str(scene.annotation),
-                    str(scene_output),
-                    str(hand),
-                    "--ink-path",
-                    "grid",
-                    "--color-fill",
-                    "contour-wipe",
-                ],
+                argv=scene_argv,
             )
         )
 
