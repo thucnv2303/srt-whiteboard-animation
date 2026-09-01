@@ -33,9 +33,11 @@ class WhiteboardApp(tk.Tk):
         self._preview_after: str | None = None
 
         self.aspect_ratio = tk.StringVar(value="16:9")
-        self.audio_mode = tk.StringVar(value="file")
         self.pen_brand = tk.StringVar(value="Ăn dặm mẹ Dâu")
-        self.voice_path = tk.StringVar(value="Chưa chọn file voice")
+        self.project_title_text = tk.StringVar(value="Chưa có dự án")
+        self.project_meta_text = tk.StringVar(value="0 cảnh  •  chưa có thời lượng")
+        self.project_source_text = tk.StringVar(value="GPT sẽ gửi ảnh và kịch bản vào gói dự án")
+        self.voice_path = tk.StringVar(value="Chưa tạo âm thanh")
         self.omnivoice_cli = tk.StringVar(value=self.voice_settings.cli_path)
         self.reference_voice = tk.StringVar(value="Chưa chọn giọng mẫu")
         self.output_path = tk.StringVar(value="Tự động: thư mục output của dự án")
@@ -147,12 +149,51 @@ class WhiteboardApp(tk.Tk):
 
     def _build_settings_card(self) -> None:
         self.settings_card.grid_columnconfigure(0, weight=1)
-        ttk.Label(self.settings_card, text="Thiết lập video", style="CardTitle.TLabel").grid(
+        ttk.Label(self.settings_card, text="Dự án từ GPT", style="CardTitle.TLabel").grid(
             row=0, column=0, sticky="w"
         )
 
+        project_info = ttk.LabelFrame(self.settings_card, text="Thông tin đã quét", padding=10)
+        project_info.grid(row=1, column=0, sticky="ew", pady=(10, 7))
+        project_info.grid_columnconfigure(0, weight=1)
+        ttk.Label(project_info, textvariable=self.project_title_text, font=("Segoe UI", 10, "bold")).grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(project_info, textvariable=self.project_meta_text, style="Subtitle.TLabel").grid(
+            row=1, column=0, sticky="w", pady=(2, 0)
+        )
+        ttk.Label(project_info, textvariable=self.project_source_text, style="Subtitle.TLabel").grid(
+            row=2, column=0, sticky="ew", pady=(2, 6)
+        )
+        ttk.Label(project_info, text="Kịch bản lời đọc", style="Subtitle.TLabel").grid(
+            row=3, column=0, sticky="w", pady=(2, 3)
+        )
+        self.project_script = tk.Text(
+            project_info, height=5, wrap="word", state="disabled", relief="solid", borderwidth=1,
+            padx=7, pady=6, font=("Segoe UI", 9), background="#ffffff",
+        )
+        self.project_script.grid(row=4, column=0, sticky="ew")
+
+        audio = ttk.LabelFrame(self.settings_card, text="Tạo âm thanh bằng OmniVoice", padding=10)
+        audio.grid(row=2, column=0, sticky="ew", pady=7)
+        audio.grid_columnconfigure(0, weight=1)
+        ttk.Label(audio, textvariable=self.voice_path, style="Subtitle.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6)
+        )
+        self.cli_entry = ttk.Entry(audio, textvariable=self.omnivoice_cli)
+        self.cli_entry.grid(row=1, column=0, sticky="ew", padx=(0, 6))
+        self.cli_button = ttk.Button(audio, text="Chọn OmniVoice…", command=self._choose_omnivoice_cli)
+        self.cli_button.grid(row=1, column=1)
+        ttk.Label(audio, textvariable=self.reference_voice, style="Subtitle.TLabel").grid(
+            row=2, column=0, sticky="ew", pady=(7, 0), padx=(0, 6)
+        )
+        self.reference_button = ttk.Button(audio, text="Chọn giọng mẫu…", command=self._choose_reference_voice)
+        self.reference_button.grid(row=2, column=1, pady=(7, 0))
+        self.clone_button = ttk.Button(audio, text="Tạo âm thanh từ kịch bản", command=self._start_voice_clone)
+        self.clone_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+
         ratio = ttk.LabelFrame(self.settings_card, text="Tỷ lệ đầu ra", padding=10)
-        ratio.grid(row=1, column=0, sticky="ew", pady=(10, 8))
+        ratio.grid(row=3, column=0, sticky="ew", pady=7)
         for column, (key, spec) in enumerate(ASPECT_RATIOS.items()):
             ratio.grid_columnconfigure(column, weight=1)
             ttk.Radiobutton(
@@ -160,53 +201,14 @@ class WhiteboardApp(tk.Tk):
                 variable=self.aspect_ratio, command=self._schedule_preview,
             ).grid(row=0, column=column, sticky="ew", padx=3)
 
-        audio = ttk.LabelFrame(self.settings_card, text="Âm thanh", padding=10)
-        audio.grid(row=2, column=0, sticky="ew", pady=8)
-        audio.grid_columnconfigure(0, weight=1)
-        modes = ttk.Frame(audio)
-        modes.grid(row=0, column=0, sticky="ew")
-        ttk.Radiobutton(
-            modes, text="Chọn voice có sẵn", value="file", variable=self.audio_mode, command=self._show_audio_mode
-        ).pack(side="left")
-        ttk.Radiobutton(
-            modes, text="Tạo voice clone", value="clone", variable=self.audio_mode, command=self._show_audio_mode
-        ).pack(side="left", padx=(14, 0))
-
-        self.file_voice_panel = ttk.Frame(audio)
-        self.file_voice_panel.grid_columnconfigure(0, weight=1)
-        ttk.Label(self.file_voice_panel, textvariable=self.voice_path, style="Subtitle.TLabel").grid(
-            row=0, column=0, sticky="ew", padx=(0, 8)
-        )
-        self.voice_file_button = ttk.Button(self.file_voice_panel, text="Chọn file…", command=self._choose_voice_file)
-        self.voice_file_button.grid(row=0, column=1)
-
-        self.clone_panel = ttk.Frame(audio)
-        self.clone_panel.grid_columnconfigure(0, weight=1)
-        self.cli_entry = ttk.Entry(self.clone_panel, textvariable=self.omnivoice_cli)
-        self.cli_entry.grid(row=0, column=0, sticky="ew", padx=(0, 6))
-        self.cli_button = ttk.Button(self.clone_panel, text="OmniVoice…", command=self._choose_omnivoice_cli)
-        self.cli_button.grid(row=0, column=1)
-        ttk.Label(self.clone_panel, textvariable=self.reference_voice, style="Subtitle.TLabel").grid(
-            row=1, column=0, sticky="ew", pady=(7, 0), padx=(0, 6)
-        )
-        self.reference_button = ttk.Button(self.clone_panel, text="Giọng mẫu…", command=self._choose_reference_voice)
-        self.reference_button.grid(row=1, column=1, pady=(7, 0))
-        ttk.Label(self.clone_panel, text="Lời thoại tiếng Việt", style="Subtitle.TLabel").grid(
-            row=2, column=0, columnspan=2, sticky="w", pady=(8, 3)
-        )
-        self.voice_script = tk.Text(self.clone_panel, height=4, wrap="word", font=("Segoe UI", 9))
-        self.voice_script.grid(row=3, column=0, columnspan=2, sticky="ew")
-        self.clone_button = ttk.Button(self.clone_panel, text="Tạo voice clone", command=self._start_voice_clone)
-        self.clone_button.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 0))
-
         pen = ttk.LabelFrame(self.settings_card, text="Chữ trên thân bút", padding=10)
-        pen.grid(row=3, column=0, sticky="ew", pady=8)
+        pen.grid(row=4, column=0, sticky="ew", pady=7)
         pen.grid_columnconfigure(0, weight=1)
         ttk.Entry(pen, textvariable=self.pen_brand).grid(row=0, column=0, sticky="ew")
         ttk.Label(pen, text="Tối đa 40 ký tự", style="Subtitle.TLabel").grid(row=1, column=0, sticky="w", pady=(4, 0))
 
         output = ttk.LabelFrame(self.settings_card, text="Nơi xuất", padding=10)
-        output.grid(row=4, column=0, sticky="ew", pady=8)
+        output.grid(row=5, column=0, sticky="ew", pady=7)
         output.grid_columnconfigure(0, weight=1)
         ttk.Label(output, textvariable=self.output_path, style="Subtitle.TLabel").grid(
             row=0, column=0, sticky="ew", padx=(0, 8)
@@ -215,14 +217,13 @@ class WhiteboardApp(tk.Tk):
         self.output_button.grid(row=0, column=1)
 
         status = ttk.Frame(self.settings_card, style="Card.TFrame")
-        status.grid(row=5, column=0, sticky="ew", pady=(10, 0))
+        status.grid(row=6, column=0, sticky="ew", pady=(8, 0))
         status.grid_columnconfigure(0, weight=1)
         ttk.Label(status, textvariable=self.progress_text, style="Meta.TLabel").grid(row=0, column=0, sticky="w")
         self.cancel_button = ttk.Button(status, text="Hủy", command=self.cancel_event.set, state="disabled")
         self.cancel_button.grid(row=0, column=1)
         self.progress = ttk.Progressbar(status, mode="indeterminate")
         self.progress.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
-        self._show_audio_mode()
 
     def _on_window_resize(self, event: tk.Event) -> None:
         if event.widget is self:
@@ -248,14 +249,6 @@ class WhiteboardApp(tk.Tk):
             self.preview_card.grid(row=0, column=0, sticky="nsew", pady=(0, 6))
             self.settings_card.grid(row=1, column=0, sticky="ew", pady=(6, 0))
         self._layout_mode = mode
-
-    def _show_audio_mode(self) -> None:
-        self.file_voice_panel.grid_forget()
-        self.clone_panel.grid_forget()
-        if self.audio_mode.get() == "clone":
-            self.clone_panel.grid(row=1, column=0, sticky="ew", pady=(9, 0))
-        else:
-            self.file_voice_panel.grid(row=1, column=0, sticky="ew", pady=(9, 0))
 
     def _choose_project_file(self) -> None:
         source = filedialog.askopenfilename(
@@ -284,7 +277,18 @@ class WhiteboardApp(tk.Tk):
         self.scene_counter.configure(text=f"{len(loaded.scenes)} cảnh")
         self.output_path.set(str(self.output_dir) if self.output_dir else "Chọn nơi xuất cho dự án ZIP")
         self.pen_brand.set(loaded.pen_brand or "Ăn dặm mẹ Dâu")
-        self.voice_path.set(str(loaded.voice) if loaded.voice else "Chưa chọn file voice")
+        total_ms = sum(scene.duration_ms for scene in loaded.scenes)
+        duration_text = f"{total_ms / 1000:.1f} giây" if total_ms else "chưa có thời lượng"
+        self.project_title_text.set(loaded.title)
+        self.project_meta_text.set(f"{len(loaded.scenes)} cảnh  •  {duration_text}  •  phiên bản {loaded.version}")
+        self.project_source_text.set(f"Nguồn: {loaded.manifest_path.name}")
+        self.project_script.configure(state="normal")
+        self.project_script.delete("1.0", "end")
+        self.project_script.insert(
+            "1.0", loaded.script_text or "Gói dự án chưa có script.txt hoặc trường script trong project.json."
+        )
+        self.project_script.configure(state="disabled")
+        self.voice_path.set(str(loaded.voice) if loaded.voice else "Chưa tạo âm thanh — hãy chạy OmniVoice")
         for child in self.scene_strip.winfo_children():
             child.destroy()
         for index, scene in enumerate(loaded.scenes, start=1):
@@ -294,8 +298,14 @@ class WhiteboardApp(tk.Tk):
             ).grid(row=0, column=index - 1, padx=(0, 7), sticky="ns")
         self._append_log(f"Đã mở dự án: {loaded.title}")
         self._append_log(f"Nguồn: {loaded.manifest_path}")
-        self.render_button.configure(state="normal")
-        self.progress_text.set("Dự án hợp lệ — sẵn sàng dựng")
+        if loaded.script_path:
+            self._append_log(f"Kịch bản: {loaded.script_path.name}")
+        else:
+            self._append_log("CẢNH BÁO: Gói dự án chưa có kịch bản để tạo voice.")
+        self.render_button.configure(state="normal" if loaded.voice else "disabled")
+        self.progress_text.set(
+            "Đã có âm thanh — sẵn sàng dựng" if loaded.voice else "Bước tiếp theo: tạo âm thanh bằng OmniVoice"
+        )
         self._select_scene(loaded.scenes[0])
 
     def _select_scene(self, scene: Scene) -> None:
@@ -340,16 +350,6 @@ class WhiteboardApp(tk.Tk):
         except Exception as exc:
             self._append_log(f"Không thể cập nhật xem trước: {exc}")
 
-    def _choose_voice_file(self) -> None:
-        selected = filedialog.askopenfilename(
-            title="Chọn file voice",
-            filetypes=[("Âm thanh", "*.wav *.mp3 *.m4a *.aac *.ogg"), ("Tất cả file", "*.*")],
-        )
-        if selected and self.project:
-            self.project.voice = Path(selected).resolve()
-            self.voice_path.set(selected)
-            self._append_log(f"Đã chọn voice: {selected}")
-
     def _choose_omnivoice_cli(self) -> None:
         selected = filedialog.askopenfilename(
             title="Chọn omnivoice-infer.exe",
@@ -372,10 +372,14 @@ class WhiteboardApp(tk.Tk):
         if not self.project:
             messagebox.showwarning("Chưa có dự án", "Hãy mở dự án trước khi tạo voice.", parent=self)
             return
-        text = self.voice_script.get("1.0", "end").strip()
+        text = self.project.script_text.strip()
         reference, cli = self.reference_voice.get(), self.omnivoice_cli.get().strip()
         if not text or reference == "Chưa chọn giọng mẫu" or not cli:
-            messagebox.showwarning("Thiếu thông tin", "Hãy chọn OmniVoice, giọng mẫu và nhập lời thoại.", parent=self)
+            messagebox.showwarning(
+                "Thiếu thông tin",
+                "Gói dự án phải có kịch bản; đồng thời hãy chọn OmniVoice và giọng mẫu.",
+                parent=self,
+            )
             return
         output_root = self.output_dir or self.project.root
         voice_output = output_root / "voice-clone.wav"
@@ -403,6 +407,11 @@ class WhiteboardApp(tk.Tk):
 
     def _start_render(self) -> None:
         if not self.project:
+            return
+        if not self.project.voice:
+            messagebox.showwarning(
+                "Chưa có âm thanh", "Hãy tạo âm thanh bằng OmniVoice trước khi dựng video.", parent=self
+            )
             return
         if self.output_dir is None:
             self._choose_output()
@@ -436,11 +445,12 @@ class WhiteboardApp(tk.Tk):
     def _set_busy(self, busy: bool, label: str = "Sẵn sàng") -> None:
         state = "disabled" if busy else "normal"
         for control in (
-            self.open_file_button, self.output_button, self.voice_file_button,
+            self.open_file_button, self.output_button,
             self.cli_button, self.reference_button, self.clone_button,
         ):
             control.configure(state=state)
-        self.render_button.configure(state=state if self.project else "disabled")
+        render_ready = bool(self.project and self.project.voice)
+        self.render_button.configure(state="normal" if not busy and render_ready else "disabled")
         self.cancel_button.configure(state="normal" if busy else "disabled")
         self.progress_text.set(label)
         self.progress.start(12) if busy else self.progress.stop()
@@ -462,8 +472,7 @@ class WhiteboardApp(tk.Tk):
                     assert self.project is not None
                     self.project.voice = Path(payload)
                     self.voice_path.set(str(payload))
-                    self.audio_mode.set("file")
-                    self._show_audio_mode()
+                    self.render_button.configure(state="normal")
                     self._append_log(f"Hoàn tất voice clone: {payload}")
                 elif kind == "done":
                     self._set_busy(False, "Đã tạo video")

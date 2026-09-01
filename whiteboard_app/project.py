@@ -19,6 +19,7 @@ class Scene:
     title: str
     image: Path
     annotation: Path
+    duration_ms: int = 0
 
 
 @dataclass
@@ -28,6 +29,8 @@ class VideoProject:
     title: str
     version: int
     scenes: list[Scene]
+    script_path: Path | None = None
+    script_text: str = ""
     voice: Path | None = None
     pen_brand: str | None = None
     temporary_root: Path | None = None
@@ -103,14 +106,42 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
                 f"Ảnh và annotation của {scene_id} phải cùng tên: "
                 f"{image.name} / {annotation.name}"
             )
+        duration_ms = 0
+        try:
+            annotation_data = json.loads(annotation.read_text(encoding="utf-8-sig"))
+            raw_duration = annotation_data.get("sceneDurationMs", 0)
+            if isinstance(raw_duration, int) and raw_duration > 0:
+                duration_ms = raw_duration
+        except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
+            pass
         scenes.append(
             Scene(
                 scene_id=scene_id,
                 title=str(raw_scene.get("title") or scene_id),
                 image=image,
                 annotation=annotation,
+                duration_ms=duration_ms,
             )
         )
+
+    script_path: Path | None = None
+    script_text = ""
+    raw_script = data.get("script")
+    if raw_script is not None:
+        script_path = _safe_relative_path(root, raw_script, "Kịch bản")
+        if not script_path.is_file():
+            raise ProjectError(f"Không tìm thấy kịch bản: {script_path}")
+    else:
+        conventional_script = root / "script.txt"
+        if conventional_script.is_file():
+            script_path = conventional_script
+    if script_path:
+        try:
+            script_text = script_path.read_text(encoding="utf-8-sig").strip()
+        except (OSError, UnicodeError) as exc:
+            raise ProjectError(f"Không thể đọc kịch bản UTF-8: {script_path}") from exc
+        if not script_text:
+            raise ProjectError("Kịch bản không được để trống.")
 
     voice: Path | None = None
     if data.get("voice") is not None:
@@ -133,6 +164,8 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
         title=title.strip(),
         version=version,
         scenes=scenes,
+        script_path=script_path,
+        script_text=script_text,
         voice=voice,
         pen_brand=pen_brand,
         temporary_root=temporary_root,

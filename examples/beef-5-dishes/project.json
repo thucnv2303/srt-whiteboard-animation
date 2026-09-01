@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "title": "5 món ăn từ thịt bò tốt cho bé",
-  "version": 3,
-  "voice": "voice.mp3",
+  "version": 4,
+  "script": "script.txt",
   "penBrand": "Ăn dặm mẹ Dâu",
   "subtitles": "subtitles.srt",
   "scenes": [

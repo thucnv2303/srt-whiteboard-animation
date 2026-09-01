@@ -88,3 +88,10 @@
 - Decision owner: người dùng + Codex
 - Decision: App cho chọn file voice hoặc gọi `omnivoice-infer.exe` từ môi trường OmniVoice đã tồn tại. Chỉ lưu đường dẫn CLI trong `%APPDATA%`, không clone source, môi trường hay model vào repo.
 - Reason: Tránh tốn dung lượng và tránh duy trì nhiều bản OmniVoice trên cùng máy.
+
+## DEC-20260901-05 — GPT không xuất voice
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Gói GPT chỉ chứa ảnh, annotation và `script.txt`. Sau khi quét gói, cột phải hiển thị metadata và kịch bản; app bắt buộc tạo audio local bằng OmniVoice trước khi bật nút dựng video.
+- Reason: Kịch bản và hình ảnh cần đồng bộ từ GPT, còn voice clone dùng tài nguyên/giọng mẫu riêng đã có trên máy người dùng.

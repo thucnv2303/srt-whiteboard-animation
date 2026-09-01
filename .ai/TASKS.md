@@ -16,6 +16,7 @@
 - App shell điều phối renderer upstream, ghép cảnh và voice tùy chọn.
 - UI desktop ngang responsive, preview ảnh, dải cảnh và card log phía dưới.
 - Chọn tỷ lệ video và kết nối OmniVoice dùng chung ngoài repo.
+- Cột phải hiển thị metadata/kịch bản gói GPT; voice được tạo local trước khi bật render.
 
 ## Backlog ưu tiên
 
@@ -42,6 +43,7 @@
 - Kiểm tra resize cửa sổ ở 1280×820 và kích thước nhỏ; các card không chồng nhau.
 - Kiểm tra một video 9:16 và luồng chọn voice có sẵn.
 - Khi có OmniVoice sẵn, chọn CLI một lần và xác nhận lần mở app sau vẫn nhớ đường dẫn.
+- Xác nhận app lấy thẳng `script.txt`, không yêu cầu copy lời thoại vào giao diện.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

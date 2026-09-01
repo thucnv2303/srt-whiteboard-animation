@@ -41,6 +41,32 @@ class ProjectTests(unittest.TestCase):
             self.assertEqual(len(project.scenes), 1)
             self.assertEqual(project.voice, root / "voice.mp3")
 
+    def test_loads_gpt_script_and_scene_duration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root)
+            (root / "script.txt").write_text("Xin chào bé.", encoding="utf-8")
+            (root / "scene.annotation.json").write_text(
+                json.dumps({"sceneDurationMs": 8600}), encoding="utf-8"
+            )
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            data["script"] = "script.txt"
+            manifest.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            project = load_project(root)
+            self.assertEqual(project.script_text, "Xin chào bé.")
+            self.assertEqual(project.script_path, root / "script.txt")
+            self.assertEqual(project.scenes[0].duration_ms, 8600)
+
+    def test_rejects_declared_missing_script(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root)
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            data["script"] = "missing-script.txt"
+            manifest.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ProjectError, "Không tìm thấy kịch bản"):
+                load_project(root)
+
     def test_loads_pen_brand(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

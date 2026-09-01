@@ -19,12 +19,12 @@ python scripts/prepare_env.py
 
 ## Gói dữ liệu đầu vào
 
-Mỗi dự án có đúng một `project.json`, ảnh và annotation cùng basename. Voice là tùy chọn.
+Mỗi dự án GPT có đúng một `project.json`, `script.txt`, ảnh và annotation cùng basename. GPT không cần tạo voice; app dùng OmniVoice trên máy để tạo file âm thanh sau khi quét dự án.
 
 ```text
 du-an/
 ├── project.json
-├── audio/voice.mp3
+├── script.txt
 └── scenes/
     ├── scene-01.png
     └── scene-01.annotation.json
@@ -37,7 +37,7 @@ Schema MVP:
   "schemaVersion": 1,
   "title": "5 món thịt bò tốt cho bé",
   "version": 1,
-  "voice": "audio/voice.mp3",
+  "script": "script.txt",
   "penBrand": "Ăn dặm mẹ Dâu",
   "scenes": [
     {
@@ -61,7 +61,8 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Kiểm tra cấu trúc và tài nguyên trước khi render.
 - Xem trước ảnh và chuyển cảnh bằng dải cảnh ngang.
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
-- Chọn file voice có sẵn hoặc tạo voice clone bằng bản OmniVoice đã cài ở nơi khác trên máy.
+- Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
+- Tạo voice từ kịch bản bằng bản OmniVoice đã cài ở nơi khác trên máy.
 - Dựng từng cảnh bằng renderer upstream rồi ghép thành `final.mp4`.
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
@@ -70,9 +71,10 @@ Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotat
 
 ## Dùng chung OmniVoice, không clone lại
 
-1. Trong mục **Âm thanh**, chọn **Tạo voice clone**.
-2. Bấm **OmniVoice…** và chọn `omnivoice-infer.exe` trong môi trường OmniVoice đang có trên máy.
-3. Chọn một file giọng mẫu, nhập lời thoại rồi bấm **Tạo voice clone**.
+1. Mở dự án có trường `"script": "script.txt"`; app tự đọc kịch bản, không cần copy lại.
+2. Trong mục **Tạo âm thanh bằng OmniVoice**, bấm **Chọn OmniVoice…** và chọn `omnivoice-infer.exe` trong môi trường đang có trên máy.
+3. Chọn một file giọng mẫu rồi bấm **Tạo âm thanh từ kịch bản**.
+4. Khi voice hoàn tất, nút **Tạo video** mới được bật.
 
 App chỉ gọi tiến trình OmniVoice bên ngoài. Đường dẫn được lưu tại
 `%APPDATA%\NetChuyenDong\settings.json` để những lần mở sau không phải chọn lại. Repo này không sao chép mã nguồn, môi trường Python hoặc model của OmniVoice.
@@ -86,7 +88,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 16 unit test cho import dự án, an toàn ZIP, lệnh render, tỷ lệ video, UI responsive và cấu hình OmniVoice.
+Hiện có 18 unit test cho import dự án, kịch bản GPT, an toàn ZIP, lệnh render, tỷ lệ video, UI responsive và cấu hình OmniVoice.
 
 ## Gói kiểm thử 52 giây
 
