@@ -17,6 +17,8 @@
 - UI desktop ngang responsive, preview ảnh, dải cảnh và card log phía dưới.
 - Chọn tỷ lệ video và kết nối OmniVoice dùng chung ngoài repo.
 - Cột phải hiển thị metadata/kịch bản gói GPT; voice được tạo local trước khi bật render.
+- Thư viện giọng dùng chung, nghe thử và popup quản lý/thêm giọng.
+- Tự phân tích, chọn đoạn sạch và giảm nhiễu mẫu clone bằng FFmpeg.
 
 ## Backlog ưu tiên
 
@@ -44,6 +46,7 @@
 - Kiểm tra một video 9:16 và luồng chọn voice có sẵn.
 - Khi có OmniVoice sẵn, chọn CLI một lần và xác nhận lần mở app sau vẫn nhớ đường dẫn.
 - Xác nhận app lấy thẳng `script.txt`, không yêu cầu copy lời thoại vào giao diện.
+- Thêm một mẫu giọng thật, nghe trước/sau xử lý và đánh giá mức nhiễu còn lại hoặc méo tiếng.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

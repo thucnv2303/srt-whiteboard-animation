@@ -62,7 +62,9 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Xem trước ảnh và chuyển cảnh bằng dải cảnh ngang.
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
-- Tạo voice từ kịch bản bằng bản OmniVoice đã cài ở nơi khác trên máy.
+- Chọn giọng trong thư viện, nghe thử rồi tạo voice từ kịch bản bằng OmniVoice.
+- Popup **Cài đặt giọng** quản lý đường dẫn OmniVoice và thêm giọng clone mới.
+- Mẫu mới được tự chọn đoạn nói liên tục 3–8 giây, chấm điểm SNR, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.
 - Dựng từng cảnh bằng renderer upstream rồi ghép thành `final.mp4`.
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
@@ -72,9 +74,12 @@ Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotat
 ## Dùng chung OmniVoice, không clone lại
 
 1. Mở dự án có trường `"script": "script.txt"`; app tự đọc kịch bản, không cần copy lại.
-2. Trong mục **Tạo âm thanh bằng OmniVoice**, bấm **Chọn OmniVoice…** và chọn `omnivoice-infer.exe` trong môi trường đang có trên máy.
-3. Chọn một file giọng mẫu rồi bấm **Tạo âm thanh từ kịch bản**.
-4. Khi voice hoàn tất, nút **Tạo video** mới được bật.
+2. Bấm **Cài đặt giọng…**, chọn `omnivoice-infer.exe` một lần.
+3. Đặt tên giọng, chọn file ghi âm và bấm **Phân tích, làm sạch và lưu giọng**.
+4. Nghe thử bản đã xử lý. Đóng popup, chọn giọng đó trong danh sách của màn hình chính.
+5. Bấm **Tạo âm thanh bằng giọng đã chọn**. Khi hoàn tất, nút **Tạo video** được bật.
+
+Thư viện giọng và các file WAV đã làm sạch được lưu trong `%APPDATA%\NetChuyenDong\voices`, dùng lại cho mọi dự án. Bộ lọc giúp giảm mạnh tạp âm ổn định nhưng không thể bảo đảm xóa tuyệt đối tiếng người khác, tiếng va đập lớn hoặc tiếng nhạc mà không ảnh hưởng chất giọng; luôn nghe thử trước khi lưu làm mẫu clone.
 
 App chỉ gọi tiến trình OmniVoice bên ngoài. Đường dẫn được lưu tại
 `%APPDATA%\NetChuyenDong\settings.json` để những lần mở sau không phải chọn lại. Repo này không sao chép mã nguồn, môi trường Python hoặc model của OmniVoice.
@@ -88,7 +93,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 18 unit test cho import dự án, kịch bản GPT, an toàn ZIP, lệnh render, tỷ lệ video, UI responsive và cấu hình OmniVoice.
+Hiện có 20 unit test cho import dự án, kịch bản GPT, an toàn ZIP, lệnh render, tỷ lệ video, UI responsive, thư viện giọng và bộ chọn đoạn âm.
 
 ## Gói kiểm thử 52 giây
 

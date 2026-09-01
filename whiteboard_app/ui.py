@@ -8,7 +8,16 @@ from tkinter import filedialog, messagebox, ttk
 
 from .project import ProjectError, Scene, VideoProject, load_project
 from .renderer import ASPECT_RATIOS, RenderError, run_pipeline
-from .voice import OmniVoiceError, VoiceSettings, generate_clone_voice
+from .voice import (
+    OmniVoiceError,
+    VoiceLibrary,
+    VoiceProfile,
+    VoiceSettings,
+    generate_clone_voice,
+    play_audio,
+    stop_audio,
+)
+from .voice_dialog import VoiceManagerDialog
 
 
 def responsive_layout(width: int) -> str:
@@ -27,6 +36,8 @@ class WhiteboardApp(tk.Tk):
         self.cancel_event = threading.Event()
         self.events: queue.Queue[tuple[str, object]] = queue.Queue()
         self.voice_settings = VoiceSettings.load()
+        self.voice_library = VoiceLibrary.load()
+        self._voice_profile_options: list[VoiceProfile] = []
         self._layout_mode = ""
         self._preview_image = None
         self._preview_photo = None
@@ -38,13 +49,13 @@ class WhiteboardApp(tk.Tk):
         self.project_meta_text = tk.StringVar(value="0 cảnh  •  chưa có thời lượng")
         self.project_source_text = tk.StringVar(value="GPT sẽ gửi ảnh và kịch bản vào gói dự án")
         self.voice_path = tk.StringVar(value="Chưa tạo âm thanh")
-        self.omnivoice_cli = tk.StringVar(value=self.voice_settings.cli_path)
-        self.reference_voice = tk.StringVar(value="Chưa chọn giọng mẫu")
+        self.selected_voice_text = tk.StringVar(value="Chưa có giọng đã lưu")
         self.output_path = tk.StringVar(value="Tự động: thư mục output của dự án")
         self.progress_text = tk.StringVar(value="Sẵn sàng")
 
         self._build_styles()
         self._build_ui()
+        self._refresh_voice_profiles()
         self.bind("<Configure>", self._on_window_resize)
         self.after(100, self._poll_events)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -174,23 +185,24 @@ class WhiteboardApp(tk.Tk):
         )
         self.project_script.grid(row=4, column=0, sticky="ew")
 
-        audio = ttk.LabelFrame(self.settings_card, text="Tạo âm thanh bằng OmniVoice", padding=10)
+        audio = ttk.LabelFrame(self.settings_card, text="Giọng đọc", padding=10)
         audio.grid(row=2, column=0, sticky="ew", pady=7)
         audio.grid_columnconfigure(0, weight=1)
         ttk.Label(audio, textvariable=self.voice_path, style="Subtitle.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6)
+            row=0, column=0, columnspan=4, sticky="ew", pady=(0, 6)
         )
-        self.cli_entry = ttk.Entry(audio, textvariable=self.omnivoice_cli)
-        self.cli_entry.grid(row=1, column=0, sticky="ew", padx=(0, 6))
-        self.cli_button = ttk.Button(audio, text="Chọn OmniVoice…", command=self._choose_omnivoice_cli)
-        self.cli_button.grid(row=1, column=1)
-        ttk.Label(audio, textvariable=self.reference_voice, style="Subtitle.TLabel").grid(
-            row=2, column=0, sticky="ew", pady=(7, 0), padx=(0, 6)
+        self.voice_combo = ttk.Combobox(audio, textvariable=self.selected_voice_text, state="readonly")
+        self.voice_combo.grid(row=1, column=0, columnspan=4, sticky="ew")
+        self.voice_combo.bind("<<ComboboxSelected>>", self._voice_selected)
+        self.preview_voice_button = ttk.Button(audio, text="▶ Nghe thử", command=self._preview_voice)
+        self.preview_voice_button.grid(row=2, column=0, sticky="ew", pady=(7, 0), padx=(0, 4))
+        ttk.Button(audio, text="■ Dừng", command=stop_audio).grid(
+            row=2, column=1, sticky="ew", pady=(7, 0), padx=4
         )
-        self.reference_button = ttk.Button(audio, text="Chọn giọng mẫu…", command=self._choose_reference_voice)
-        self.reference_button.grid(row=2, column=1, pady=(7, 0))
-        self.clone_button = ttk.Button(audio, text="Tạo âm thanh từ kịch bản", command=self._start_voice_clone)
-        self.clone_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.voice_settings_button = ttk.Button(audio, text="⚙ Cài đặt giọng…", command=self._open_voice_manager)
+        self.voice_settings_button.grid(row=2, column=2, columnspan=2, sticky="ew", pady=(7, 0), padx=(4, 0))
+        self.clone_button = ttk.Button(audio, text="Tạo âm thanh bằng giọng đã chọn", command=self._start_voice_clone)
+        self.clone_button.grid(row=3, column=0, columnspan=4, sticky="ew", pady=(8, 0))
 
         ratio = ttk.LabelFrame(self.settings_card, text="Tỷ lệ đầu ra", padding=10)
         ratio.grid(row=3, column=0, sticky="ew", pady=7)
@@ -350,47 +362,85 @@ class WhiteboardApp(tk.Tk):
         except Exception as exc:
             self._append_log(f"Không thể cập nhật xem trước: {exc}")
 
-    def _choose_omnivoice_cli(self) -> None:
-        selected = filedialog.askopenfilename(
-            title="Chọn omnivoice-infer.exe",
-            filetypes=[("OmniVoice CLI", "omnivoice-infer.exe omnivoice-infer"), ("Tất cả file", "*.*")],
+    def _refresh_voice_profiles(self) -> None:
+        self._voice_profile_options = [
+            profile for profile in self.voice_library.profiles if profile.audio_path.is_file()
+        ]
+        values = [
+            f"{profile.name}  •  {profile.duration_seconds:.1f}s  •  {profile.quality_score}/100"
+            for profile in self._voice_profile_options
+        ]
+        self.voice_combo.configure(values=values)
+        settings = VoiceSettings.load()
+        selected_index = next(
+            (
+                index
+                for index, profile in enumerate(self._voice_profile_options)
+                if profile.profile_id == settings.selected_profile_id
+            ),
+            0 if self._voice_profile_options else -1,
         )
-        if selected:
-            self.omnivoice_cli.set(selected)
-            VoiceSettings(cli_path=selected).save()
-            self._append_log("Đã lưu đường dẫn OmniVoice dùng chung trên máy.")
+        if selected_index >= 0:
+            self.voice_combo.current(selected_index)
+            self.selected_voice_text.set(values[selected_index])
+        else:
+            self.voice_combo.set("Chưa có giọng — mở Cài đặt giọng để thêm")
 
-    def _choose_reference_voice(self) -> None:
-        selected = filedialog.askopenfilename(
-            title="Chọn đoạn giọng mẫu",
-            filetypes=[("Âm thanh", "*.wav *.mp3 *.m4a *.aac *.ogg"), ("Tất cả file", "*.*")],
+    def _selected_voice_profile(self) -> VoiceProfile | None:
+        index = self.voice_combo.current()
+        if 0 <= index < len(self._voice_profile_options):
+            return self._voice_profile_options[index]
+        return None
+
+    def _voice_selected(self, _event: tk.Event | None = None) -> None:
+        profile = self._selected_voice_profile()
+        if not profile:
+            return
+        settings = VoiceSettings.load()
+        VoiceSettings(cli_path=settings.cli_path, selected_profile_id=profile.profile_id).save()
+        self._append_log(f"Đã chọn giọng: {profile.name} ({profile.quality_score}/100)")
+
+    def _preview_voice(self) -> None:
+        profile = self._selected_voice_profile()
+        if not profile:
+            messagebox.showinfo("Chưa có giọng", "Mở Cài đặt giọng để thêm và làm sạch mẫu.", parent=self)
+            return
+        try:
+            play_audio(profile.audio_path)
+        except OmniVoiceError as exc:
+            messagebox.showerror("Không thể nghe thử", str(exc), parent=self)
+
+    def _open_voice_manager(self) -> None:
+        VoiceManagerDialog(
+            self,
+            library=self.voice_library,
+            on_library_changed=self._refresh_voice_profiles,
+            on_log=self._append_log,
         )
-        if selected:
-            self.reference_voice.set(selected)
 
     def _start_voice_clone(self) -> None:
         if not self.project:
             messagebox.showwarning("Chưa có dự án", "Hãy mở dự án trước khi tạo voice.", parent=self)
             return
         text = self.project.script_text.strip()
-        reference, cli = self.reference_voice.get(), self.omnivoice_cli.get().strip()
-        if not text or reference == "Chưa chọn giọng mẫu" or not cli:
+        profile = self._selected_voice_profile()
+        cli = VoiceSettings.load().cli_path.strip()
+        if not text or not profile or not cli:
             messagebox.showwarning(
                 "Thiếu thông tin",
-                "Gói dự án phải có kịch bản; đồng thời hãy chọn OmniVoice và giọng mẫu.",
+                "Gói dự án phải có kịch bản. Hãy chọn một giọng đã lưu; nếu chưa có, mở Cài đặt giọng.",
                 parent=self,
             )
             return
         output_root = self.output_dir or self.project.root
         voice_output = output_root / "voice-clone.wav"
-        VoiceSettings(cli_path=cli).save()
         self.cancel_event.clear()
-        self._set_busy(True, "Đang tạo voice clone…")
+        self._set_busy(True, f"Đang tạo âm thanh bằng giọng {profile.name}…")
 
         def worker() -> None:
             try:
                 result = generate_clone_voice(
-                    cli_path=cli, text=text, reference_audio=Path(reference), output=voice_output,
+                    cli_path=cli, text=text, reference_audio=profile.audio_path, output=voice_output,
                     on_log=lambda line: self.events.put(("log", line)), cancel_event=self.cancel_event,
                 )
                 self.events.put(("voice_done", result))
@@ -446,9 +496,10 @@ class WhiteboardApp(tk.Tk):
         state = "disabled" if busy else "normal"
         for control in (
             self.open_file_button, self.output_button,
-            self.cli_button, self.reference_button, self.clone_button,
+            self.preview_voice_button, self.voice_settings_button, self.clone_button,
         ):
             control.configure(state=state)
+        self.voice_combo.configure(state="disabled" if busy else "readonly")
         render_ready = bool(self.project and self.project.voice)
         self.render_button.configure(state="normal" if not busy and render_ready else "disabled")
         self.cancel_button.configure(state="normal" if busy else "disabled")

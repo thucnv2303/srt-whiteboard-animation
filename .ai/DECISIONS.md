@@ -95,3 +95,11 @@
 - Decision owner: người dùng
 - Decision: Gói GPT chỉ chứa ảnh, annotation và `script.txt`. Sau khi quét gói, cột phải hiển thị metadata và kịch bản; app bắt buộc tạo audio local bằng OmniVoice trước khi bật nút dựng video.
 - Reason: Kịch bản và hình ảnh cần đồng bộ từ GPT, còn voice clone dùng tài nguyên/giọng mẫu riêng đã có trên máy người dùng.
+
+## DEC-20260901-06 — Thư viện giọng và popup cài đặt
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Màn hình chính chỉ hiển thị danh sách giọng đã lưu, nghe thử và tạo audio. Đường dẫn engine, thêm giọng clone và xử lý mẫu nằm trong popup **Cài đặt giọng**. Voice profile dùng chung cho mọi dự án.
+- Audio pipeline: tự chọn đoạn nói liên tục 3–8 giây theo mức năng lượng/SNR, xuất WAV mono 24 kHz, high-pass 80 Hz, low-pass 8 kHz, FFT denoise, dynamic normalize và limiter.
+- Constraint: Không tuyên bố xóa tuyệt đối mọi loại tạp âm; người dùng phải nghe thử bản xử lý trước khi dùng để clone.
