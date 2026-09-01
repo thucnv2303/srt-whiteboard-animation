@@ -3,7 +3,7 @@
 ## Task đang hoạt động
 
 - ID: `TASK-005`
-- Trạng thái: `READY_FOR_USER_TEST` sau khi PR được tạo.
+- Trạng thái: `READY_FOR_USER_TEST` sau khi cập nhật PR.
 - Mục tiêu: desktop app MVP nhận gói dự án và điều phối render.
 - Branch: `feat/desktop-app-mvp`
 - Phạm vi: UI, schema gói dự án, pipeline, test, CI và hướng dẫn Windows.
@@ -14,6 +14,8 @@
 - Hợp đồng `project.json` phiên bản 1.
 - Unit test cho import folder/ZIP, tài nguyên thiếu và đường dẫn không an toàn.
 - App shell điều phối renderer upstream, ghép cảnh và voice tùy chọn.
+- UI desktop ngang responsive, preview ảnh, dải cảnh và card log phía dưới.
+- Chọn tỷ lệ video và kết nối OmniVoice dùng chung ngoài repo.
 
 ## Backlog ưu tiên
 
@@ -37,6 +39,9 @@
 - Phiên bản 3 sửa đúng yêu cầu nghiệm thu: bỏ nhãn nổi, thay chữ Trung Quốc ngay trên thân bút.
 - Mở gói demo, render và kiểm tra `final.mp4`.
 - Ghi nhận ảnh lỗi, log và trải nghiệm thao tác.
+- Kiểm tra resize cửa sổ ở 1280×820 và kích thước nhỏ; các card không chồng nhau.
+- Kiểm tra một video 9:16 và luồng chọn voice có sẵn.
+- Khi có OmniVoice sẵn, chọn CLI một lần và xác nhận lần mở app sau vẫn nhớ đường dẫn.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

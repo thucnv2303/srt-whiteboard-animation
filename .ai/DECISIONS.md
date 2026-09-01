@@ -74,3 +74,17 @@
 - Decision owner: người dùng
 - Decision: Schema v1 cho phép trường tùy chọn `penBrand`; renderer dùng Pillow để xóa chữ Trung Quốc rồi ghi chữ Việt trực tiếp lên thân bút mặc định.
 - Reason: Đổi tên thương hiệu theo từng dự án mà không sửa file ảnh nguồn.
+
+## DEC-20260901-03 — UI ngang responsive và đơn nhiệm
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Màn hình mặc định dùng bố cục ngang gồm preview bên trái, thiết lập bên phải, dải cảnh và card log toàn chiều ngang ở đáy. App chỉ chạy một tác vụ tại một thời điểm; khi cửa sổ hẹp, thiết lập chuyển xuống dưới preview.
+- Reason: Phù hợp màn hình máy tính, giảm mục dư thừa và vẫn dùng được khi thay đổi kích thước cửa sổ.
+
+## DEC-20260901-04 — Tái sử dụng OmniVoice bên ngoài repo
+
+- Status: approved
+- Decision owner: người dùng + Codex
+- Decision: App cho chọn file voice hoặc gọi `omnivoice-infer.exe` từ môi trường OmniVoice đã tồn tại. Chỉ lưu đường dẫn CLI trong `%APPDATA%`, không clone source, môi trường hay model vào repo.
+- Reason: Tránh tốn dung lượng và tránh duy trì nhiều bản OmniVoice trên cùng máy.

@@ -1,6 +1,6 @@
-# App desktop — Tạo video vẽ tay
+# App desktop — Studio video vẽ tay
 
-MVP chạy cục bộ trên Windows, nhận một thư mục hoặc ZIP dự án rồi điều phối renderer sẵn có.
+App đơn nhiệm chạy cục bộ trên Windows, nhận `project.json` hoặc ZIP rồi điều phối renderer sẵn có.
 
 ## Chạy app
 
@@ -54,14 +54,30 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 
 ## Phạm vi phiên bản 0.1
 
-- Mở thư mục, `project.json` hoặc ZIP.
+- Giao diện desktop ngang; khung xem trước, thiết lập và danh sách cảnh co giãn theo cửa sổ.
+- Khi cửa sổ hẹp, khối thiết lập tự chuyển xuống dưới khung xem trước.
+- Card nhật ký toàn chiều ngang luôn nằm ở dưới cùng.
+- Mở `project.json` hoặc ZIP.
 - Kiểm tra cấu trúc và tài nguyên trước khi render.
-- Hiển thị danh sách cảnh và nhật ký tiến trình.
+- Xem trước ảnh và chuyển cảnh bằng dải cảnh ngang.
+- Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
+- Chọn file voice có sẵn hoặc tạo voice clone bằng bản OmniVoice đã cài ở nơi khác trên máy.
 - Dựng từng cảnh bằng renderer upstream rồi ghép thành `final.mp4`.
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
 
-Chưa bao gồm đồng bộ ChatGPT/MCP, tự tạo annotation, preview ảnh trực tiếp và đóng gói `.exe`.
+Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotation và đóng gói `.exe`.
+
+## Dùng chung OmniVoice, không clone lại
+
+1. Trong mục **Âm thanh**, chọn **Tạo voice clone**.
+2. Bấm **OmniVoice…** và chọn `omnivoice-infer.exe` trong môi trường OmniVoice đang có trên máy.
+3. Chọn một file giọng mẫu, nhập lời thoại rồi bấm **Tạo voice clone**.
+
+App chỉ gọi tiến trình OmniVoice bên ngoài. Đường dẫn được lưu tại
+`%APPDATA%\NetChuyenDong\settings.json` để những lần mở sau không phải chọn lại. Repo này không sao chép mã nguồn, môi trường Python hoặc model của OmniVoice.
+
+Nếu `omnivoice-infer` đã có trong `PATH`, app tự nhận lệnh đó ở lần chạy đầu.
 
 ## Kiểm tra
 
@@ -69,6 +85,8 @@ Chưa bao gồm đồng bộ ChatGPT/MCP, tự tạo annotation, preview ảnh t
 python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
+
+Hiện có 16 unit test cho import dự án, an toàn ZIP, lệnh render, tỷ lệ video, UI responsive và cấu hình OmniVoice.
 
 ## Gói kiểm thử 52 giây
 

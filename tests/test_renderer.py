@@ -69,6 +69,52 @@ class RendererCommandTests(unittest.TestCase):
             self.assertEqual(commands_with_voice[-1].label, "Gắn voice vào video")
             self.assertIn("apad", commands_with_voice[-1].argv)
 
+    def test_vertical_output_adds_ffmpeg_crop_command(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_dir = root / "project"
+            repo = root / "repo"
+            project_dir.mkdir()
+            for required in (
+                repo / "scripts" / "render_stream_whiteboard.py",
+                repo / "scripts" / "merge_scenes.py",
+                repo / "assets" / "drawing-hand.png",
+            ):
+                required.parent.mkdir(parents=True, exist_ok=True)
+                required.write_bytes(b"fixture")
+            (project_dir / "scene.png").write_bytes(b"png")
+            (project_dir / "scene.annotation.json").write_text("{}", encoding="utf-8")
+            (project_dir / "project.json").write_text(
+                json.dumps(
+                    {
+                        "title": "Demo dọc",
+                        "scenes": [
+                            {
+                                "id": "scene-01",
+                                "image": "scene.png",
+                                "annotation": "scene.annotation.json",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project = load_project(project_dir)
+            with (
+                patch("whiteboard_app.renderer.repository_root", return_value=repo),
+                patch("whiteboard_app.renderer.shutil.which", return_value="ffmpeg-fixture"),
+            ):
+                commands, final = build_commands(
+                    project, root / "output", "python-fixture", aspect_ratio="9:16"
+                )
+            self.assertEqual(len(commands), 3)
+            self.assertEqual(commands[-1].label, "Định dạng video 9:16 — 1080×1920")
+            self.assertIn(
+                "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+                commands[-1].argv,
+            )
+            self.assertEqual(final, (root / "output" / "final.mp4").resolve())
+
 
 if __name__ == "__main__":
     unittest.main()

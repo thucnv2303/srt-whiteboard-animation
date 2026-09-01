@@ -22,6 +22,19 @@ class RenderCommand:
     argv: list[str]
 
 
+@dataclass(frozen=True)
+class AspectRatio:
+    width: int
+    height: int
+
+
+ASPECT_RATIOS: dict[str, AspectRatio] = {
+    "16:9": AspectRatio(1280, 720),
+    "9:16": AspectRatio(1080, 1920),
+    "1:1": AspectRatio(1080, 1080),
+}
+
+
 def repository_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -38,7 +51,10 @@ def build_commands(
     project: VideoProject,
     output_dir: Path,
     python_executable: str | None = None,
+    aspect_ratio: str = "16:9",
 ) -> tuple[list[RenderCommand], Path]:
+    if aspect_ratio not in ASPECT_RATIOS:
+        raise RenderError(f"Tỷ lệ video chưa được hỗ trợ: {aspect_ratio}")
     repo = repository_root()
     python = python_executable or sys.executable
     renderer = repo / "scripts" / "render_stream_whiteboard.py"
@@ -77,7 +93,13 @@ def build_commands(
         )
 
     final_output = output_dir / "final.mp4"
-    merged_output = output_dir / ("final-silent.mp4" if project.voice else "final.mp4")
+    needs_format = aspect_ratio != "16:9"
+    if project.voice:
+        merged_output = output_dir / "final-silent.mp4"
+    elif needs_format:
+        merged_output = output_dir / "final-source.mp4"
+    else:
+        merged_output = final_output
     commands.append(
         RenderCommand(
             label="Ghép các cảnh",
@@ -91,6 +113,7 @@ def build_commands(
             ],
         )
     )
+    media_for_format = merged_output
     if project.voice:
         ffmpeg = shutil.which("ffmpeg")
         if ffmpeg is None:
@@ -98,6 +121,7 @@ def build_commands(
                 "Dự án có voice nhưng máy chưa tìm thấy FFmpeg trong PATH. "
                 "Hãy cài FFmpeg rồi mở lại app."
             )
+        voiced_output = output_dir / ("final-source.mp4" if needs_format else "final.mp4")
         commands.append(
             RenderCommand(
                 label="Gắn voice vào video",
@@ -121,6 +145,46 @@ def build_commands(
                     "-af",
                     "apad",
                     "-shortest",
+                    str(voiced_output),
+                ],
+            )
+        )
+        media_for_format = voiced_output
+    if needs_format:
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            raise RenderError(
+                "Tỷ lệ đã chọn cần FFmpeg nhưng máy chưa tìm thấy FFmpeg trong PATH."
+            )
+        spec = ASPECT_RATIOS[aspect_ratio]
+        video_filter = (
+            f"scale={spec.width}:{spec.height}:force_original_aspect_ratio=increase,"
+            f"crop={spec.width}:{spec.height}"
+        )
+        commands.append(
+            RenderCommand(
+                label=f"Định dạng video {aspect_ratio} — {spec.width}×{spec.height}",
+                argv=[
+                    ffmpeg,
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(media_for_format),
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "0:a?",
+                    "-vf",
+                    video_filter,
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "aac",
+                    "-movflags",
+                    "+faststart",
                     str(final_output),
                 ],
             )
@@ -133,10 +197,11 @@ def run_pipeline(
     output_dir: Path,
     on_log: Callable[[str], None],
     cancel_event: threading.Event | None = None,
+    aspect_ratio: str = "16:9",
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "scenes").mkdir(parents=True, exist_ok=True)
-    commands, final_output = build_commands(project, output_dir)
+    commands, final_output = build_commands(project, output_dir, aspect_ratio=aspect_ratio)
     for command in commands:
         if cancel_event and cancel_event.is_set():
             raise RenderError("Đã hủy quá trình dựng video.")
