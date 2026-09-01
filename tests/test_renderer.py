@@ -55,6 +55,17 @@ class RendererCommandTests(unittest.TestCase):
             self.assertIn("--inputs", commands[1].argv)
             self.assertEqual(final, (root / "output" / "final.mp4").resolve())
 
+            voice = project_dir / "voice.wav"
+            voice.write_bytes(b"voice")
+            project.voice = voice
+            with (
+                patch("whiteboard_app.renderer.repository_root", return_value=repo),
+                patch("whiteboard_app.renderer.shutil.which", return_value="ffmpeg-fixture"),
+            ):
+                commands_with_voice, _ = build_commands(project, root / "output", "python-fixture")
+            self.assertEqual(commands_with_voice[-1].label, "Gắn voice vào video")
+            self.assertIn("apad", commands_with_voice[-1].argv)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "title": "5 món ăn từ thịt bò tốt cho bé",
+  "version": 1,
+  "voice": "voice.wav",
+  "subtitles": "subtitles.srt",
+  "scenes": [
+    {
+      "id": "scene-01",
+      "title": "5 món ăn từ thịt bò tốt cho bé",
+      "image": "scene-01-color.webp",
+      "annotation": "scene-01-color.annotation.json"
+    }
+  ]
+}

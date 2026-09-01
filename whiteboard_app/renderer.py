@@ -115,6 +115,8 @@ def build_commands(
                     "copy",
                     "-c:a",
                     "aac",
+                    "-af",
+                    "apad",
                     "-shortest",
                     str(final_output),
                 ],

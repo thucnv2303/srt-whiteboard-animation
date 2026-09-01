@@ -32,6 +32,7 @@
 - Người dùng chạy `run_app.bat`.
 - App đã mở thành công; lỗi hộp chọn dự án mở hai lần đã được sửa trên branch.
 - Lỗi `UnicodeEncodeError` do renderer dùng Windows `cp1252` đã được sửa bằng môi trường UTF-8 cho subprocess.
+- Đã bổ sung dự án nội dung thật về 5 món bò cho bé để nghiệm thu màu, timing và audio.
 - Mở gói demo, render và kiểm tra `final.mp4`.
 - Ghi nhận ảnh lỗi, log và trải nghiệm thao tác.
 
