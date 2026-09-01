@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,14 @@ class RenderCommand:
 
 def repository_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def subprocess_environment() -> dict[str, str]:
+    """Bắt tiến trình Python con dùng UTF-8 trên mọi cấu hình Windows."""
+    environment = os.environ.copy()
+    environment["PYTHONIOENCODING"] = "utf-8"
+    environment["PYTHONUTF8"] = "1"
+    return environment
 
 
 def build_commands(
@@ -134,6 +143,7 @@ def run_pipeline(
             text=True,
             encoding="utf-8",
             errors="replace",
+            env=subprocess_environment(),
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         assert process.stdout is not None

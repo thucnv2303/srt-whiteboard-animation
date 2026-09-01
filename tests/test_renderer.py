@@ -1,14 +1,21 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from whiteboard_app.project import load_project
-from whiteboard_app.renderer import build_commands
+from whiteboard_app.renderer import build_commands, subprocess_environment
 
 
 class RendererCommandTests(unittest.TestCase):
+    def test_child_process_is_forced_to_utf8(self) -> None:
+        with patch.dict(os.environ, {"PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}):
+            environment = subprocess_environment()
+        self.assertEqual(environment["PYTHONIOENCODING"], "utf-8")
+        self.assertEqual(environment["PYTHONUTF8"], "1")
+
     def test_builds_scene_and_merge_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
