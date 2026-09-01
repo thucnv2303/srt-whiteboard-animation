@@ -40,7 +40,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Đã thêm gói fixture `examples/test-52s/` gồm 6 cảnh, thời lượng dự kiến 51,6 giây để người dùng kiểm tra render và merge trên Windows.
 - Nghiệm thu render lần 1 phát hiện child process dùng `cp1252` và lỗi khi script in ký tự CJK; đã ép `PYTHONIOENCODING=utf-8` và `PYTHONUTF8=1` cho toàn pipeline.
 - Người dùng đã dựng được MP4 có màu bằng gói `examples/beef-5-dishes/`, sau đó yêu cầu ảnh chân thực hơn và sửa voice tiếng Việt.
-- Gói bò phiên bản 2 dùng ảnh món ăn bán chân thực do ImageGen tạo, voice neural `vi-VN-HoaiMyNeural` qua edge-tts và nhãn bút Unicode cấu hình bằng `penBrand`.
+- Gói bò phiên bản 2 dùng ảnh món ăn bán chân thực do ImageGen tạo, voice neural `vi-VN-HoaiMyNeural` qua edge-tts; `penBrand` xóa chữ Trung Quốc và ghi Unicode trực tiếp lên thân bút.
 - Chưa nghiệm thu phiên bản 2 trên Windows thật.
 
 ## Task an toàn tiếp theo

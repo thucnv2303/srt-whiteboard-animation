@@ -34,6 +34,7 @@
 - Lỗi `UnicodeEncodeError` do renderer dùng Windows `cp1252` đã được sửa bằng môi trường UTF-8 cho subprocess.
 - Đã bổ sung dự án nội dung thật về 5 món bò cho bé để nghiệm thu màu, timing và audio.
 - Phiên bản 2 chuyển sang ảnh món ăn bán chân thực, voice Việt neural và nhãn bút `Ăn dặm mẹ Dâu`.
+- Phiên bản 3 sửa đúng yêu cầu nghiệm thu: bỏ nhãn nổi, thay chữ Trung Quốc ngay trên thân bút.
 - Mở gói demo, render và kiểm tra `final.mp4`.
 - Ghi nhận ảnh lỗi, log và trải nghiệm thao tác.
 

@@ -72,5 +72,5 @@
 
 - Status: approved
 - Decision owner: người dùng
-- Decision: Schema v1 cho phép trường tùy chọn `penBrand`; renderer dùng Pillow để giữ đúng dấu tiếng Việt và cho nhãn đi theo bút.
-- Reason: Đổi tên thương hiệu theo từng dự án mà không sửa code hay ghi chữ trực tiếp vào ảnh nguồn.
+- Decision: Schema v1 cho phép trường tùy chọn `penBrand`; renderer dùng Pillow để xóa chữ Trung Quốc rồi ghi chữ Việt trực tiếp lên thân bút mặc định.
+- Reason: Đổi tên thương hiệu theo từng dự án mà không sửa file ảnh nguồn.

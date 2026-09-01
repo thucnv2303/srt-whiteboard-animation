@@ -76,4 +76,4 @@ Sau khi mở app, chọn `examples/test-52s/project.json`. Gói gồm sáu cản
 
 ## Dự án nội dung chân thực và voice Việt
 
-Thư mục `examples/beef-5-dishes/` chứa dự án khoảng 50 giây về năm món ăn từ thịt bò cho bé. Trên Windows, chạy `create-voice-neural.bat` một lần để tạo `voice.mp3`, rồi mở `project.json` bằng app. Voice neural cần Internet lúc tạo nhưng không cần API key. Trường `penBrand` là nhãn Unicode đi theo cây bút trong lúc vẽ.
+Thư mục `examples/beef-5-dishes/` chứa dự án khoảng 50 giây về năm món ăn từ thịt bò cho bé. Trên Windows, chạy `create-voice-neural.bat` một lần để tạo `voice.mp3`, rồi mở `project.json` bằng app. Voice neural cần Internet lúc tạo nhưng không cần API key. Trường `penBrand` thay chữ Trung Quốc trực tiếp trên thân cây bút bằng chữ Unicode.

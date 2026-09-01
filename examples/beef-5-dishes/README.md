@@ -11,6 +11,6 @@ Cách này không cần API key và không bị lỗi đọc tiếng Việt như
 ## Tùy chỉnh
 
 - Sửa `script.txt`, chạy lại batch để tạo voice mới.
-- Đổi `penBrand` trong `project.json` để đổi chữ đi theo cây bút (tối đa 40 ký tự).
+- Đổi `penBrand` trong `project.json` để thay chữ Trung Quốc trực tiếp trên thân cây bút (tối đa 40 ký tự).
 - Có thể thay `voice.mp3` bằng voice do ChatGPT Project xuất ra, miễn giữ nguyên tên file hoặc cập nhật trường `voice`.
 - Hai script `create-voice-windows.*` cũ chỉ được giữ làm phương án offline; chất lượng tiếng Việt phụ thuộc voice đã cài trong Windows.

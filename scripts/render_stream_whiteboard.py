@@ -55,40 +55,44 @@ def _load_brand_font(size: int):
     return ImageFont.load_default()
 
 
-def _make_brand_label(text: str, hand_height: int) -> np.ndarray:
-    """Tạo nhãn RGBA bám theo bút; Pillow đảm bảo chữ Việt không mất dấu."""
-    font = _load_brand_font(max(16, hand_height // 13))
-    probe = Image.new("RGBA", (1, 1))
-    bbox = ImageDraw.Draw(probe).textbbox((0, 0), text, font=font)
-    pad_x, pad_y = 12, 7
-    width = bbox[2] - bbox[0] + pad_x * 2
-    height = bbox[3] - bbox[1] + pad_y * 2
-    label = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(label)
-    draw.rounded_rectangle(
-        (0, 0, width - 1, height - 1),
-        radius=max(8, height // 3),
-        fill=(255, 250, 240, 238),
-        outline=(196, 92, 72, 255),
-        width=2,
+def _brand_hand_asset(hand_bgr: np.ndarray, text: str) -> np.ndarray:
+    """Xóa chữ Trung Quốc và ghi thương hiệu trực tiếp lên thân bút mặc định."""
+    height, width = hand_bgr.shape[:2]
+    image = Image.fromarray(cv2.cvtColor(hand_bgr, cv2.COLOR_BGR2RGB)).convert("RGBA")
+    draw = ImageDraw.Draw(image)
+
+    # Vùng trắng bên trong thân bút của assets/drawing-hand.png.
+    barrel = [
+        (int(width * 0.34), int(height * 0.16)),
+        (int(width * 0.875), int(height * 0.40)),
+        (int(width * 0.825), int(height * 0.445)),
+        (int(width * 0.315), int(height * 0.205)),
+    ]
+    draw.polygon(barrel, fill=(250, 250, 248, 255))
+
+    # Co chữ vừa chiều dài thân bút rồi xoay theo đúng góc của cây bút.
+    font_size = max(13, height // 18)
+    max_text_width = int(width * 0.50)
+    while font_size > 11:
+        font = _load_brand_font(font_size)
+        bbox = ImageDraw.Draw(Image.new("RGBA", (1, 1))).textbbox((0, 0), text, font=font)
+        if bbox[2] - bbox[0] <= max_text_width:
+            break
+        font_size -= 1
+    font = _load_brand_font(font_size)
+    bbox = ImageDraw.Draw(Image.new("RGBA", (1, 1))).textbbox((0, 0), text, font=font)
+    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    text_layer = Image.new("RGBA", (text_width + 10, text_height + 8), (0, 0, 0, 0))
+    ImageDraw.Draw(text_layer).text(
+        (5 - bbox[0], 4 - bbox[1]), text, font=font, fill=(38, 38, 38, 255)
     )
-    draw.text((pad_x, pad_y - bbox[1]), text, font=font, fill=(104, 45, 34, 255))
-    return cv2.cvtColor(np.array(label), cv2.COLOR_RGBA2BGRA)
-
-
-def _stamp_rgba(frame: np.ndarray, overlay: np.ndarray, x: int, y: int) -> None:
-    """Alpha-blend overlay BGRA vào frame BGR, có cắt biên an toàn."""
-    frame_h, frame_w = frame.shape[:2]
-    overlay_h, overlay_w = overlay.shape[:2]
-    x0, y0 = max(0, x), max(0, y)
-    x1, y1 = min(frame_w, x + overlay_w), min(frame_h, y + overlay_h)
-    if x0 >= x1 or y0 >= y1:
-        return
-    ox0, oy0 = x0 - x, y0 - y
-    crop = overlay[oy0:oy0 + (y1 - y0), ox0:ox0 + (x1 - x0)]
-    alpha = crop[:, :, 3:4].astype(np.float32) / 255.0
-    target = frame[y0:y1, x0:x1].astype(np.float32)
-    frame[y0:y1, x0:x1] = (crop[:, :, :3] * alpha + target * (1.0 - alpha)).astype(np.uint8)
+    dx = (0.875 - 0.34) * width
+    dy = (0.40 - 0.16) * height
+    angle = -math.degrees(math.atan2(dy, dx))
+    rotated = text_layer.rotate(angle, expand=True, resample=Image.Resampling.BICUBIC)
+    center_x, center_y = int(width * 0.60), int(height * 0.30)
+    image.alpha_composite(rotated, (center_x - rotated.width // 2, center_y - rotated.height // 2))
+    return cv2.cvtColor(np.array(image)[:, :, :3], cv2.COLOR_RGB2BGR)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -161,16 +165,15 @@ class RegionStreamRenderer:
 
         # 笔尖覆盖
         self.tip: sr.TipOverlay | None = None
-        self.brand_label: np.ndarray | None = None
         if not bare_tip:
             hand_data = sr._load_hand(hand_png, cfg.target_hand_height) if hand_png else None
             ax, ay = cfg.tip_anchor_x, cfg.tip_anchor_y
             if hand_data is None:
                 hand_data = sr._procedural_tip(cfg.target_hand_height)
                 ax, ay = 0.5, 0.70
+            elif pen_brand:
+                hand_data = (_brand_hand_asset(hand_data[0], pen_brand), hand_data[1])
             self.tip = sr.TipOverlay(hand_data[0], hand_data[1], tip_anchor_x=ax, tip_anchor_y=ay)
-            if pen_brand:
-                self.brand_label = _make_brand_label(pen_brand, cfg.target_hand_height)
 
     # 采样原图四角，把接近背景色的像素替换为画布底色
     def _match_original_background(self) -> None:
@@ -192,10 +195,6 @@ class RegionStreamRenderer:
         snap = self.drawn.astype(np.uint8)
         if self.tip is not None:
             self.tip.stamp(snap, px, py)
-        if self.brand_label is not None:
-            label_h, label_w = self.brand_label.shape[:2]
-            # Nhãn đi cùng đầu bút và nằm trên thân bút/viền bàn tay.
-            _stamp_rgba(snap, self.brand_label, px + 16, py - label_h - 20)
         return snap
 
     # ── 单区域的允许掩码：矩形 - 后续区域 - protectedRegions ──
@@ -523,7 +522,7 @@ def _parse_args(argv=None):
     p.add_argument("--total-ms", type=int, default=None, help="总时长；缺省用标注 sceneDurationMs")
     p.add_argument("--bare-tip", action="store_true", help="不叠加笔尖/手部")
     p.add_argument("--pen-brand", default=None,
-                   help="Nhãn thương hiệu đi theo cây bút, ví dụ: Ăn dặm mẹ Dâu")
+                   help="Chữ thay trực tiếp trên thân bút, ví dụ: Ăn dặm mẹ Dâu")
     p.add_argument("--ink-path", default="grid", choices=["grid", "skeleton"],
                    help="笔迹路径: grid 网格(默认); skeleton 骨架追踪")
     p.add_argument("--color-fill", default="contour-wipe", choices=["contour-wipe", "brush"],
