@@ -25,6 +25,7 @@
 - Sửa player Windows: không đưa raw PCM trực tiếp vào mixer; bảo toàn sample rate bằng WAV header và chống video frame backlog.
 - Bảo vệ âm đầu cue OmniVoice: token đệm, boost thích ứng và viết số thứ tự theo cụm “Món thứ…”.
 - Card thiết lập video thu gọn, nơi lưu nằm trong card và vùng kịch bản lớn có thanh cuộn.
+- Bộ năm job mẫu có ảnh thật, kịch bản, bốn cue timeline và ZIP để nạp đồng thời trong Multi Job.
 
 ## Backlog ưu tiên
 
@@ -58,6 +59,7 @@
 - Xác nhận một lần bấm **Tạo video** tự chạy voice, timeline, render và mở được preview kết quả.
 - Xác nhận player nội bộ phát tiếng, tua không lệch hình và nút ↗ mở ngoài khi cần.
 - Nghe riêng đầu 5 cue, xác nhận “thứ nhất/hai/ba/tư/năm” không nhỏ hoặc hụt.
+- Nạp năm ZIP tại `examples/multi-job-5-pack/zips/`, chạy toàn bộ và xác nhận job sau tự tiếp tục khi job trước hoàn tất hoặc lỗi.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

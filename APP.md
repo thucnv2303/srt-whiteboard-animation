@@ -100,6 +100,17 @@ Chưa bao gồm render song song, cache cue OmniVoice, đồng bộ ChatGPT/MCP,
 
 Worker xử lý tuần tự một job tại một thời điểm. **Tạm dừng hàng đợi** chỉ ngăn lấy job tiếp theo; công đoạn đang chạy vẫn hoàn tất an toàn. **Hủy job** dừng job đang chọn. Job lỗi có nút **Chạy lại** và các job sau vẫn tiếp tục.
 
+### Bộ kiểm tra 5 job
+
+Repository có sẵn năm dự án nội dung thật tại `examples/multi-job-5-pack/`. Để nạp cả bộ trong một thao tác:
+
+1. Bấm **+ Thêm dự án** trong màn hình Multi Job.
+2. Mở `examples/multi-job-5-pack/zips/`.
+3. Chọn đồng thời cả năm file ZIP rồi bấm **Open**.
+4. Giữ cả năm checkbox được chọn và bấm **Chạy 5 job**.
+
+Các chủ đề gồm trái cây mùa hè, thói quen tập trung, chăm cây trong căn hộ, đồ uống ngày mưa và điểm đến thiên nhiên. Mỗi job có một ảnh nguồn 16:9, bốn narration cue và bốn vùng reveal tương ứng. Voice được tạo mới bằng OmniVoice trên máy, giống luồng dự án thật.
+
 Database nằm tại `%APPDATA%\NetChuyenDong\jobs.db`. Mỗi lần chạy được cô lập:
 
 ```text
