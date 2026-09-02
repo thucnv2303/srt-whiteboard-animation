@@ -1,5 +1,12 @@
 # Thiết kế luồng multi-job
 
+## Trạng thái triển khai
+
+- M2A — pipeline báo phase/progress: đã triển khai.
+- M2B — SQLite queue, worker tuần tự, hủy/retry/recovery: đã triển khai, chờ nghiệm thu Windows.
+- M2C — dashboard KPI/filter/checkbox/chi tiết/log: đã triển khai; worker OmniVoice sống lâu và cache cue vẫn ở backlog.
+- M2D — render song song có giới hạn: chưa triển khai, chỉ thực hiện sau benchmark máy thật.
+
 ## Mục tiêu
 
 Cho phép thêm nhiều gói dự án vào hàng đợi, đóng/mở lại app mà không mất danh sách, theo dõi riêng tiến độ và kết quả từng video. Bản đầu ưu tiên ổn định: nhiều job trong hàng đợi nhưng chỉ một job chạy tại một thời điểm.
@@ -54,7 +61,7 @@ SQLite lưu job, phase hiện tại, phần trăm, lỗi và lịch sử sự ki
 
 ## Worker và tài nguyên
 
-### Phiên bản đầu
+### Phiên bản đầu — đã triển khai
 
 - Một `JobRunner` nền lấy job `QUEUED` lâu nhất.
 - Một job chạy trọn pipeline rồi mới sang job tiếp theo.
@@ -101,9 +108,9 @@ File đang tạo có hậu tố `.partial`; chỉ đổi tên nguyên tử thàn
 
 ## Lộ trình triển khai
 
-1. **M2A — Tách pipeline:** chia `run_pipeline` thành các phase có artifact và progress rõ ràng; màn hình đơn nhiệm vẫn hoạt động như hiện tại.
-2. **M2B — Queue tuần tự:** thêm SQLite, `JobRunner`, dashboard và phục hồi khi app mở lại.
-3. **M2C — Tối ưu voice:** worker OmniVoice sống lâu, cache cue, retry theo phase và hủy chắc chắn.
+1. **M2A — Tách pipeline:** đã thêm progress theo command và giữ nguyên màn hình đơn nhiệm.
+2. **M2B — Queue tuần tự:** đã thêm SQLite, `SequentialJobRunner`, dashboard và phục hồi job gián đoạn.
+3. **M2C — Tối ưu voice:** đã có snapshot giọng và retry toàn job; worker OmniVoice sống lâu, cache cue và resume theo phase là bước tiếp theo.
 4. **M2D — Concurrency có giới hạn:** benchmark máy thật rồi cho phép render song song bằng cấu hình, không chạy nhiều model voice.
 
 ## Tiêu chí nghiệm thu M2B
@@ -114,4 +121,3 @@ File đang tạo có hậu tố `.partial`; chỉ đổi tên nguyên tử thàn
 - Hủy trong phase voice hoặc render không để lại `final.mp4` giả hoàn tất.
 - Một gói lỗi chỉ làm job đó thất bại; các job sau vẫn tiếp tục.
 - Log và preview luôn thuộc đúng job đang được chọn.
-

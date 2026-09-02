@@ -21,6 +21,7 @@ from .renderer import (
 )
 from .timeline import TimelineError, TimelineResult, compile_timeline
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
+from .multi_job_ui import MultiJobView
 from .voice import (
     OmniVoiceError,
     VoiceLibrary,
@@ -181,10 +182,22 @@ class WhiteboardApp(tk.Tk):
         style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"), padding=(18, 10))
         style.configure("Scene.TButton", padding=(10, 8))
         style.configure("Section.TButton", font=("Segoe UI", 10, "bold"), padding=(10, 8), anchor="w")
+        style.configure(
+            "ModeActive.TButton", font=("Segoe UI", 9, "bold"), foreground="#136c4a", background="#edf7f2"
+        )
+        style.configure(
+            "KPI.TButton", font=("Segoe UI", 10), padding=(14, 10), anchor="w", background="#ffffff"
+        )
+        style.configure(
+            "KPIActive.TButton", font=("Segoe UI", 10, "bold"), padding=(14, 10), anchor="w",
+            background="#eaf2ff", foreground="#175cd3",
+        )
+        style.configure("Danger.TButton", foreground="#b42318", background="#fff4f2")
 
     def _build_ui(self) -> None:
         self.configure(background="#f4f6f8")
         outer = ttk.Frame(self, style="App.TFrame", padding=(18, 14))
+        self.single_view = outer
         outer.grid(row=0, column=0, sticky="nsew")
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -197,15 +210,16 @@ class WhiteboardApp(tk.Tk):
         ttk.Label(header, text="Studio video vẽ tay", style="Title.TLabel").grid(row=0, column=0, sticky="w")
         self.project_header = ttk.Label(header, text="Chưa mở dự án", style="Subtitle.TLabel", anchor="w")
         self.project_header.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(2, 0))
-        ttk.Label(header, text="ĐƠN NHIỆM", style="Badge.TLabel", padding=(10, 5)).grid(
-            row=0, column=2, padx=(12, 8)
+        ttk.Button(header, text="ĐƠN NHIỆM", style="ModeActive.TButton").grid(
+            row=0, column=2, padx=(12, 0)
         )
+        ttk.Button(header, text="MULTI JOB", command=self._show_multi_mode).grid(row=0, column=3)
         self.open_file_button = ttk.Button(header, text="Mở dự án", command=self._choose_project_file)
-        self.open_file_button.grid(row=0, column=3, padx=(0, 8))
+        self.open_file_button.grid(row=0, column=4, padx=(12, 8))
         self.render_button = ttk.Button(
             header, text="Tạo video", style="Accent.TButton", command=self._start_render, state="disabled"
         )
-        self.render_button.grid(row=0, column=4)
+        self.render_button.grid(row=0, column=5)
 
         self.workspace = ttk.Frame(outer, style="App.TFrame")
         self.workspace.grid(row=1, column=0, sticky="nsew")
@@ -229,6 +243,22 @@ class WhiteboardApp(tk.Tk):
         log_scroll.grid(row=1, column=1, sticky="ns")
         self.log_text.configure(yscrollcommand=log_scroll.set)
         self._apply_responsive_layout("horizontal")
+        self.multi_view = MultiJobView(self)
+        self.multi_view.grid(row=0, column=0, sticky="nsew")
+        self.multi_view.grid_remove()
+
+    def _show_single_mode(self) -> None:
+        if hasattr(self, "multi_view"):
+            self.multi_view.grid_remove()
+            self.multi_view.video_player.pause()
+        self.single_view.grid()
+
+    def _show_multi_mode(self) -> None:
+        self.single_view.grid_remove()
+        if self.video_player:
+            self.video_player.pause()
+        self.multi_view.grid()
+        self.multi_view.refresh()
 
     def _build_preview_card(self) -> None:
         self.preview_card.grid_rowconfigure(1, weight=1)
@@ -938,6 +968,8 @@ class WhiteboardApp(tk.Tk):
 
     def _on_close(self) -> None:
         self.cancel_event.set()
+        if hasattr(self, "multi_view"):
+            self.multi_view.close()
         if self.video_player:
             self.video_player.close()
         if self.project:

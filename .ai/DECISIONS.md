@@ -140,10 +140,11 @@
 
 ## DEC-20260902-05 — Multi-job dùng queue tuần tự trước concurrency
 
-- Status: design approved for implementation
+- Status: implemented, ready for Windows acceptance
 - Decision owner: Codex, chờ người dùng nghiệm thu từng milestone
 - Context: App cần nhận nhiều dự án nhưng OmniVoice dùng GPU, renderer có file trung gian và UI Tkinter không an toàn khi nhiều worker cập nhật trực tiếp.
 - Decision: Lưu queue bằng SQLite, snapshot cấu hình mỗi job, cô lập output theo `job_id` và dùng một `JobRunner` tuần tự ở M2B. OmniVoice là một worker sống lâu và chỉ xử lý một tác vụ TTS mỗi lúc.
 - Recovery: Job đang chạy khi app tắt chuyển thành `INTERRUPTED`; retry dùng lại artifact hợp lệ theo phase. File hoàn chỉnh chỉ được công bố bằng đổi tên nguyên tử.
 - Concurrency: Chỉ cho render song song có giới hạn sau benchmark máy thật; không mặc định nạp nhiều model voice.
 - Reason: Có ngay lợi ích xếp hàng nhiều dự án mà không đánh đổi tính ổn định, khả năng hủy và tính toàn vẹn kết quả.
+- Implementation: `whiteboard_app/jobs.py` lưu SQLite và chạy `SequentialJobRunner`; `whiteboard_app/multi_job_ui.py` cung cấp dashboard KPI/filter/checkbox/retry. Mỗi job ghi vào `output/runs/<job_id>/`.

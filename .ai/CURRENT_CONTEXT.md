@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 33 test pass.
+- Unit test local: 42 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -61,7 +61,10 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Nghiệm thu voice phát hiện 100 ms đầu của cue “Hai/Ba/Bốn” thấp hơn thân câu 5–6 dB. Pipeline nay thêm token đệm, onset lift thích ứng, soft peak và 60 ms safety pad trước khi biên dịch timeline.
 - Cột phải đã tăng vùng kịch bản, thêm thanh cuộn và cỡ chữ; **Thiết lập video** mặc định thu gọn và chứa luôn đường dẫn lưu.
 - Multi-job đã có thiết kế kỹ thuật tại `docs/MULTI_JOB_DESIGN.md`: queue SQLite tuần tự trước, output riêng theo `job_id`, một worker OmniVoice dùng GPU và retry theo phase.
+- Multi-job M2B đã được triển khai: SQLite tại `%APPDATA%\NetChuyenDong\jobs.db`, worker tuần tự, output riêng, checkbox chọn job, KPI lọc, hủy, chạy lại và recovery sau khi app đóng.
+- UI có hai chế độ **ĐƠN NHIỆM / MULTI JOB**. Dashboard hiển thị queue bên trái, chi tiết/preview/kịch bản bên phải và log theo job phía dưới.
+- Job snapshot giọng, tỷ lệ, nhãn bút và output khi được thêm; job lỗi không chặn job sau. Cache voice cue và render song song vẫn ở backlog.
 
 ## Task an toàn tiếp theo
 
-Người dùng pull branch, kiểm tra card thiết lập đóng/mở và vùng kịch bản; sau đó có thể bắt đầu M2A tách pipeline làm nền cho queue multi-job.
+Người dùng pull branch, mở **MULTI JOB**, thêm hai dự án mẫu và nghiệm thu checkbox/KPI/hủy/chạy lại cùng việc xử lý tuần tự trên Windows.

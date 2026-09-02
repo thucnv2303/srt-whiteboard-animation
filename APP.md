@@ -1,6 +1,6 @@
 # App desktop — Studio video vẽ tay
 
-App đơn nhiệm chạy cục bộ trên Windows, nhận `project.json` hoặc ZIP rồi điều phối renderer sẵn có.
+App chạy cục bộ trên Windows, hỗ trợ cả chế độ đơn nhiệm và hàng đợi multi-job nhận `project.json` hoặc ZIP rồi điều phối renderer sẵn có.
 
 ## Chạy app
 
@@ -75,6 +75,10 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
 - Card **Thiết lập video** mặc định thu gọn; bấm tiêu đề để mở giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra, chữ trên thân bút và nơi lưu kết quả.
 - Vùng kịch bản chiếm phần không gian còn lại của cột phải, dùng cỡ chữ lớn hơn và có thanh cuộn cho nội dung dài.
+- Nút **MULTI JOB** mở dashboard hàng đợi: KPI lọc, checkbox chọn job, tiến độ, chi tiết dự án, preview và log riêng.
+- Nút **Chạy N job** chỉ xếp các job đang chờ đã được đánh dấu; **Bắt đầu hàng đợi** xếp toàn bộ job đang chờ.
+- Job lỗi không chặn job sau và có hành động **Chạy lại**. Hủy job nằm trong thanh công cụ hàng đợi.
+- Hàng đợi được lưu bằng SQLite; đóng/mở app không mất danh sách. Job đang chạy khi app đóng được đánh dấu lỗi gián đoạn để người dùng chạy lại.
 - Popup **Cài đặt giọng** quản lý đường dẫn OmniVoice và thêm giọng clone mới.
 - Mẫu mới được tự chọn đoạn nói liên tục 3–8 giây, chấm điểm SNR, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.
 - Nếu dự án có `narration`, OmniVoice tạo WAV riêng cho từng cue trong một lần nạp model. App lấy thời lượng WAV thực tế làm đồng hồ, tạo `timeline.json` và annotation runtime để vùng hình tương ứng vẽ cùng câu nói.
@@ -83,7 +87,33 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
 
-Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotation và đóng gói `.exe`. Kiến trúc hàng đợi bền vững và lộ trình triển khai nằm trong `docs/MULTI_JOB_DESIGN.md`.
+Chưa bao gồm render song song, cache cue OmniVoice, đồng bộ ChatGPT/MCP, tự tạo annotation và đóng gói `.exe`. Kiến trúc hàng đợi và lộ trình nâng concurrency nằm trong `docs/MULTI_JOB_DESIGN.md`.
+
+## Dùng chế độ Multi job
+
+1. Cấu hình OmniVoice và chọn giọng trong màn hình **Đơn nhiệm**. Đây là cấu hình mặc định khi thêm job mới.
+2. Chuyển sang **MULTI JOB**, bấm **Thêm dự án** và chọn một hoặc nhiều `project.json`/ZIP.
+3. Mỗi job chụp riêng giọng, tỷ lệ khung hình và chữ trên bút tại thời điểm được thêm. Thay đổi thiết lập về sau không làm đổi job cũ.
+4. Đánh dấu checkbox rồi bấm **Chạy N job**, hoặc bấm **Bắt đầu hàng đợi** để chạy tất cả job đang chờ.
+5. Bấm KPI **Tổng job / Đang chạy / Đang chờ / Hoàn tất / Lỗi** để lọc bảng. Việc lọc không xóa lựa chọn checkbox.
+6. Chọn một dòng để xem kịch bản, cấu hình snapshot, preview, log và thư mục output của job đó.
+
+Worker xử lý tuần tự một job tại một thời điểm. **Tạm dừng hàng đợi** chỉ ngăn lấy job tiếp theo; công đoạn đang chạy vẫn hoàn tất an toàn. **Hủy job** dừng job đang chọn. Job lỗi có nút **Chạy lại** và các job sau vẫn tiếp tục.
+
+Database nằm tại `%APPDATA%\NetChuyenDong\jobs.db`. Mỗi lần chạy được cô lập:
+
+```text
+<thu-muc-du-an>/output/runs/<job_id>/
+├── audio-cues/
+├── runtime-annotations/
+├── timeline.json
+├── voice-timeline.wav
+├── preview.jpg
+├── preview-audio.wav
+└── final.mp4
+```
+
+Gói ZIP dùng `%APPDATA%\NetChuyenDong\runs\<job_id>\` vì thư mục giải nén chỉ tồn tại tạm thời.
 
 ## Dùng chung OmniVoice, không clone lại
 
@@ -122,7 +152,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 33 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, card thiết lập thu gọn và thư viện giọng.
+Hiện có 42 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter và thư viện giọng.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 

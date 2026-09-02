@@ -199,14 +199,17 @@ def run_pipeline(
     on_log: Callable[[str], None],
     cancel_event: threading.Event | None = None,
     aspect_ratio: str = "16:9",
+    on_progress: Callable[[int, int, str], None] | None = None,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "scenes").mkdir(parents=True, exist_ok=True)
     commands, final_output = build_commands(project, output_dir, aspect_ratio=aspect_ratio)
-    for command in commands:
+    for index, command in enumerate(commands, start=1):
         if cancel_event and cancel_event.is_set():
             raise RenderError("Đã hủy quá trình dựng video.")
         on_log(command.label)
+        if on_progress:
+            on_progress(index, len(commands), command.label)
         process = subprocess.Popen(
             command.argv,
             stdout=subprocess.PIPE,

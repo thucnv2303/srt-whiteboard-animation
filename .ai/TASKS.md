@@ -77,8 +77,9 @@
 
 ### `TASK-010` — Multi-job bền vững
 
-- Trạng thái: `DESIGN_READY`; chi tiết tại `docs/MULTI_JOB_DESIGN.md`.
-- M2A: tách pipeline thành phase có artifact/progress nhưng giữ nguyên luồng đơn nhiệm.
-- M2B: SQLite queue, một worker tuần tự, dashboard, hủy/thử lại và phục hồi sau khi mở app.
-- M2C: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
+- Trạng thái: `READY_FOR_USER_TEST`; chi tiết tại `docs/MULTI_JOB_DESIGN.md`.
+- M2A: đã thêm phase/progress cho pipeline và giữ nguyên luồng đơn nhiệm.
+- M2B: đã có SQLite queue, một worker tuần tự, dashboard, hủy/thử lại và recovery.
+- UI: KPI lọc, checkbox, Chạy N job, mở thư mục, chi tiết/preview/log theo job và hành động Chạy lại.
+- M2C còn lại: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
 - M2D: chỉ tăng render concurrency sau benchmark; không chạy nhiều model voice đồng thời.

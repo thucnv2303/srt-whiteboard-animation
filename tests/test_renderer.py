@@ -10,6 +10,7 @@ from whiteboard_app.renderer import (
     build_commands,
     create_video_poster,
     create_video_preview_audio,
+    run_pipeline,
     subprocess_environment,
 )
 
@@ -164,6 +165,64 @@ class RendererCommandTests(unittest.TestCase):
                 result = create_video_preview_audio(video, audio)
             self.assertEqual(result, audio)
             self.assertIn("pcm_s16le", run.call_args.args[0])
+
+    def test_pipeline_reports_each_command_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_dir = root / "project"
+            repo = root / "repo"
+            manifest = project_dir / "project.json"
+            project_dir.mkdir()
+            (project_dir / "scene.png").write_bytes(b"png")
+            (project_dir / "scene.annotation.json").write_text("{}", encoding="utf-8")
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "title": "Progress",
+                        "scenes": [
+                            {"id": "scene", "image": "scene.png", "annotation": "scene.annotation.json"}
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            for required in (
+                repo / "scripts" / "render_stream_whiteboard.py",
+                repo / "scripts" / "merge_scenes.py",
+                repo / "assets" / "drawing-hand.png",
+            ):
+                required.parent.mkdir(parents=True, exist_ok=True)
+                required.write_bytes(b"fixture")
+            project = load_project(manifest)
+            progress: list[tuple[int, int, str]] = []
+
+            class FakeProcess:
+                stdout = iter(())
+
+                def wait(self, timeout=None):
+                    return 0
+
+            output = root / "output"
+
+            def fake_popen(command, **_kwargs):
+                if str(command[-1]).endswith(".mp4"):
+                    Path(command[-1]).parent.mkdir(parents=True, exist_ok=True)
+                    Path(command[-1]).write_bytes(b"mp4")
+                return FakeProcess()
+
+            with (
+                patch("whiteboard_app.renderer.repository_root", return_value=repo),
+                patch("whiteboard_app.renderer.subprocess.Popen", side_effect=fake_popen),
+            ):
+                result = run_pipeline(
+                    project,
+                    output,
+                    lambda _line: None,
+                    on_progress=lambda index, total, label: progress.append((index, total, label)),
+                )
+            self.assertEqual(result, output / "final.mp4")
+            self.assertEqual([item[0] for item in progress], [1, 2])
+            self.assertTrue(all(item[1] == 2 for item in progress))
 
 
 if __name__ == "__main__":
