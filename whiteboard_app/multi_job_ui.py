@@ -69,6 +69,14 @@ def job_settings_editable(status: str) -> bool:
     return status in EDITABLE_STATES
 
 
+def header_checkbox_text(visible_ids: list[str], checked_ids: set[str]) -> str:
+    if not visible_ids or not any(job_id in checked_ids for job_id in visible_ids):
+        return "☐"
+    if all(job_id in checked_ids for job_id in visible_ids):
+        return "☑"
+    return "▣"
+
+
 def open_path(path: Path) -> None:
     if os.name == "nt":
         os.startfile(str(path))  # type: ignore[attr-defined]
@@ -385,6 +393,11 @@ class MultiJobView(ttk.Frame):
         for row in self.job_table.get_children():
             self.job_table.delete(row)
         visible = self._visible_jobs()
+        selectable_visible = [job.job_id for job in visible if job.status != RUNNING]
+        self.job_table.heading(
+            "check",
+            text=header_checkbox_text(selectable_visible, self.checked_job_ids),
+        )
         for job in visible:
             action = "Mở video" if job.status == COMPLETED else "Chạy lại" if job.status == FAILED else "—"
             duration = f"{job.duration_seconds:.1f} giây" if job.duration_seconds else "—"
@@ -427,11 +440,11 @@ class MultiJobView(ttk.Frame):
         column = self.job_table.identify_column(event.x)
         row_id = self.job_table.identify_row(event.y)
         if region == "heading" and column == "#1":
-            visible_waiting = [job.job_id for job in self._visible_jobs() if job.status == WAITING]
-            if visible_waiting and all(job_id in self.checked_job_ids for job_id in visible_waiting):
-                self.checked_job_ids.difference_update(visible_waiting)
+            visible_ids = [job.job_id for job in self._visible_jobs() if job.status != RUNNING]
+            if visible_ids and all(job_id in self.checked_job_ids for job_id in visible_ids):
+                self.checked_job_ids.difference_update(visible_ids)
             else:
-                self.checked_job_ids.update(visible_waiting)
+                self.checked_job_ids.update(visible_ids)
             self.after_idle(self.refresh)
         elif region == "cell" and row_id and column == "#1":
             if row_id in self.checked_job_ids:
@@ -628,9 +641,10 @@ class MultiJobView(ttk.Frame):
         voice_library = VoiceLibrary.load()
         voice_options: list[tuple[str, str, Path]] = []
         seen_voice_ids: set[str] = set()
-        if job.voice_profile_id and job.voice_audio_path and job.voice_audio_path.is_file():
-            voice_options.append((job.voice_profile_id, job.voice_name or "Giọng hiện tại", job.voice_audio_path))
-            seen_voice_ids.add(job.voice_profile_id)
+        if job.voice_audio_path and job.voice_audio_path.is_file():
+            current_voice_id = job.voice_profile_id or f"job:{job.job_id}"
+            voice_options.append((current_voice_id, job.voice_name or "Giọng hiện tại", job.voice_audio_path))
+            seen_voice_ids.add(current_voice_id)
         for profile in voice_library.profiles:
             if profile.profile_id not in seen_voice_ids and profile.audio_path.is_file():
                 voice_options.append((profile.profile_id, profile.name, profile.audio_path))
@@ -647,9 +661,13 @@ class MultiJobView(ttk.Frame):
         ttk.Label(
             card,
             text=(
-                "Thay đổi được lưu riêng cho job này."
+                (
+                    "Thay đổi được lưu riêng. Lưu job đã xong/lỗi sẽ đưa job về Đang chờ."
+                    if job.status != WAITING
+                    else "Thay đổi được lưu riêng cho job này."
+                )
                 if editable
-                else "Job đang chạy/đã hoàn tất nên cấu hình được khóa để bảo vệ kết quả."
+                else "Job đã xếp chạy hoặc đang chạy nên cấu hình được khóa để bảo vệ kết quả."
             ),
             style="Subtitle.TLabel",
         ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 14))
@@ -780,6 +798,7 @@ class MultiJobView(ttk.Frame):
                 return
             stop_audio()
             dialog.destroy()
+            self.checked_job_ids.add(job.job_id)
             self.refresh()
             self._show_job(job.job_id)
             self.worker_status.set(f"Đã lưu thiết lập cho job: {job.title}")

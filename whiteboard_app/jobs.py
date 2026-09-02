@@ -24,7 +24,7 @@ CANCELED = "CANCELED"
 
 WAITING_STATES = (WAITING, QUEUED)
 TERMINAL_STATES = (COMPLETED, FAILED, CANCELED)
-EDITABLE_STATES = (WAITING, FAILED, CANCELED)
+EDITABLE_STATES = (WAITING, FAILED, CANCELED, COMPLETED)
 
 
 def jobs_database_path() -> Path:
@@ -352,12 +352,15 @@ class JobStore:
         with self._connect() as connection:
             cursor = connection.execute(
                 """
-                UPDATE jobs SET aspect_ratio = ?, pen_brand = ?, voice_profile_id = ?,
+                UPDATE jobs SET status = ?, phase = '', progress = 0, error = '',
+                    result_path = '', poster_path = '', preview_audio_path = '',
+                    aspect_ratio = ?, pen_brand = ?, voice_profile_id = ?,
                     voice_name = ?, voice_audio_path = ?, cli_path = ?, output_dir = ?,
                     updated_at = ?
-                WHERE job_id = ? AND status IN (?, ?, ?)
+                WHERE job_id = ? AND status IN (?, ?, ?, ?)
                 """,
                 (
+                    WAITING,
                     aspect_ratio,
                     brand,
                     voice_profile_id,
@@ -371,7 +374,7 @@ class JobStore:
                 ),
             )
         if cursor.rowcount:
-            self.append_log(job_id, "Đã cập nhật thiết lập video của job.")
+            self.append_log(job_id, "Đã cập nhật thiết lập; job sẵn sàng để chạy lại.")
         return bool(cursor.rowcount)
 
     def recover_interrupted(self) -> int:

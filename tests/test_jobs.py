@@ -125,6 +125,35 @@ class JobStoreTests(unittest.TestCase):
             )
             self.assertEqual(store.get(job.job_id).aspect_ratio, "9:16")  # type: ignore[union-attr]
 
+    def test_editing_completed_job_resets_it_for_rerun(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root / "project")
+            project = load_project(manifest)
+            store = JobStore(root / "jobs.db")
+            job = store.add(manifest, project, "16:9", "", "", "", None, "", root / "run")
+            result = root / "run" / "final.mp4"
+            result.parent.mkdir(parents=True)
+            result.write_bytes(b"mp4")
+            store.mark_completed(job.job_id, JobResult(result, None, None, 1.2))
+
+            self.assertTrue(
+                store.update_settings(
+                    job.job_id,
+                    aspect_ratio="1:1",
+                    pen_brand="Chạy lại",
+                    voice_profile_id="",
+                    voice_name="",
+                    voice_audio_path=None,
+                    cli_path="",
+                    output_dir=root / "rerun",
+                )
+            )
+            updated = store.get(job.job_id)
+            self.assertEqual(updated.status, WAITING)  # type: ignore[union-attr]
+            self.assertEqual(updated.progress, 0)  # type: ignore[union-attr]
+            self.assertIsNone(updated.result_path)  # type: ignore[union-attr]
+
 
 class SequentialRunnerTests(unittest.TestCase):
     def test_cancel_waiting_job_without_starting_it(self) -> None:

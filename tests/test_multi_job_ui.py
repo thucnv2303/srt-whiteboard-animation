@@ -5,6 +5,7 @@ from unittest.mock import Mock
 from whiteboard_app.jobs import CANCELED, COMPLETED, FAILED, QUEUED, RUNNING, WAITING
 from whiteboard_app.multi_job_ui import (
     FILTERS,
+    header_checkbox_text,
     job_settings_editable,
     job_settings_rows,
     job_status_label,
@@ -44,6 +45,12 @@ class MultiJobUiTests(unittest.TestCase):
         self.assertTrue(job_settings_editable(WAITING))
         self.assertTrue(job_settings_editable(FAILED))
         self.assertTrue(job_settings_editable(CANCELED))
+        self.assertTrue(job_settings_editable(COMPLETED))
         self.assertFalse(job_settings_editable(QUEUED))
         self.assertFalse(job_settings_editable(RUNNING))
-        self.assertFalse(job_settings_editable(COMPLETED))
+
+    def test_header_checkbox_reflects_all_visible_jobs(self) -> None:
+        visible = ["job-1", "job-2", "job-3"]
+        self.assertEqual(header_checkbox_text(visible, set()), "☐")
+        self.assertEqual(header_checkbox_text(visible, {"job-1"}), "▣")
+        self.assertEqual(header_checkbox_text(visible, set(visible)), "☑")
