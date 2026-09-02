@@ -77,6 +77,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Popup **Cài đặt giọng** quản lý đường dẫn OmniVoice và thêm giọng clone mới.
 - Mẫu mới được tự chọn đoạn nói liên tục 3–8 giây, chấm điểm SNR, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.
 - Nếu dự án có `narration`, OmniVoice tạo WAV riêng cho từng cue trong một lần nạp model. App lấy thời lượng WAV thực tế làm đồng hồ, tạo `timeline.json` và annotation runtime để vùng hình tương ứng vẽ cùng câu nói.
+- Mỗi cue có nhịp token đệm trước khi tổng hợp; sau đó app phát hiện onset 100 ms đầu, nâng thích ứng tối đa khoảng 5 dB, nén mềm đỉnh và thêm 60 ms đệm. Cơ chế này bảo vệ từ/số đầu câu mà không tăng toàn bộ line.
 - Một nút **Tạo video** chạy lần lượt: tạo voice → biên dịch timeline → dựng cảnh → ghép âm thanh và MP4 → tạo ảnh preview.
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
@@ -120,7 +121,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 29 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive và thư viện giọng.
+Hiện có 31 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive và thư viện giọng.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 
@@ -130,4 +131,4 @@ Sau khi mở app, chọn `examples/test-52s/project.json`. Gói gồm sáu cản
 
 ## Dự án nội dung chân thực và voice Việt
 
-Thư mục `examples/beef-5-dishes/` chứa dự án khoảng 50 giây về năm món ăn từ thịt bò cho bé. Trên Windows, chạy `create-voice-neural.bat` một lần để tạo `voice.mp3`, rồi mở `project.json` bằng app. Voice neural cần Internet lúc tạo nhưng không cần API key. Trường `penBrand` thay chữ Trung Quốc trực tiếp trên thân cây bút bằng chữ Unicode.
+Thư mục `examples/beef-5-dishes/` chứa dự án về năm món ăn từ thịt bò cho bé. Phiên bản 6 viết rõ “Món thứ nhất/hai/ba/tư/năm” để số thứ tự không nằm đúng biên đầu cue, đồng thời dùng bộ bảo vệ onset mới của OmniVoice. Trường `penBrand` thay chữ Trung Quốc trực tiếp trên thân cây bút bằng chữ Unicode.

@@ -10,6 +10,8 @@ import threading
 import uuid
 import wave
 import audioop
+import sys
+from array import array
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -19,6 +21,83 @@ from .project import NarrationCue
 
 class OmniVoiceError(RuntimeError):
     """Lỗi OmniVoice có nội dung phù hợp để hiển thị trên UI."""
+
+
+def prepare_synthesis_text(text: str) -> str:
+    """Cho model một nhịp đệm token trước từ đầu tiên mà không thêm lời đọc."""
+    return f"… {text.strip()}"
+
+
+def protect_voice_onset(path: Path, leading_silence_ms: int = 60) -> float:
+    """Nâng thích ứng phụ âm đầu và thêm đệm an toàn; trả mức boost tối đa theo dB."""
+    try:
+        with wave.open(str(path), "rb") as source:
+            channels = source.getnchannels()
+            sample_width = source.getsampwidth()
+            rate = source.getframerate()
+            frames = source.readframes(source.getnframes())
+    except (OSError, wave.Error) as exc:
+        raise OmniVoiceError(f"Không đọc được cue voice để bảo vệ âm đầu: {path}") from exc
+    if channels != 1 or sample_width != 2 or rate <= 0:
+        raise OmniVoiceError("Cue voice phải là WAV PCM 16-bit mono để cân bằng âm đầu.")
+    samples = array("h")
+    samples.frombytes(frames)
+    if sys.byteorder != "little":
+        samples.byteswap()
+    if not samples:
+        raise OmniVoiceError(f"Cue voice rỗng: {path}")
+
+    block_samples = max(1, round(rate * 0.01))
+    levels = [
+        audioop.rms(samples[start:start + block_samples].tobytes(), 2)
+        for start in range(0, len(samples), block_samples)
+    ]
+    peak_level = max(levels, default=0)
+    threshold = max(180, round(peak_level * 0.04))
+    onset_block = next((index for index, level in enumerate(levels) if level >= threshold), 0)
+    first_levels = levels[onset_block:onset_block + 10]
+    reference_levels = sorted(levels[onset_block + 10:onset_block + 70])
+    first_rms = math.sqrt(sum(level * level for level in first_levels) / max(1, len(first_levels)))
+    if reference_levels:
+        reference = reference_levels[min(len(reference_levels) - 1, round(len(reference_levels) * 0.7))]
+    else:
+        reference = first_rms
+    target = reference * 0.72
+    gain = min(1.8, max(1.0, target / max(1.0, first_rms)))
+
+    onset_sample = onset_block * block_samples
+    hold_samples = max(1, round(rate * 0.06))
+    release_samples = max(1, round(rate * 0.08))
+    protected = array("h", samples)
+    for index in range(onset_sample, min(len(protected), onset_sample + hold_samples + release_samples)):
+        relative = index - onset_sample
+        if relative < hold_samples:
+            local_gain = gain
+        else:
+            progress = (relative - hold_samples) / release_samples
+            local_gain = gain + (1.0 - gain) * progress
+        value = protected[index] * local_gain
+        absolute = abs(value)
+        if absolute > 30000:
+            value = math.copysign(30000 + (absolute - 30000) * 0.2, value)
+        protected[index] = max(-32767, min(32767, round(value)))
+
+    padding = array("h", [0]) * max(0, round(rate * leading_silence_ms / 1000))
+    output_samples = padding + protected
+    temporary = path.with_suffix(".onset.tmp.wav")
+    try:
+        with wave.open(str(temporary), "wb") as target_file:
+            target_file.setnchannels(1)
+            target_file.setsampwidth(2)
+            target_file.setframerate(rate)
+            if sys.byteorder != "little":
+                output_samples.byteswap()
+            target_file.writeframes(output_samples.tobytes())
+        temporary.replace(path)
+    except (OSError, wave.Error) as exc:
+        temporary.unlink(missing_ok=True)
+        raise OmniVoiceError(f"Không thể ghi cue voice đã cân bằng: {path}") from exc
+    return 20 * math.log10(gain)
 
 
 def settings_path() -> Path:
@@ -427,7 +506,12 @@ def generate_cue_voices(
             {
                 "schemaVersion": 1,
                 "cues": [
-                    {"id": cue.cue_id, "text": cue.text, "output": str(outputs[cue.cue_id])}
+                    {
+                        "id": cue.cue_id,
+                        "text": cue.text,
+                        "synthesisText": prepare_synthesis_text(cue.text),
+                        "output": str(outputs[cue.cue_id]),
+                    }
                     for cue in cues
                 ],
             },
@@ -471,4 +555,7 @@ def generate_cue_voices(
     missing = [str(path) for path in outputs.values() if not path.is_file()]
     if missing:
         raise OmniVoiceError(f"OmniVoice chưa tạo đủ cue: {', '.join(missing)}")
+    for cue in cues:
+        boost_db = protect_voice_onset(outputs[cue.cue_id])
+        on_log(f"Đã bảo vệ âm đầu {cue.cue_id}: +{boost_db:.1f} dB, đệm 60 ms.")
     return outputs

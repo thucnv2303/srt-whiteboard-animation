@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 29 test pass.
+- Unit test local: 31 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -53,11 +53,12 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Smoke test pipeline làm sạch FFmpeg: pass; cần người dùng nghiệm thu trên mẫu giọng thật.
 - Schema hỗ trợ `narration[]` ánh xạ cue → scene → element. OmniVoice tạo cue trong một process để không nạp model nhiều lần.
 - Timeline compiler đo thời lượng từng WAV, sinh `timeline.json`, `voice-timeline.wav` và annotation runtime; renderer ưu tiên annotation runtime mà không sửa dữ liệu nguồn.
-- Gói bò phiên bản 5 có 5 cue ánh xạ trực tiếp tới 5 món.
+- Gói bò phiên bản 6 có 5 cue ánh xạ trực tiếp tới 5 món; số thứ tự dùng cụm đầy đủ “Món thứ…” để tránh đặt âm số ngay biên sinh voice.
 - UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
 - Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
 - Cột trái có trình phát MP4 tích hợp bằng PyAV + pygame: phát/tạm dừng, dừng, tua, thời gian và âm thanh. FFmpeg tạo `preview-audio.wav`; nút mở ngoài chỉ là fallback.
 - Nghiệm thu player phát hiện raw PCM 24 kHz có thể bị mixer Windows 48 kHz hiểu sai, làm voice nhanh/méo; đã đổi sang WAV-header resampling và bỏ toàn bộ frame canvas bị trễ để giữ A/V sync.
+- Nghiệm thu voice phát hiện 100 ms đầu của cue “Hai/Ba/Bốn” thấp hơn thân câu 5–6 dB. Pipeline nay thêm token đệm, onset lift thích ứng, soft peak và 60 ms safety pad trước khi biên dịch timeline.
 
 ## Task an toàn tiếp theo
 

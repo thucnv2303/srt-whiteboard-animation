@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "title": "5 món ăn từ thịt bò tốt cho bé",
-  "version": 5,
+  "version": 6,
   "script": "script.txt",
   "penBrand": "Ăn dặm mẹ Dâu",
   "subtitles": "subtitles.srt",
@@ -9,7 +9,7 @@
     {
       "id": "dish-01",
       "sceneId": "scene-01",
-      "text": "Muốn đổi món với thịt bò cho bé, đây là năm gợi ý dễ ăn. Một, cháo bò bí đỏ. Cháo mềm, bí đỏ ngọt tự nhiên; thịt bò băm nhỏ giúp bé dễ nhai.",
+      "text": "Muốn đổi món với thịt bò cho bé, đây là năm gợi ý dễ ăn. Món thứ nhất là cháo bò bí đỏ. Cháo mềm, bí đỏ ngọt tự nhiên; thịt bò băm nhỏ giúp bé dễ nhai.",
       "elementIds": ["pumpkin-porridge"],
       "pauseBeforeMs": 250,
       "pauseAfterMs": 250
@@ -17,25 +17,25 @@
     {
       "id": "dish-02",
       "sceneId": "scene-01",
-      "text": "Hai, bò xào bông cải. Cắt thịt thật mỏng, nấu mềm và giữ bông cải xanh.",
+      "text": "Món thứ hai là bò xào bông cải. Cắt thịt thật mỏng, nấu mềm và giữ bông cải xanh.",
       "elementIds": ["beef-broccoli"]
     },
     {
       "id": "dish-03",
       "sceneId": "scene-01",
-      "text": "Ba, viên bò khoai tây cà rốt. Viên nhỏ, mềm, phù hợp để bé cầm hoặc ăn bằng thìa.",
+      "text": "Món thứ ba là viên bò khoai tây cà rốt. Viên nhỏ, mềm, phù hợp để bé cầm hoặc ăn bằng thìa.",
       "elementIds": ["beef-balls"]
     },
     {
       "id": "dish-04",
       "sceneId": "scene-01",
-      "text": "Bốn, nui bò sốt cà chua. Nui tạo năng lượng, sốt cà chua giúp món ăn quen vị.",
+      "text": "Món thứ tư là nui bò sốt cà chua. Nui tạo năng lượng, sốt cà chua giúp món ăn quen vị.",
       "elementIds": ["beef-macaroni"]
     },
     {
       "id": "dish-05",
       "sceneId": "scene-01",
-      "text": "Năm, canh bò rau xanh. Món canh ấm, dễ ăn và bổ sung thêm rau cho bữa cơm. Khi chế biến, hãy chọn độ mềm, kích thước miếng ăn và lượng gia vị phù hợp với tuổi của bé.",
+      "text": "Món thứ năm là canh bò rau xanh. Món canh ấm, dễ ăn và bổ sung thêm rau cho bữa cơm. Khi chế biến, hãy chọn độ mềm, kích thước miếng ăn và lượng gia vị phù hợp với tuổi của bé.",
       "elementIds": ["beef-greens-soup"],
       "pauseAfterMs": 400
     }

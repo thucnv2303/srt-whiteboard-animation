@@ -23,6 +23,7 @@
 - Danh sách cue thành phân cảnh nội dung, preview video kết quả và pipeline một nút.
 - Trình phát video tích hợp có hình, âm thanh, phát/tạm dừng/dừng và tua timeline.
 - Sửa player Windows: không đưa raw PCM trực tiếp vào mixer; bảo toàn sample rate bằng WAV header và chống video frame backlog.
+- Bảo vệ âm đầu cue OmniVoice: token đệm, boost thích ứng và viết số thứ tự theo cụm “Món thứ…”.
 
 ## Backlog ưu tiên
 
@@ -51,10 +52,11 @@
 - Khi có OmniVoice sẵn, chọn CLI một lần và xác nhận lần mở app sau vẫn nhớ đường dẫn.
 - Xác nhận app lấy thẳng `script.txt`, không yêu cầu copy lời thoại vào giao diện.
 - Thêm một mẫu giọng thật, nghe trước/sau xử lý và đánh giá mức nhiễu còn lại hoặc méo tiếng.
-- Chạy gói bò v5, xác nhận 5 câu khớp 5 vùng hình; ghi nhận offset cần tinh chỉnh.
+- Chạy gói bò v6, xác nhận 5 câu khớp 5 vùng hình; ghi nhận offset và độ rõ âm đầu cần tinh chỉnh.
 - Xác nhận cột trái hiện đủ 5 phân cảnh dù gói chỉ dùng một ảnh tổng.
 - Xác nhận một lần bấm **Tạo video** tự chạy voice, timeline, render và mở được preview kết quả.
 - Xác nhận player nội bộ phát tiếng, tua không lệch hình và nút ↗ mở ngoài khi cần.
+- Nghe riêng đầu 5 cue, xác nhận “thứ nhất/hai/ba/tư/năm” không nhỏ hoặc hụt.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

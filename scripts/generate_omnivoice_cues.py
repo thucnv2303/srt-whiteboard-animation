@@ -38,7 +38,7 @@ def main() -> None:
         output.parent.mkdir(parents=True, exist_ok=True)
         print(f"VOICE_CUE {index}/{len(cues)} {cue['id']}", flush=True)
         audio = model.generate(
-            text=cue["text"],
+            text=cue.get("synthesisText", cue["text"]),
             language=args.language,
             voice_clone_prompt=prompt,
         )

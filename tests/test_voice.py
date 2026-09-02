@@ -1,6 +1,8 @@
 import json
 import tempfile
 import unittest
+import wave
+from array import array
 from pathlib import Path
 
 from whiteboard_app.voice import (
@@ -9,10 +11,36 @@ from whiteboard_app.voice import (
     VoiceSettings,
     build_omnivoice_command,
     choose_best_segment,
+    prepare_synthesis_text,
+    protect_voice_onset,
 )
 
 
 class OmniVoiceTests(unittest.TestCase):
+    def test_synthesis_text_has_non_spoken_leading_context(self) -> None:
+        self.assertEqual(prepare_synthesis_text("Hai, bò xào."), "… Hai, bò xào.")
+
+    def test_protects_quiet_first_phoneme_without_changing_sample_rate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cue.wav"
+            rate = 24000
+            quiet = array("h", [900] * round(rate * 0.1))
+            body = array("h", [6000] * round(rate * 0.7))
+            with wave.open(str(path), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(rate)
+                audio.writeframes((quiet + body).tobytes())
+            boost = protect_voice_onset(path, leading_silence_ms=60)
+            with wave.open(str(path), "rb") as audio:
+                result = array("h")
+                result.frombytes(audio.readframes(audio.getnframes()))
+                self.assertEqual(audio.getframerate(), rate)
+                self.assertEqual(audio.getnframes(), round(rate * 0.86))
+            pad = round(rate * 0.06)
+            self.assertGreater(boost, 3.0)
+            self.assertGreater(max(result[pad:pad + round(rate * 0.06)]), 1400)
+
     def test_build_command_uses_external_cli_and_reference(self) -> None:
         command = build_omnivoice_command(
             r"E:\\OmniVoice\\omnivoice-infer.exe",

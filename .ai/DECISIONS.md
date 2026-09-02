@@ -129,3 +129,11 @@
 - Dependency: `run_app.bat` luôn chạy kiểm tra môi trường để tự bổ sung pygame cho `.venv` cũ; không yêu cầu người dùng clone/cài lại dự án.
 - Windows audio: mixer chạy cố định 48 kHz stereo; audio nguồn 24 kHz mono được đóng gói WAV có header để SDL tự resample. Không truyền raw PCM vì thiết bị có thể đổi sample rate và làm tiếng nhanh/méo.
 - Video sync: audio/monotonic clock là chuẩn; frame 60 fps đã trễ bị bỏ thay vì phát bù, tránh hình tụt dần sau tiếng trên canvas Tkinter.
+
+## DEC-20260902-04 — Bảo vệ âm đầu narration cue
+
+- Status: approved
+- Decision owner: người dùng
+- Evidence: Trong video nghiệm thu, 100 ms đầu của “Hai/Ba/Bốn” thấp hơn phần thân câu khoảng 5–6 dB dù cue không bị cắt ở bước ghép.
+- Decision: Thêm dấu chấm lửng làm token đệm không lời trước text tổng hợp; hậu xử lý từng WAV bằng onset boost thích ứng tối đa 5,1 dB, release ngắn, soft peak và 60 ms leading pad. Timeline tiếp tục đo file sau xử lý nên không mất đồng bộ.
+- Copy rule: Với danh sách, ưu tiên “Món thứ hai là…” thay cho cue bắt đầu trơ bằng “Hai, …”; số quan trọng không nên là token đầu tuyệt đối của một lần sinh TTS.
