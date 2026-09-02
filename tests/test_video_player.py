@@ -1,7 +1,13 @@
 import unittest
 import wave
 
-from whiteboard_app.video_player import format_media_time, pcm_offset, wav_tail_buffer
+from whiteboard_app.video_player import (
+    fit_video_size,
+    format_media_time,
+    pcm_offset,
+    preview_frame_interval,
+    wav_tail_buffer,
+)
 
 
 class VideoPlayerTests(unittest.TestCase):
@@ -22,6 +28,14 @@ class VideoPlayerTests(unittest.TestCase):
             self.assertEqual(audio.getnchannels(), 1)
             self.assertEqual(audio.getsampwidth(), 2)
             self.assertEqual(audio.getnframes(), 24000 * 2.5)
+
+    def test_preview_caps_sixty_fps_source_at_thirty_fps(self) -> None:
+        self.assertAlmostEqual(preview_frame_interval(60), 1 / 30)
+        self.assertAlmostEqual(preview_frame_interval(24), 1 / 24)
+
+    def test_preview_fit_preserves_ratio_without_upscaling(self) -> None:
+        self.assertEqual(fit_video_size(1080, 600, 720, 420), (720, 400))
+        self.assertEqual(fit_video_size(640, 360, 1920, 1080), (640, 360))
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@
 - Audio-clock timeline: cue voice → thời lượng WAV → runtime annotation → render đồng bộ.
 - Danh sách cue thành phân cảnh nội dung, preview video kết quả và pipeline một nút.
 - Trình phát video tích hợp có hình, âm thanh, phát/tạm dừng/dừng và tua timeline.
+- Tối ưu trình phát video 60 FPS: preview 30 FPS, native scaling, tái sử dụng canvas item và giảm số lần cập nhật timeline.
 - Sửa player Windows: không đưa raw PCM trực tiếp vào mixer; bảo toàn sample rate bằng WAV header và chống video frame backlog.
 - Bảo vệ âm đầu cue OmniVoice: token đệm, boost thích ứng và viết số thứ tự theo cụm “Món thứ…”.
 - Card thiết lập video thu gọn, nơi lưu nằm trong card và vùng kịch bản lớn có thanh cuộn.

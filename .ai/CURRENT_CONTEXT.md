@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 47 test pass.
+- Unit test local: 49 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -58,6 +58,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
 - Cột trái có trình phát MP4 tích hợp bằng PyAV + pygame: phát/tạm dừng, dừng, tua, thời gian và âm thanh. FFmpeg tạo `preview-audio.wav`; nút mở ngoài chỉ là fallback.
 - Nghiệm thu player phát hiện raw PCM 24 kHz có thể bị mixer Windows 48 kHz hiểu sai, làm voice nhanh/méo; đã đổi sang WAV-header resampling và bỏ toàn bộ frame canvas bị trễ để giữ A/V sync.
+- Player preview đã được tối ưu cho video nguồn 60 FPS: trình xem giới hạn 30 FPS, scale bằng libswscale, tái sử dụng canvas item và throttle cập nhật timeline còn 5 lần/giây; chất lượng/FPS của MP4 đầu ra không đổi.
 - Nghiệm thu voice phát hiện 100 ms đầu của cue “Hai/Ba/Bốn” thấp hơn thân câu 5–6 dB. Pipeline nay thêm token đệm, onset lift thích ứng, soft peak và 60 ms safety pad trước khi biên dịch timeline.
 - Cột phải đã tăng vùng kịch bản, thêm thanh cuộn và cỡ chữ; **Thiết lập video** mặc định thu gọn và chứa luôn đường dẫn lưu.
 - Multi-job đã có thiết kế kỹ thuật tại `docs/MULTI_JOB_DESIGN.md`: queue SQLite tuần tự trước, output riêng theo `job_id`, một worker OmniVoice dùng GPU và retry theo phase.
