@@ -56,6 +56,10 @@ def run_button_label(count: int) -> str:
     return f"▶ Chạy {count} job"
 
 
+def settings_button_label(count: int, has_checked_jobs: bool) -> str:
+    return f"⚙ Thiết lập {count} job" if has_checked_jobs else "⚙ Thiết lập job"
+
+
 def job_settings_rows(job: VideoJob) -> list[tuple[str, str]]:
     return [
         ("Giọng đọc", job.voice_name or "Voice có sẵn trong dự án"),
@@ -139,7 +143,7 @@ class MultiJobView(ttk.Frame):
         self.detail_phase = tk.StringVar(value="Chọn một job trong hàng đợi")
         self.detail_progress = tk.IntVar(value=0)
         self.detail_video_time = tk.StringVar(value="00:00 / 00:00")
-        self.detail_settings_text = tk.StringVar(value="Thiết lập job này…")
+        self.detail_settings_text = tk.StringVar(value=settings_button_label(0, False))
         self.worker_status = tk.StringVar(value="Worker OmniVoice: sẵn sàng  •  GPU: 1 tác vụ")
         self._workspace_layout = ""
 
@@ -248,13 +252,22 @@ class MultiJobView(ttk.Frame):
             toolbar, textvariable=self.run_selected_text, command=self._run_selected
         )
         self.run_selected_button.grid(row=1, column=0, sticky="w", padx=(0, 4))
+        self.detail_settings_button = ttk.Button(
+            toolbar,
+            textvariable=self.detail_settings_text,
+            command=self._open_job_settings,
+            state="disabled",
+        )
+        self.detail_settings_button.grid(row=1, column=1, columnspan=3, sticky="ew", padx=(4, 0))
         ttk.Button(toolbar, textvariable=self.pause_text, command=self._toggle_pause).grid(
-            row=1, column=1, padx=4
+            row=2, column=0, sticky="w", padx=(0, 4), pady=(6, 0)
         )
         ttk.Button(toolbar, text="⊗ Hủy", style="Danger.TButton", command=self._cancel_job).grid(
-            row=1, column=2, padx=4
+            row=2, column=1, padx=4, pady=(6, 0)
         )
-        ttk.Button(toolbar, text="Xóa", command=self._delete_jobs).grid(row=1, column=3, padx=(4, 0))
+        ttk.Button(toolbar, text="Xóa", command=self._delete_jobs).grid(
+            row=2, column=2, padx=(4, 0), pady=(6, 0)
+        )
 
         table = ttk.Frame(self.queue_card, style="Card.TFrame")
         table.grid(row=1, column=0, sticky="nsew")
@@ -336,14 +349,6 @@ class MultiJobView(ttk.Frame):
             row=1, column=0, sticky="ew", pady=(5, 0)
         )
 
-        self.detail_settings_button = ttk.Button(
-            self.detail_card,
-            textvariable=self.detail_settings_text,
-            style="Section.TButton",
-            command=self._open_job_settings,
-        )
-        self.detail_settings_button.grid(row=4, column=0, sticky="ew")
-
     def _runner_event(self, kind: str, job_id: str, payload: object) -> None:
         self.events.put((kind, job_id, payload))
 
@@ -421,11 +426,11 @@ class MultiJobView(ttk.Frame):
         self.run_selected_text.set(run_button_label(len(runnable)))
         self.run_selected_button.configure(state="normal" if runnable else "disabled")
         setting_ids = settings_target_ids(all_jobs, self.checked_job_ids, self.detail_job_id)
+        has_checked_settings = bool(self.checked_job_ids and setting_ids)
         self.detail_settings_text.set(
-            f"Thiết lập {len(setting_ids)} job đã chọn…"
-            if self.checked_job_ids and setting_ids
-            else "Thiết lập job này…"
+            settings_button_label(len(setting_ids), has_checked_settings)
         )
+        self.detail_settings_button.configure(state="normal" if setting_ids else "disabled")
 
         selected_before = self.detail_job_id
         for row in self.job_table.get_children():
@@ -658,9 +663,16 @@ class MultiJobView(ttk.Frame):
             messagebox.showinfo("Chưa chọn job", "Hãy chọn một job để xem thiết lập.", parent=self.app)
             return
         focused_job = self.store.get(self.detail_job_id or "")
-        job = focused_job if focused_job and focused_job.job_id in target_ids else target_jobs[0]
         editable_jobs = [target for target in target_jobs if job_settings_editable(target.status)]
         locked_jobs = [target for target in target_jobs if not job_settings_editable(target.status)]
+        if editable_jobs:
+            job = (
+                focused_job
+                if focused_job and focused_job.job_id in {target.job_id for target in editable_jobs}
+                else editable_jobs[0]
+            )
+        else:
+            job = focused_job if focused_job and focused_job.job_id in target_ids else target_jobs[0]
         bulk_edit = len(target_jobs) > 1
         if self.settings_dialog and self.settings_dialog.winfo_exists():
             self.settings_dialog.destroy()
@@ -862,6 +874,11 @@ class MultiJobView(ttk.Frame):
                     parent=dialog,
                 )
                 return
+            if option and not option[0].startswith("job:"):
+                VoiceSettings(
+                    cli_path=settings.cli_path.strip() or job.cli_path,
+                    selected_profile_id=option[0],
+                ).save()
             stop_audio()
             dialog.destroy()
             self.checked_job_ids.update(changed_ids)

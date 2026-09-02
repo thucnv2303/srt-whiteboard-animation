@@ -69,6 +69,9 @@ class VoiceManagerDialog(tk.Toplevel):
         engine.grid_columnconfigure(0, weight=1)
         ttk.Entry(engine, textvariable=self.cli_path).grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ttk.Button(engine, text="Chọn omnivoice-infer.exe…", command=self._choose_cli).grid(row=0, column=1)
+        ttk.Button(engine, text="Lưu", command=self._save_cli_settings).grid(
+            row=0, column=2, padx=(8, 0)
+        )
 
         library_frame = ttk.LabelFrame(body, text="Thư viện giọng đã xử lý", padding=10)
         library_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
@@ -126,9 +129,15 @@ class VoiceManagerDialog(tk.Toplevel):
         )
         if selected:
             self.cli_path.set(selected)
-            current = VoiceSettings.load()
-            VoiceSettings(cli_path=selected, selected_profile_id=current.selected_profile_id).save()
-            self.on_log("Đã lưu đường dẫn OmniVoice dùng chung.")
+            self._save_cli_settings()
+
+    def _save_cli_settings(self, show_status: bool = True) -> None:
+        current = VoiceSettings.load()
+        value = self.cli_path.get().strip()
+        VoiceSettings(cli_path=value, selected_profile_id=current.selected_profile_id).save()
+        self.on_log("Đã lưu đường dẫn OmniVoice dùng chung.")
+        if show_status:
+            self.status_text.set("Đã lưu cấu hình OmniVoice; lần mở sau app sẽ tự nạp lại.")
 
     def _choose_source(self) -> None:
         selected = filedialog.askopenfilename(
@@ -161,6 +170,7 @@ class VoiceManagerDialog(tk.Toplevel):
                 messagebox.showerror("Không thể nghe thử", str(exc), parent=self)
 
     def _start_processing(self) -> None:
+        self._save_cli_settings(show_status=False)
         source = self.source_path.get()
         if source == "Chưa chọn file ghi âm" or not self.profile_name.get().strip():
             messagebox.showwarning("Thiếu thông tin", "Hãy nhập tên giọng và chọn file ghi âm.", parent=self)
@@ -196,6 +206,11 @@ class VoiceManagerDialog(tk.Toplevel):
                     self.source_button.configure(state="normal")
                     self._refresh_profiles()
                     self.profile_tree.selection_set(payload.profile_id)
+                    current = VoiceSettings.load()
+                    VoiceSettings(
+                        cli_path=current.cli_path,
+                        selected_profile_id=payload.profile_id,
+                    ).save()
                     self.status_text.set(
                         f"Đã lưu {payload.name}: {payload.duration_seconds:.1f} giây, "
                         f"chất lượng {payload.quality_score}/100. Hãy nghe thử trước khi dùng."
@@ -216,4 +231,8 @@ class VoiceManagerDialog(tk.Toplevel):
 
     def _close(self) -> None:
         stop_audio()
+        try:
+            self._save_cli_settings(show_status=False)
+        except OSError as exc:
+            self.on_log(f"Không thể lưu cấu hình OmniVoice: {exc}")
         self.destroy()

@@ -86,5 +86,6 @@
 - UI: dashboard ba cột responsive gồm hàng đợi thu gọn, kịch bản riêng, preview/tiến độ và log theo job.
 - Thiết lập video dùng popup cho một hoặc nhiều checkbox; áp dụng đồng loạt nhưng vẫn cô lập output theo `job_id`. Job queued/running bị khóa; job hoàn tất/lỗi/đã hủy được đưa về chờ để chạy lại.
 - Checkbox tiêu đề chọn/bỏ chọn toàn bộ job đang hiển thị và phản ánh trạng thái chọn một phần/toàn bộ.
+- Nút Thiết lập N job nằm cạnh Chạy N job; cấu hình OmniVoice nhập tay và giọng được chọn được lưu bền vững qua lần mở app tiếp theo.
 - M2C còn lại: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
 - M2D: chỉ tăng render concurrency sau benchmark; không chạy nhiều model voice đồng thời.

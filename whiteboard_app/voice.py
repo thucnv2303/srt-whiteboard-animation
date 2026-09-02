@@ -136,7 +136,8 @@ class VoiceSettings:
     def save(self, path: Path | None = None) -> None:
         target = path or settings_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(
+        temporary = target.with_suffix(target.suffix + ".tmp")
+        temporary.write_text(
             json.dumps(
                 {
                     "omnivoiceCli": self.cli_path,
@@ -148,6 +149,7 @@ class VoiceSettings:
             + "\n",
             encoding="utf-8",
         )
+        temporary.replace(target)
 
 
 @dataclass(frozen=True)

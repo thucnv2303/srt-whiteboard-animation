@@ -110,6 +110,11 @@ class JobStoreTests(unittest.TestCase):
             self.assertEqual(updated.aspect_ratio, "9:16")  # type: ignore[union-attr]
             self.assertEqual(updated.voice_name, "Giọng mới")  # type: ignore[union-attr]
             self.assertEqual(updated.output_dir, root / "new-run")  # type: ignore[union-attr]
+            reopened = JobStore(root / "jobs.db").get(job.job_id)
+            self.assertEqual(reopened.aspect_ratio, "9:16")  # type: ignore[union-attr]
+            self.assertEqual(reopened.pen_brand, "Thương hiệu mới")  # type: ignore[union-attr]
+            self.assertEqual(reopened.voice_name, "Giọng mới")  # type: ignore[union-attr]
+            self.assertEqual(reopened.output_dir, root / "new-run")  # type: ignore[union-attr]
             store.mark_running(job.job_id)
             self.assertFalse(
                 store.update_settings(

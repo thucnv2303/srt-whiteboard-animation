@@ -12,6 +12,7 @@ from whiteboard_app.multi_job_ui import (
     job_status_label,
     multi_job_layout,
     run_button_label,
+    settings_button_label,
     settings_target_ids,
 )
 
@@ -26,6 +27,10 @@ class MultiJobUiTests(unittest.TestCase):
     def test_run_button_counts_selected_jobs(self) -> None:
         self.assertEqual(run_button_label(0), "▶ Chạy 0 job")
         self.assertEqual(run_button_label(3), "▶ Chạy 3 job")
+
+    def test_settings_button_counts_checked_jobs(self) -> None:
+        self.assertEqual(settings_button_label(1, False), "⚙ Thiết lập job")
+        self.assertEqual(settings_button_label(5, True), "⚙ Thiết lập 5 job")
 
     def test_kpi_filters_map_to_job_states(self) -> None:
         self.assertIsNone(FILTERS["total"])

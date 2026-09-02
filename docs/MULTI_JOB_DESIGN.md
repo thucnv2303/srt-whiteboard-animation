@@ -103,6 +103,7 @@ File đang tạo có hậu tố `.partial`; chỉ đổi tên nguyên tử thàn
 - Thanh trên đổi giữa **Đơn nhiệm** và **Hàng đợi**.
 - Bố cục rộng có ba cột: bảng job thu gọn, kịch bản riêng và preview/tiến độ; cửa sổ vừa/nhỏ tự chuyển sang hai cột hoặc xếp dọc.
 - Bảng job: checkbox, thứ tự, tên dự án, trạng thái, phase và tiến độ; video kết quả được mở/phát ở cột preview.
+- Nút **Thiết lập N job** nằm cạnh **Chạy N job**; checkbox quyết định số snapshot nhận thay đổi.
 - Thao tác: thêm nhiều dự án, đổi thứ tự job đang chờ, hủy, thử lại, mở thư mục kết quả.
 - Chọn một dòng cập nhật đồng thời kịch bản, preview, tiến độ và log; checkbox xác định phạm vi áp dụng của popup thiết lập.
 - Job đang chạy vẫn tiếp tục khi người dùng xem job khác.
