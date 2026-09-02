@@ -1,7 +1,9 @@
 import unittest
+from pathlib import Path
+from unittest.mock import Mock
 
 from whiteboard_app.jobs import COMPLETED, FAILED, RUNNING, WAITING
-from whiteboard_app.multi_job_ui import FILTERS, job_status_label, run_button_label
+from whiteboard_app.multi_job_ui import FILTERS, job_settings_rows, job_status_label, run_button_label
 
 
 class MultiJobUiTests(unittest.TestCase):
@@ -20,3 +22,14 @@ class MultiJobUiTests(unittest.TestCase):
         self.assertEqual(FILTERS["running"], (RUNNING,))
         self.assertEqual(FILTERS["failed"], (FAILED,))
 
+    def test_popup_rows_show_the_job_snapshot(self) -> None:
+        job = Mock(
+            voice_name="Xuân Dung",
+            aspect_ratio="9:16",
+            pen_brand="Ăn dặm mẹ Dâu",
+            output_dir=Path(r"E:\Project AI\output\runs\job-01"),
+        )
+        rows = dict(job_settings_rows(job))
+        self.assertEqual(rows["Giọng đọc"], "Xuân Dung")
+        self.assertEqual(rows["Khung hình"], "9:16")
+        self.assertIn("job-01", rows["Nơi lưu"])

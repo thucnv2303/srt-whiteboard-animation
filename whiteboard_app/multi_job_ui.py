@@ -54,6 +54,15 @@ def run_button_label(count: int) -> str:
     return f"▶ Chạy {count} job"
 
 
+def job_settings_rows(job: VideoJob) -> list[tuple[str, str]]:
+    return [
+        ("Giọng đọc", job.voice_name or "Voice có sẵn trong dự án"),
+        ("Khung hình", job.aspect_ratio),
+        ("Chữ trên bút", job.pen_brand or "Không có"),
+        ("Nơi lưu", str(job.output_dir)),
+    ]
+
+
 def open_path(path: Path) -> None:
     if os.name == "nt":
         os.startfile(str(path))  # type: ignore[attr-defined]
@@ -73,7 +82,7 @@ class MultiJobView(ttk.Frame):
         self.checked_job_ids: set[str] = set()
         self.active_filter = "total"
         self.detail_job_id: str | None = None
-        self.settings_expanded = False
+        self.settings_dialog: tk.Toplevel | None = None
         self.queue_paused = False
         self._detail_image = None
         self._detail_photo = None
@@ -90,7 +99,6 @@ class MultiJobView(ttk.Frame):
         self.detail_meta = tk.StringVar(value="")
         self.detail_phase = tk.StringVar(value="Chọn một job trong hàng đợi")
         self.detail_progress = tk.IntVar(value=0)
-        self.detail_settings_heading = tk.StringVar(value="Thiết lập video  ▸")
         self.detail_video_time = tk.StringVar(value="00:00 / 00:00")
         self.worker_status = tk.StringVar(value="Worker OmniVoice: sẵn sàng  •  GPU: 1 tác vụ")
 
@@ -284,16 +292,11 @@ class MultiJobView(ttk.Frame):
 
         self.detail_settings_button = ttk.Button(
             self.detail_card,
-            textvariable=self.detail_settings_heading,
+            text="Thiết lập video…",
             style="Section.TButton",
-            command=self._toggle_detail_settings,
+            command=self._open_job_settings,
         )
         self.detail_settings_button.grid(row=5, column=0, sticky="ew")
-        self.detail_settings_body = ttk.Frame(self.detail_card, padding=(9, 8))
-        self.detail_settings_text = ttk.Label(
-            self.detail_settings_body, text="", style="Subtitle.TLabel", justify="left"
-        )
-        self.detail_settings_text.grid(row=0, column=0, sticky="w")
 
     def _runner_event(self, kind: str, job_id: str, payload: object) -> None:
         self.events.put((kind, job_id, payload))
@@ -539,14 +542,6 @@ class MultiJobView(ttk.Frame):
             + (f" — {job.error}" if job.status == FAILED and job.error else "")
         )
         self.detail_progress.set(job.progress)
-        self.detail_settings_text.configure(
-            text=(
-                f"Giọng đọc: {job.voice_name or 'Voice trong dự án'}\n"
-                f"Khung hình: {job.aspect_ratio}\n"
-                f"Chữ trên bút: {job.pen_brand or 'Không có'}\n"
-                f"Nơi lưu: {job.output_dir}"
-            )
-        )
         script = ""
         self._detail_image = None
         project = None
@@ -604,13 +599,63 @@ class MultiJobView(ttk.Frame):
         except Exception:
             self.detail_canvas.create_text(width // 2, height // 2, text="Không thể hiển thị preview", fill="#9ca3af")
 
-    def _toggle_detail_settings(self) -> None:
-        self.settings_expanded = not self.settings_expanded
-        self.detail_settings_heading.set("Thiết lập video  ▾" if self.settings_expanded else "Thiết lập video  ▸")
-        if self.settings_expanded:
-            self.detail_settings_body.grid(row=6, column=0, sticky="ew")
-        else:
-            self.detail_settings_body.grid_remove()
+    def _open_job_settings(self) -> None:
+        job = self.store.get(self.detail_job_id or "")
+        if not job:
+            messagebox.showinfo("Chưa chọn job", "Hãy chọn một job để xem thiết lập.", parent=self.app)
+            return
+        if self.settings_dialog and self.settings_dialog.winfo_exists():
+            self.settings_dialog.destroy()
+
+        dialog = tk.Toplevel(self.app)
+        self.settings_dialog = dialog
+        dialog.title(f"Thiết lập video — {job.title}")
+        dialog.transient(self.app)
+        dialog.resizable(True, False)
+        dialog.minsize(560, 300)
+        dialog.grid_columnconfigure(0, weight=1)
+
+        card = ttk.Frame(dialog, padding=18)
+        card.grid(row=0, column=0, sticky="nsew")
+        card.grid_columnconfigure(1, weight=1)
+        ttk.Label(card, text="Thiết lập video", font=("Segoe UI", 15, "bold")).grid(
+            row=0, column=0, columnspan=2, sticky="w"
+        )
+        ttk.Label(
+            card,
+            text="Cấu hình đã được lưu riêng khi thêm job vào hàng đợi.",
+            style="Subtitle.TLabel",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 14))
+
+        for row, (label, value) in enumerate(job_settings_rows(job), start=2):
+            ttk.Label(card, text=label, font=("Segoe UI", 9, "bold")).grid(
+                row=row, column=0, sticky="nw", padx=(0, 14), pady=6
+            )
+            ttk.Label(
+                card,
+                text=value,
+                justify="left",
+                anchor="w",
+                wraplength=520 if label == "Nơi lưu" else 440,
+            ).grid(row=row, column=1, sticky="ew", pady=6)
+
+        ttk.Separator(card).grid(row=6, column=0, columnspan=2, sticky="ew", pady=(12, 10))
+        ttk.Label(
+            card,
+            text="Muốn thay cấu hình của job này: xóa job và thêm lại với thiết lập mới.",
+            style="Subtitle.TLabel",
+        ).grid(row=7, column=0, sticky="w")
+        ttk.Button(card, text="Đóng", command=dialog.destroy).grid(row=7, column=1, sticky="e")
+
+        dialog.update_idletasks()
+        width = max(620, dialog.winfo_reqwidth())
+        height = max(320, dialog.winfo_reqheight())
+        x = self.app.winfo_rootx() + max(0, (self.app.winfo_width() - width) // 2)
+        y = self.app.winfo_rooty() + max(0, (self.app.winfo_height() - height) // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        dialog.grab_set()
+        dialog.focus_set()
 
     def _show_job_logs(self, job_id: str) -> None:
         self.job_log.configure(state="normal")
@@ -702,5 +747,7 @@ class MultiJobView(ttk.Frame):
 
     def close(self) -> None:
         self._closed = True
+        if self.settings_dialog and self.settings_dialog.winfo_exists():
+            self.settings_dialog.destroy()
         self.runner.stop()
         self.video_player.close()

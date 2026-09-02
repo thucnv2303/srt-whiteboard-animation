@@ -81,5 +81,6 @@
 - M2A: đã thêm phase/progress cho pipeline và giữ nguyên luồng đơn nhiệm.
 - M2B: đã có SQLite queue, một worker tuần tự, dashboard, hủy/thử lại và recovery.
 - UI: KPI lọc, checkbox, Chạy N job, mở thư mục, chi tiết/preview/log theo job và hành động Chạy lại.
+- Thiết lập video của job dùng popup chỉ đọc, không mở rộng xuống dưới panel chi tiết.
 - M2C còn lại: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
 - M2D: chỉ tăng render concurrency sau benchmark; không chạy nhiều model voice đồng thời.
