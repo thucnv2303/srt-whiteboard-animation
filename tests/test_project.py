@@ -67,6 +67,33 @@ class ProjectTests(unittest.TestCase):
             with self.assertRaisesRegex(ProjectError, "Không tìm thấy kịch bản"):
                 load_project(root)
 
+    def test_loads_narration_cue_mapped_to_element(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root)
+            (root / "scene.annotation.json").write_text(
+                json.dumps(
+                    {
+                        "sceneDurationMs": 5000,
+                        "elements": [{"id": "food-1", "reveal": {"startMs": 0, "durationMs": 4000}}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            data["narration"] = [
+                {
+                    "id": "cue-1",
+                    "sceneId": "scene-01",
+                    "text": "Món ăn thứ nhất.",
+                    "elementIds": ["food-1"],
+                }
+            ]
+            manifest.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            project = load_project(root)
+            self.assertEqual(len(project.narration_cues), 1)
+            self.assertEqual(project.narration_cues[0].element_ids, ["food-1"])
+
     def test_loads_pen_brand(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

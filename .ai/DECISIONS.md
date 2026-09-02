@@ -103,3 +103,11 @@
 - Decision: Màn hình chính chỉ hiển thị danh sách giọng đã lưu, nghe thử và tạo audio. Đường dẫn engine, thêm giọng clone và xử lý mẫu nằm trong popup **Cài đặt giọng**. Voice profile dùng chung cho mọi dự án.
 - Audio pipeline: tự chọn đoạn nói liên tục 3–8 giây theo mức năng lượng/SNR, xuất WAV mono 24 kHz, high-pass 80 Hz, low-pass 8 kHz, FFT denoise, dynamic normalize và limiter.
 - Constraint: Không tuyên bố xóa tuyệt đối mọi loại tạp âm; người dùng phải nghe thử bản xử lý trước khi dùng để clone.
+
+## DEC-20260902-01 — Audio là đồng hồ của timeline
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: GPT cung cấp `narration[]` với cue, `sceneId` và `elementIds`. OmniVoice tạo từng cue trong một lần nạp model; app đo thời lượng WAV thật rồi sinh timeline và annotation runtime. Không kéo/cắt voice để ép vào duration hình cố định.
+- Timing defaults: vẽ bắt đầu sau voice 100 ms, hoàn tất trước cuối cue khoảng 500 ms, nghỉ mặc định 200–250 ms và giữ hình 500 ms cuối cảnh.
+- Source safety: không ghi đè annotation từ GPT; renderer chỉ dùng file trong `output/runtime-annotations/` cho lần dựng hiện tại.

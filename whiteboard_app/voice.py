@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from .project import NarrationCue
+
 
 class OmniVoiceError(RuntimeError):
     """Lỗi OmniVoice có nội dung phù hợp để hiển thị trên UI."""
@@ -380,3 +382,93 @@ def generate_clone_voice(
     if not output.is_file():
         raise OmniVoiceError("OmniVoice kết thúc nhưng không tạo được file voice.")
     return output
+
+
+def python_for_omnivoice_cli(cli_path: str) -> Path:
+    cli = Path(cli_path).expanduser().resolve()
+    if os.name == "nt":
+        python = cli.parent.parent / "python.exe"
+    else:
+        python = cli.parent / "python"
+    if not python.is_file():
+        raise OmniVoiceError(
+            "Không tìm thấy Python của môi trường OmniVoice cạnh file CLI. "
+            "Hãy chọn omnivoice-infer.exe trong thư mục Scripts của môi trường đã cài OmniVoice."
+        )
+    return python
+
+
+def generate_cue_voices(
+    cli_path: str,
+    cues: list[NarrationCue],
+    reference_audio: Path,
+    output_dir: Path,
+    on_log: Callable[[str], None],
+    cancel_event: threading.Event | None = None,
+) -> dict[str, Path]:
+    if not cues:
+        raise OmniVoiceError("Dự án chưa có narration cue để đồng bộ timeline.")
+    if not reference_audio.is_file():
+        raise OmniVoiceError(f"Không tìm thấy giọng mẫu: {reference_audio}")
+    python = python_for_omnivoice_cli(cli_path)
+    helper = Path(__file__).resolve().parents[1] / "scripts" / "generate_omnivoice_cues.py"
+    if not helper.is_file():
+        raise OmniVoiceError(f"Thiếu bộ tạo voice timeline: {helper}")
+
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    outputs = {
+        cue.cue_id: output_dir / f"{index:02d}-{cue.cue_id}.wav"
+        for index, cue in enumerate(cues, start=1)
+    }
+    manifest = output_dir / "cue-manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "cues": [
+                    {"id": cue.cue_id, "text": cue.text, "output": str(outputs[cue.cue_id])}
+                    for cue in cues
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    command = [
+        str(python),
+        str(helper),
+        "--manifest",
+        str(manifest),
+        "--ref-audio",
+        str(reference_audio.resolve()),
+        "--language",
+        "vi",
+    ]
+    on_log(f"Đang tạo {len(cues)} đoạn voice; OmniVoice chỉ nạp model một lần…")
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    assert process.stdout is not None
+    for line in process.stdout:
+        on_log(line.rstrip())
+        if cancel_event and cancel_event.is_set():
+            process.terminate()
+            process.wait(timeout=10)
+            raise OmniVoiceError("Đã hủy tạo voice timeline.")
+    code = process.wait()
+    if code != 0:
+        raise OmniVoiceError(f"Tạo voice timeline thất bại với mã lỗi {code}.")
+    missing = [str(path) for path in outputs.values() if not path.is_file()]
+    if missing:
+        raise OmniVoiceError(f"OmniVoice chưa tạo đủ cue: {', '.join(missing)}")
+    return outputs

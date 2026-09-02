@@ -39,6 +39,16 @@ Schema MVP:
   "version": 1,
   "script": "script.txt",
   "penBrand": "Ăn dặm mẹ Dâu",
+  "narration": [
+    {
+      "id": "dish-01",
+      "sceneId": "scene-01",
+      "text": "Một, cháo bò bí đỏ...",
+      "elementIds": ["pumpkin-porridge"],
+      "pauseBeforeMs": 200,
+      "pauseAfterMs": 250
+    }
+  ],
   "scenes": [
     {
       "id": "scene-01",
@@ -65,6 +75,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Chọn giọng trong thư viện, nghe thử rồi tạo voice từ kịch bản bằng OmniVoice.
 - Popup **Cài đặt giọng** quản lý đường dẫn OmniVoice và thêm giọng clone mới.
 - Mẫu mới được tự chọn đoạn nói liên tục 3–8 giây, chấm điểm SNR, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.
+- Nếu dự án có `narration`, OmniVoice tạo WAV riêng cho từng cue trong một lần nạp model. App lấy thời lượng WAV thực tế làm đồng hồ, tạo `timeline.json` và annotation runtime để vùng hình tương ứng vẽ cùng câu nói.
 - Dựng từng cảnh bằng renderer upstream rồi ghép thành `final.mp4`.
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
@@ -78,6 +89,18 @@ Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotat
 3. Đặt tên giọng, chọn file ghi âm và bấm **Phân tích, làm sạch và lưu giọng**.
 4. Nghe thử bản đã xử lý. Đóng popup, chọn giọng đó trong danh sách của màn hình chính.
 5. Bấm **Tạo âm thanh bằng giọng đã chọn**. Khi hoàn tất, nút **Tạo video** được bật.
+
+Với dự án schema mới, nút này có tên **Tạo âm thanh và đồng bộ timeline**. Các file sinh ra nằm trong thư mục output:
+
+```text
+output/
+├── audio-cues/              # WAV riêng cho từng câu
+├── runtime-annotations/     # startMs/durationMs theo voice thật
+├── timeline.json            # ánh xạ cue ↔ scene ↔ element
+└── voice-timeline.wav       # voice hoàn chỉnh có khoảng nghỉ
+```
+
+Quy tắc mặc định: bắt đầu vẽ sau khi cue bắt đầu 100 ms, hoàn tất trước cuối câu khoảng 500 ms, nghỉ 250 ms giữa các cue và giữ hình hoàn chỉnh 500 ms cuối cảnh. App không sửa annotation nguồn do GPT gửi; chỉ dùng bản runtime khi render.
 
 Thư viện giọng và các file WAV đã làm sạch được lưu trong `%APPDATA%\NetChuyenDong\voices`, dùng lại cho mọi dự án. Bộ lọc giúp giảm mạnh tạp âm ổn định nhưng không thể bảo đảm xóa tuyệt đối tiếng người khác, tiếng va đập lớn hoặc tiếng nhạc mà không ảnh hưởng chất giọng; luôn nghe thử trước khi lưu làm mẫu clone.
 
@@ -93,7 +116,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 20 unit test cho import dự án, kịch bản GPT, an toàn ZIP, lệnh render, tỷ lệ video, UI responsive, thư viện giọng và bộ chọn đoạn âm.
+Hiện có 23 unit test cho import dự án, narration cue, timeline theo WAV, annotation runtime, an toàn ZIP, render, UI responsive và thư viện giọng.
 
 ## Gói kiểm thử 52 giây
 

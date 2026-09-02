@@ -4,7 +4,7 @@ import json
 import shutil
 import tempfile
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -22,6 +22,16 @@ class Scene:
     duration_ms: int = 0
 
 
+@dataclass(frozen=True)
+class NarrationCue:
+    cue_id: str
+    scene_id: str
+    text: str
+    element_ids: list[str]
+    pause_before_ms: int = 200
+    pause_after_ms: int = 250
+
+
 @dataclass
 class VideoProject:
     root: Path
@@ -31,9 +41,11 @@ class VideoProject:
     scenes: list[Scene]
     script_path: Path | None = None
     script_text: str = ""
+    narration_cues: list[NarrationCue] = field(default_factory=list)
     voice: Path | None = None
     pen_brand: str | None = None
     temporary_root: Path | None = None
+    runtime_annotations: dict[str, Path] = field(default_factory=dict)
 
     def close(self) -> None:
         if self.temporary_root and self.temporary_root.exists():
@@ -83,6 +95,7 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
 
     scenes: list[Scene] = []
     seen_ids: set[str] = set()
+    scene_element_ids: dict[str, set[str]] = {}
     for index, raw_scene in enumerate(raw_scenes, start=1):
         if not isinstance(raw_scene, dict):
             raise ProjectError(f"Scene {index} phải là object JSON.")
@@ -107,13 +120,22 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
                 f"{image.name} / {annotation.name}"
             )
         duration_ms = 0
+        element_ids: set[str] = set()
         try:
             annotation_data = json.loads(annotation.read_text(encoding="utf-8-sig"))
             raw_duration = annotation_data.get("sceneDurationMs", 0)
             if isinstance(raw_duration, int) and raw_duration > 0:
                 duration_ms = raw_duration
+            raw_elements = annotation_data.get("elements", [])
+            if isinstance(raw_elements, list):
+                element_ids = {
+                    str(element["id"])
+                    for element in raw_elements
+                    if isinstance(element, dict) and isinstance(element.get("id"), str)
+                }
         except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
             pass
+        scene_element_ids[scene_id] = element_ids
         scenes.append(
             Scene(
                 scene_id=scene_id,
@@ -143,6 +165,53 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
         if not script_text:
             raise ProjectError("Kịch bản không được để trống.")
 
+    narration_cues: list[NarrationCue] = []
+    raw_cues = data.get("narration", [])
+    if raw_cues is not None and not isinstance(raw_cues, list):
+        raise ProjectError("narration phải là một danh sách cue.")
+    seen_cue_ids: set[str] = set()
+    for index, raw_cue in enumerate(raw_cues or [], start=1):
+        if not isinstance(raw_cue, dict):
+            raise ProjectError(f"Narration cue {index} phải là object JSON.")
+        cue_id = raw_cue.get("id")
+        scene_id = raw_cue.get("sceneId")
+        text = raw_cue.get("text")
+        element_ids = raw_cue.get("elementIds", [])
+        if not isinstance(cue_id, str) or not cue_id.strip():
+            raise ProjectError(f"Narration cue {index} thiếu id.")
+        if cue_id in seen_cue_ids:
+            raise ProjectError(f"Narration cue id bị trùng: {cue_id}")
+        seen_cue_ids.add(cue_id)
+        if not isinstance(scene_id, str) or scene_id not in seen_ids:
+            raise ProjectError(f"Narration cue {cue_id} tham chiếu scene không tồn tại: {scene_id}")
+        if not isinstance(text, str) or not text.strip():
+            raise ProjectError(f"Narration cue {cue_id} thiếu nội dung text.")
+        if not isinstance(element_ids, list) or not all(
+            isinstance(element_id, str) and element_id.strip() for element_id in element_ids
+        ):
+            raise ProjectError(f"elementIds của narration cue {cue_id} phải là danh sách chuỗi.")
+        unknown = set(element_ids) - scene_element_ids.get(scene_id, set())
+        if unknown:
+            raise ProjectError(
+                f"Narration cue {cue_id} tham chiếu element không tồn tại: {', '.join(sorted(unknown))}"
+            )
+        pause_before = raw_cue.get("pauseBeforeMs", 200)
+        pause_after = raw_cue.get("pauseAfterMs", 250)
+        if not isinstance(pause_before, int) or not 0 <= pause_before <= 5000:
+            raise ProjectError(f"pauseBeforeMs của {cue_id} phải từ 0 đến 5000.")
+        if not isinstance(pause_after, int) or not 0 <= pause_after <= 5000:
+            raise ProjectError(f"pauseAfterMs của {cue_id} phải từ 0 đến 5000.")
+        narration_cues.append(
+            NarrationCue(
+                cue_id=cue_id.strip(),
+                scene_id=scene_id,
+                text=text.strip(),
+                element_ids=[element_id.strip() for element_id in element_ids],
+                pause_before_ms=pause_before,
+                pause_after_ms=pause_after,
+            )
+        )
+
     voice: Path | None = None
     if data.get("voice") is not None:
         voice = _safe_relative_path(root, data["voice"], "Voice")
@@ -166,6 +235,7 @@ def _read_manifest(manifest_path: Path, temporary_root: Path | None = None) -> V
         scenes=scenes,
         script_path=script_path,
         script_text=script_text,
+        narration_cues=narration_cues,
         voice=voice,
         pen_brand=pen_brand,
         temporary_root=temporary_root,

@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 20 test pass.
+- Unit test local: 23 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -51,7 +51,10 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Màn hình chính chỉ chọn/nghe thử giọng đã lưu; cài đặt OmniVoice và thêm giọng mới nằm trong popup riêng.
 - Voice profile dùng chung được lưu ở `%APPDATA%\NetChuyenDong\voices`; pipeline FFmpeg tự chọn đoạn 3–8 giây, ước tính SNR, high/low-pass, FFT denoise, dynamic normalize và limiter.
 - Smoke test pipeline làm sạch FFmpeg: pass; cần người dùng nghiệm thu trên mẫu giọng thật.
+- Schema hỗ trợ `narration[]` ánh xạ cue → scene → element. OmniVoice tạo cue trong một process để không nạp model nhiều lần.
+- Timeline compiler đo thời lượng từng WAV, sinh `timeline.json`, `voice-timeline.wav` và annotation runtime; renderer ưu tiên annotation runtime mà không sửa dữ liệu nguồn.
+- Gói bò phiên bản 5 có 5 cue ánh xạ trực tiếp tới 5 món.
 
 ## Task an toàn tiếp theo
 
-Người dùng pull branch, chạy UI ngang mới, thử đổi kích thước cửa sổ/tỷ lệ và gửi ảnh hoặc log nghiệm thu.
+Người dùng pull branch, chọn giọng đã lưu, tạo audio+timeline cho gói bò v5 rồi render; kiểm tra mỗi món bắt đầu vẽ cùng câu tương ứng.

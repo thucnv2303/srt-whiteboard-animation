@@ -8,12 +8,14 @@ from tkinter import filedialog, messagebox, ttk
 
 from .project import ProjectError, Scene, VideoProject, load_project
 from .renderer import ASPECT_RATIOS, RenderError, run_pipeline
+from .timeline import TimelineError, TimelineResult, compile_timeline
 from .voice import (
     OmniVoiceError,
     VoiceLibrary,
     VoiceProfile,
     VoiceSettings,
     generate_clone_voice,
+    generate_cue_voices,
     play_audio,
     stop_audio,
 )
@@ -49,6 +51,7 @@ class WhiteboardApp(tk.Tk):
         self.project_meta_text = tk.StringVar(value="0 cảnh  •  chưa có thời lượng")
         self.project_source_text = tk.StringVar(value="GPT sẽ gửi ảnh và kịch bản vào gói dự án")
         self.voice_path = tk.StringVar(value="Chưa tạo âm thanh")
+        self.timeline_text = tk.StringVar(value="Timeline: chưa đồng bộ")
         self.selected_voice_text = tk.StringVar(value="Chưa có giọng đã lưu")
         self.output_path = tk.StringVar(value="Tự động: thư mục output của dự án")
         self.progress_text = tk.StringVar(value="Sẵn sàng")
@@ -201,8 +204,13 @@ class WhiteboardApp(tk.Tk):
         )
         self.voice_settings_button = ttk.Button(audio, text="⚙ Cài đặt giọng…", command=self._open_voice_manager)
         self.voice_settings_button.grid(row=2, column=2, columnspan=2, sticky="ew", pady=(7, 0), padx=(4, 0))
-        self.clone_button = ttk.Button(audio, text="Tạo âm thanh bằng giọng đã chọn", command=self._start_voice_clone)
+        self.clone_button = ttk.Button(
+            audio, text="Tạo âm thanh và đồng bộ timeline", command=self._start_voice_clone
+        )
         self.clone_button.grid(row=3, column=0, columnspan=4, sticky="ew", pady=(8, 0))
+        ttk.Label(audio, textvariable=self.timeline_text, style="Subtitle.TLabel").grid(
+            row=4, column=0, columnspan=4, sticky="ew", pady=(6, 0)
+        )
 
         ratio = ttk.LabelFrame(self.settings_card, text="Tỷ lệ đầu ra", padding=10)
         ratio.grid(row=3, column=0, sticky="ew", pady=7)
@@ -301,6 +309,11 @@ class WhiteboardApp(tk.Tk):
         )
         self.project_script.configure(state="disabled")
         self.voice_path.set(str(loaded.voice) if loaded.voice else "Chưa tạo âm thanh — hãy chạy OmniVoice")
+        self.timeline_text.set(
+            f"Timeline: {len(loaded.narration_cues)} cue chờ tạo voice"
+            if loaded.narration_cues
+            else "Timeline: dự án cũ chưa có narration cue"
+        )
         for child in self.scene_strip.winfo_children():
             child.destroy()
         for index, scene in enumerate(loaded.scenes, start=1):
@@ -422,7 +435,8 @@ class WhiteboardApp(tk.Tk):
         if not self.project:
             messagebox.showwarning("Chưa có dự án", "Hãy mở dự án trước khi tạo voice.", parent=self)
             return
-        text = self.project.script_text.strip()
+        project = self.project
+        text = project.script_text.strip() or " ".join(cue.text for cue in project.narration_cues)
         profile = self._selected_voice_profile()
         cli = VoiceSettings.load().cli_path.strip()
         if not text or not profile or not cli:
@@ -432,19 +446,32 @@ class WhiteboardApp(tk.Tk):
                 parent=self,
             )
             return
-        output_root = self.output_dir or self.project.root
+        output_root = self.output_dir or project.root
         voice_output = output_root / "voice-clone.wav"
         self.cancel_event.clear()
         self._set_busy(True, f"Đang tạo âm thanh bằng giọng {profile.name}…")
 
         def worker() -> None:
             try:
-                result = generate_clone_voice(
-                    cli_path=cli, text=text, reference_audio=profile.audio_path, output=voice_output,
-                    on_log=lambda line: self.events.put(("log", line)), cancel_event=self.cancel_event,
-                )
-                self.events.put(("voice_done", result))
-            except (OmniVoiceError, OSError) as exc:
+                log = lambda line: self.events.put(("log", line))
+                if project.narration_cues:
+                    cue_audio = generate_cue_voices(
+                        cli_path=cli,
+                        cues=project.narration_cues,
+                        reference_audio=profile.audio_path,
+                        output_dir=output_root / "audio-cues",
+                        on_log=log,
+                        cancel_event=self.cancel_event,
+                    )
+                    timeline = compile_timeline(project, cue_audio, output_root, log)
+                    self.events.put(("timeline_done", timeline))
+                else:
+                    result = generate_clone_voice(
+                        cli_path=cli, text=text, reference_audio=profile.audio_path, output=voice_output,
+                        on_log=log, cancel_event=self.cancel_event,
+                    )
+                    self.events.put(("voice_done", result))
+            except (OmniVoiceError, TimelineError, OSError) as exc:
                 self.events.put(("error", str(exc)))
         threading.Thread(target=worker, daemon=True).start()
 
@@ -525,6 +552,19 @@ class WhiteboardApp(tk.Tk):
                     self.voice_path.set(str(payload))
                     self.render_button.configure(state="normal")
                     self._append_log(f"Hoàn tất voice clone: {payload}")
+                elif kind == "timeline_done":
+                    self._set_busy(False, "Voice và hình ảnh đã đồng bộ")
+                    assert self.project is not None
+                    timeline = payload
+                    assert isinstance(timeline, TimelineResult)
+                    self.project.voice = timeline.voice_path
+                    self.project.runtime_annotations = timeline.runtime_annotations
+                    self.voice_path.set(str(timeline.voice_path))
+                    self.timeline_text.set(
+                        f"Timeline: {len(timeline.cues)} cue • {timeline.total_duration_ms / 1000:.1f} giây"
+                    )
+                    self.render_button.configure(state="normal")
+                    self._append_log(f"Timeline: {timeline.timeline_path}")
                 elif kind == "done":
                     self._set_busy(False, "Đã tạo video")
                     self._append_log(f"Hoàn tất: {payload}")

@@ -58,6 +58,13 @@ class RendererCommandTests(unittest.TestCase):
             self.assertIn("--inputs", commands[1].argv)
             self.assertEqual(final, (root / "output" / "final.mp4").resolve())
 
+            runtime_annotation = root / "runtime.annotation.json"
+            runtime_annotation.write_text("{}", encoding="utf-8")
+            project.runtime_annotations["scene-01"] = runtime_annotation
+            with patch("whiteboard_app.renderer.repository_root", return_value=repo):
+                runtime_commands, _ = build_commands(project, root / "runtime-output", "python-fixture")
+            self.assertIn(str(runtime_annotation), runtime_commands[0].argv)
+
             voice = project_dir / "voice.wav"
             voice.write_bytes(b"voice")
             project.voice = voice

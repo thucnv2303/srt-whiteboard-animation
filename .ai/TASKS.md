@@ -19,6 +19,7 @@
 - Cột phải hiển thị metadata/kịch bản gói GPT; voice được tạo local trước khi bật render.
 - Thư viện giọng dùng chung, nghe thử và popup quản lý/thêm giọng.
 - Tự phân tích, chọn đoạn sạch và giảm nhiễu mẫu clone bằng FFmpeg.
+- Audio-clock timeline: cue voice → thời lượng WAV → runtime annotation → render đồng bộ.
 
 ## Backlog ưu tiên
 
@@ -47,6 +48,7 @@
 - Khi có OmniVoice sẵn, chọn CLI một lần và xác nhận lần mở app sau vẫn nhớ đường dẫn.
 - Xác nhận app lấy thẳng `script.txt`, không yêu cầu copy lời thoại vào giao diện.
 - Thêm một mẫu giọng thật, nghe trước/sau xử lý và đánh giá mức nhiễu còn lại hoặc méo tiếng.
+- Chạy gói bò v5, xác nhận 5 câu khớp 5 vùng hình; ghi nhận offset cần tinh chỉnh.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

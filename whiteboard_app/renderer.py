@@ -71,11 +71,12 @@ def build_commands(
     for index, scene in enumerate(project.scenes, start=1):
         scene_output = scene_dir / f"{index:02d}-{scene.scene_id}.mp4"
         scene_outputs.append(scene_output)
+        annotation = project.runtime_annotations.get(scene.scene_id, scene.annotation)
         scene_argv = [
             python,
             str(renderer),
             str(scene.image),
-            str(scene.annotation),
+            str(annotation),
             str(scene_output),
             str(hand),
             "--ink-path",
