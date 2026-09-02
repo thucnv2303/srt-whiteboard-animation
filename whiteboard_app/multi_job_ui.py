@@ -77,6 +77,31 @@ def header_checkbox_text(visible_ids: list[str], checked_ids: set[str]) -> str:
     return "▣"
 
 
+def settings_target_ids(
+    jobs: list[VideoJob], checked_ids: set[str], focused_job_id: str | None
+) -> list[str]:
+    """Ưu tiên toàn bộ checkbox; nếu chưa tích thì dùng job đang xem."""
+    selected = [job.job_id for job in jobs if job.job_id in checked_ids]
+    if selected:
+        return selected
+    if focused_job_id and any(job.job_id == focused_job_id for job in jobs):
+        return [focused_job_id]
+    return []
+
+
+def bulk_output_directory(output_root: Path, job_id: str) -> Path:
+    """Mỗi job luôn có thư mục con riêng khi áp dụng thiết lập hàng loạt."""
+    return output_root.resolve() / job_id
+
+
+def multi_job_layout(width: int) -> str:
+    if width >= 1180:
+        return "three"
+    if width >= 820:
+        return "two"
+    return "stack"
+
+
 def open_path(path: Path) -> None:
     if os.name == "nt":
         os.startfile(str(path))  # type: ignore[attr-defined]
@@ -108,13 +133,15 @@ class MultiJobView(ttk.Frame):
         self.completed_kpi = tk.StringVar(value="HOÀN TẤT\n0")
         self.failed_kpi = tk.StringVar(value="LỖI\n0")
         self.run_selected_text = tk.StringVar(value=run_button_label(0))
-        self.pause_text = tk.StringVar(value="Ⅱ Tạm dừng hàng đợi")
+        self.pause_text = tk.StringVar(value="Ⅱ Tạm dừng")
         self.detail_title = tk.StringVar(value="Chưa chọn job")
         self.detail_meta = tk.StringVar(value="")
         self.detail_phase = tk.StringVar(value="Chọn một job trong hàng đợi")
         self.detail_progress = tk.IntVar(value=0)
         self.detail_video_time = tk.StringVar(value="00:00 / 00:00")
+        self.detail_settings_text = tk.StringVar(value="Thiết lập job này…")
         self.worker_status = tk.StringVar(value="Worker OmniVoice: sẵn sàng  •  GPU: 1 tác vụ")
+        self._workspace_layout = ""
 
         self._build()
         self.video_player = TkVideoPlayer(
@@ -174,14 +201,13 @@ class MultiJobView(ttk.Frame):
         self.workspace = ttk.Frame(self, style="App.TFrame")
         self.workspace.grid(row=2, column=0, sticky="nsew")
         self.workspace.grid_rowconfigure(0, weight=1)
-        self.workspace.grid_columnconfigure(0, weight=3)
-        self.workspace.grid_columnconfigure(1, weight=2)
         self.queue_card = ttk.Frame(self.workspace, style="Card.TFrame", padding=12)
+        self.script_card = ttk.Frame(self.workspace, style="Card.TFrame", padding=12)
         self.detail_card = ttk.Frame(self.workspace, style="Card.TFrame", padding=12)
         self._build_queue_card()
+        self._build_script_card()
         self._build_detail_card()
-        self.queue_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        self.detail_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        self._apply_workspace_layout("three")
 
         log_card = ttk.Frame(self, style="Card.TFrame", padding=(12, 9))
         log_card.grid(row=3, column=0, sticky="nsew", pady=(12, 0))
@@ -215,35 +241,35 @@ class MultiJobView(ttk.Frame):
         toolbar = ttk.Frame(self.queue_card, style="Card.TFrame")
         toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 9))
         toolbar.grid_columnconfigure(0, weight=1)
-        ttk.Label(toolbar, text="Hàng đợi xử lý", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(toolbar, text="Hàng đợi xử lý", style="CardTitle.TLabel").grid(
+            row=0, column=0, columnspan=4, sticky="w", pady=(0, 7)
+        )
         self.run_selected_button = ttk.Button(
             toolbar, textvariable=self.run_selected_text, command=self._run_selected
         )
-        self.run_selected_button.grid(row=0, column=1, padx=(6, 4))
+        self.run_selected_button.grid(row=1, column=0, sticky="w", padx=(0, 4))
         ttk.Button(toolbar, textvariable=self.pause_text, command=self._toggle_pause).grid(
-            row=0, column=2, padx=4
+            row=1, column=1, padx=4
         )
-        ttk.Button(toolbar, text="⊗ Hủy job", style="Danger.TButton", command=self._cancel_job).grid(
-            row=0, column=3, padx=4
+        ttk.Button(toolbar, text="⊗ Hủy", style="Danger.TButton", command=self._cancel_job).grid(
+            row=1, column=2, padx=4
         )
-        ttk.Button(toolbar, text="Xóa job", command=self._delete_jobs).grid(row=0, column=4, padx=(4, 0))
+        ttk.Button(toolbar, text="Xóa", command=self._delete_jobs).grid(row=1, column=3, padx=(4, 0))
 
         table = ttk.Frame(self.queue_card, style="Card.TFrame")
         table.grid(row=1, column=0, sticky="nsew")
         table.grid_columnconfigure(0, weight=1)
         table.grid_rowconfigure(0, weight=1)
-        columns = ("check", "number", "title", "status", "progress", "duration", "result")
+        columns = ("check", "number", "title", "status", "progress")
         self.job_table = ttk.Treeview(table, columns=columns, show="headings", selectmode="browse")
-        headings = ("☐", "#", "Dự án", "Trạng thái", "Tiến trình", "Thời lượng", "Kết quả")
+        headings = ("☐", "#", "Dự án", "Trạng thái", "Tiến trình")
         for column, heading in zip(columns, headings):
             self.job_table.heading(column, text=heading)
         self.job_table.column("check", width=38, minwidth=38, stretch=False, anchor="center")
-        self.job_table.column("number", width=42, minwidth=42, stretch=False, anchor="center")
-        self.job_table.column("title", width=230, minwidth=150, stretch=True)
-        self.job_table.column("status", width=95, minwidth=85, stretch=False)
-        self.job_table.column("progress", width=130, minwidth=105, stretch=False)
-        self.job_table.column("duration", width=80, minwidth=70, stretch=False, anchor="center")
-        self.job_table.column("result", width=82, minwidth=72, stretch=False, anchor="center")
+        self.job_table.column("number", width=36, minwidth=36, stretch=False, anchor="center")
+        self.job_table.column("title", width=155, minwidth=115, stretch=True)
+        self.job_table.column("status", width=82, minwidth=75, stretch=False)
+        self.job_table.column("progress", width=115, minwidth=95, stretch=False)
         self.job_table.grid(row=0, column=0, sticky="nsew")
         self.job_table.tag_configure("running", foreground="#c66a00")
         self.job_table.tag_configure("completed", foreground="#15803d")
@@ -254,14 +280,38 @@ class MultiJobView(ttk.Frame):
         scroll.grid(row=0, column=1, sticky="ns")
         self.job_table.configure(yscrollcommand=scroll.set)
 
+    def _build_script_card(self) -> None:
+        self.script_card.grid_columnconfigure(0, weight=1)
+        self.script_card.grid_rowconfigure(3, weight=1)
+        ttk.Label(self.script_card, text="Kịch bản", style="CardTitle.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 8)
+        )
+        ttk.Label(self.script_card, textvariable=self.detail_title, font=("Segoe UI", 11, "bold")).grid(
+            row=1, column=0, sticky="w"
+        )
+        ttk.Label(self.script_card, textvariable=self.detail_meta, style="Meta.TLabel").grid(
+            row=2, column=0, sticky="w", pady=(2, 8)
+        )
+        script_frame = ttk.Frame(self.script_card, style="Card.TFrame")
+        script_frame.grid(row=3, column=0, sticky="nsew")
+        script_frame.grid_columnconfigure(0, weight=1)
+        script_frame.grid_rowconfigure(0, weight=1)
+        self.detail_script = tk.Text(
+            script_frame, wrap="word", state="disabled", padx=10, pady=9, font=("Segoe UI", 10)
+        )
+        self.detail_script.grid(row=0, column=0, sticky="nsew")
+        script_scroll = ttk.Scrollbar(script_frame, orient="vertical", command=self.detail_script.yview)
+        script_scroll.grid(row=0, column=1, sticky="ns")
+        self.detail_script.configure(yscrollcommand=script_scroll.set)
+
     def _build_detail_card(self) -> None:
         self.detail_card.grid_columnconfigure(0, weight=1)
-        self.detail_card.grid_rowconfigure(4, weight=1)
-        ttk.Label(self.detail_card, text="Chi tiết job", style="CardTitle.TLabel").grid(
+        self.detail_card.grid_rowconfigure(1, weight=1)
+        ttk.Label(self.detail_card, text="Xem trước", style="CardTitle.TLabel").grid(
             row=0, column=0, sticky="w", pady=(0, 8)
         )
         self.detail_canvas = tk.Canvas(
-            self.detail_card, height=190, background="#111820", highlightthickness=0
+            self.detail_card, height=240, background="#111820", highlightthickness=0
         )
         self.detail_canvas.grid(row=1, column=0, sticky="nsew")
         self.detail_canvas.bind("<Configure>", self._render_detail_image)
@@ -279,38 +329,20 @@ class MultiJobView(ttk.Frame):
         info = ttk.Frame(self.detail_card, style="Card.TFrame")
         info.grid(row=3, column=0, sticky="ew", pady=(0, 8))
         info.grid_columnconfigure(0, weight=1)
-        ttk.Label(info, textvariable=self.detail_title, font=("Segoe UI", 11, "bold")).grid(
+        ttk.Label(info, textvariable=self.detail_phase, foreground="#c66a00").grid(
             row=0, column=0, sticky="w"
         )
-        ttk.Label(info, textvariable=self.detail_meta, style="Meta.TLabel").grid(
-            row=1, column=0, sticky="w", pady=(2, 6)
-        )
-        ttk.Label(info, textvariable=self.detail_phase, foreground="#c66a00").grid(
-            row=2, column=0, sticky="w"
-        )
         ttk.Progressbar(info, maximum=100, variable=self.detail_progress).grid(
-            row=3, column=0, sticky="ew", pady=(5, 0)
+            row=1, column=0, sticky="ew", pady=(5, 0)
         )
-
-        script_frame = ttk.LabelFrame(self.detail_card, text="Kịch bản", padding=8)
-        script_frame.grid(row=4, column=0, sticky="nsew", pady=(0, 8))
-        script_frame.grid_columnconfigure(0, weight=1)
-        script_frame.grid_rowconfigure(0, weight=1)
-        self.detail_script = tk.Text(
-            script_frame, height=7, wrap="word", state="disabled", padx=8, pady=7, font=("Segoe UI", 10)
-        )
-        self.detail_script.grid(row=0, column=0, sticky="nsew")
-        script_scroll = ttk.Scrollbar(script_frame, orient="vertical", command=self.detail_script.yview)
-        script_scroll.grid(row=0, column=1, sticky="ns")
-        self.detail_script.configure(yscrollcommand=script_scroll.set)
 
         self.detail_settings_button = ttk.Button(
             self.detail_card,
-            text="Thiết lập video…",
+            textvariable=self.detail_settings_text,
             style="Section.TButton",
             command=self._open_job_settings,
         )
-        self.detail_settings_button.grid(row=5, column=0, sticky="ew")
+        self.detail_settings_button.grid(row=4, column=0, sticky="ew")
 
     def _runner_event(self, kind: str, job_id: str, payload: object) -> None:
         self.events.put((kind, job_id, payload))
@@ -372,7 +404,7 @@ class MultiJobView(ttk.Frame):
         jobs = {job.job_id: job for job in self.store.list()}
         return [
             job_id for job_id in self.checked_job_ids
-            if job_id in jobs and jobs[job_id].status == WAITING
+            if job_id in jobs and jobs[job_id].status in (WAITING, FAILED, CANCELED)
         ]
 
     def refresh(self) -> None:
@@ -388,6 +420,12 @@ class MultiJobView(ttk.Frame):
         runnable = self._runnable_checked()
         self.run_selected_text.set(run_button_label(len(runnable)))
         self.run_selected_button.configure(state="normal" if runnable else "disabled")
+        setting_ids = settings_target_ids(all_jobs, self.checked_job_ids, self.detail_job_id)
+        self.detail_settings_text.set(
+            f"Thiết lập {len(setting_ids)} job đã chọn…"
+            if self.checked_job_ids and setting_ids
+            else "Thiết lập job này…"
+        )
 
         selected_before = self.detail_job_id
         for row in self.job_table.get_children():
@@ -399,8 +437,6 @@ class MultiJobView(ttk.Frame):
             text=header_checkbox_text(selectable_visible, self.checked_job_ids),
         )
         for job in visible:
-            action = "Mở video" if job.status == COMPLETED else "Chạy lại" if job.status == FAILED else "—"
-            duration = f"{job.duration_seconds:.1f} giây" if job.duration_seconds else "—"
             phase = job.phase or ("Chờ chọn" if job.status == WAITING else job_status_label(job.status))
             progress = f"{job.progress}% • {phase}" if job.progress else phase
             tag = (
@@ -418,8 +454,6 @@ class MultiJobView(ttk.Frame):
                     job.title,
                     job_status_label(job.status),
                     progress,
-                    duration,
-                    action,
                 ),
                 tags=(tag,) if tag else (),
             )
@@ -452,12 +486,6 @@ class MultiJobView(ttk.Frame):
             else:
                 self.checked_job_ids.add(row_id)
             self.after_idle(self.refresh)
-        elif region == "cell" and row_id and column == "#7":
-            job = self.store.get(row_id)
-            if job and job.status == FAILED:
-                self.after_idle(lambda: self._retry_job(row_id))
-            elif job and job.status == COMPLETED and job.result_path:
-                self.after_idle(lambda: self._open_result(job))
 
     def _job_selected(self, _event: tk.Event | None = None) -> None:
         selected = self.job_table.selection()
@@ -467,6 +495,10 @@ class MultiJobView(ttk.Frame):
     def _run_selected(self) -> None:
         ids = self._runnable_checked()
         if ids:
+            for job_id in ids:
+                job = self.store.get(job_id)
+                if job and job.status in (FAILED, CANCELED):
+                    self.store.retry(job_id)
             self.runner.queue(ids)
             self.checked_job_ids.difference_update(ids)
             self.refresh()
@@ -480,7 +512,7 @@ class MultiJobView(ttk.Frame):
     def _toggle_pause(self) -> None:
         self.queue_paused = not self.queue_paused
         self.runner.set_paused(self.queue_paused)
-        self.pause_text.set("▶ Tiếp tục hàng đợi" if self.queue_paused else "Ⅱ Tạm dừng hàng đợi")
+        self.pause_text.set("▶ Tiếp tục" if self.queue_paused else "Ⅱ Tạm dừng")
         self.worker_status.set(
             "Hàng đợi đang tạm dừng; job hiện tại vẫn hoàn tất công đoạn."
             if self.queue_paused else "Worker OmniVoice: sẵn sàng  •  GPU: 1 tác vụ"
@@ -619,32 +651,47 @@ class MultiJobView(ttk.Frame):
             self.detail_canvas.create_text(width // 2, height // 2, text="Không thể hiển thị preview", fill="#9ca3af")
 
     def _open_job_settings(self) -> None:
-        job = self.store.get(self.detail_job_id or "")
-        if not job:
+        all_jobs = self.store.list()
+        target_ids = settings_target_ids(all_jobs, self.checked_job_ids, self.detail_job_id)
+        target_jobs = [job for job in all_jobs if job.job_id in target_ids]
+        if not target_jobs:
             messagebox.showinfo("Chưa chọn job", "Hãy chọn một job để xem thiết lập.", parent=self.app)
             return
+        focused_job = self.store.get(self.detail_job_id or "")
+        job = focused_job if focused_job and focused_job.job_id in target_ids else target_jobs[0]
+        editable_jobs = [target for target in target_jobs if job_settings_editable(target.status)]
+        locked_jobs = [target for target in target_jobs if not job_settings_editable(target.status)]
+        bulk_edit = len(target_jobs) > 1
         if self.settings_dialog and self.settings_dialog.winfo_exists():
             self.settings_dialog.destroy()
 
         dialog = tk.Toplevel(self.app)
         self.settings_dialog = dialog
-        dialog.title(f"Thiết lập video — {job.title}")
+        dialog.title(
+            f"Thiết lập video — {len(target_jobs)} job đã chọn"
+            if bulk_edit
+            else f"Thiết lập video — {job.title}"
+        )
         dialog.transient(self.app)
         dialog.resizable(True, False)
         dialog.minsize(620, 420)
         dialog.grid_columnconfigure(0, weight=1)
 
-        editable = job_settings_editable(job.status)
+        editable = bool(editable_jobs)
         aspect_ratio = tk.StringVar(value=job.aspect_ratio)
         pen_brand = tk.StringVar(value=job.pen_brand)
-        output_dir = tk.StringVar(value=str(job.output_dir))
+        output_dir = tk.StringVar(value=str(job.output_dir.parent if bulk_edit else job.output_dir))
         voice_library = VoiceLibrary.load()
         voice_options: list[tuple[str, str, Path]] = []
         seen_voice_ids: set[str] = set()
-        if job.voice_audio_path and job.voice_audio_path.is_file():
-            current_voice_id = job.voice_profile_id or f"job:{job.job_id}"
-            voice_options.append((current_voice_id, job.voice_name or "Giọng hiện tại", job.voice_audio_path))
-            seen_voice_ids.add(current_voice_id)
+        for target in target_jobs:
+            if target.voice_audio_path and target.voice_audio_path.is_file():
+                current_voice_id = target.voice_profile_id or f"job:{target.job_id}"
+                if current_voice_id not in seen_voice_ids:
+                    voice_options.append(
+                        (current_voice_id, target.voice_name or "Giọng hiện tại", target.voice_audio_path)
+                    )
+                    seen_voice_ids.add(current_voice_id)
         for profile in voice_library.profiles:
             if profile.profile_id not in seen_voice_ids and profile.audio_path.is_file():
                 voice_options.append((profile.profile_id, profile.name, profile.audio_path))
@@ -662,12 +709,18 @@ class MultiJobView(ttk.Frame):
             card,
             text=(
                 (
-                    "Thay đổi được lưu riêng. Lưu job đã xong/lỗi sẽ đưa job về Đang chờ."
-                    if job.status != WAITING
-                    else "Thay đổi được lưu riêng cho job này."
+                    f"Áp dụng đồng loạt cho {len(editable_jobs)} job; "
+                    "mỗi job vẫn có thư mục kết quả riêng."
+                    + (f" Bỏ qua {len(locked_jobs)} job đang chạy/đã xếp hàng." if locked_jobs else "")
+                    if bulk_edit and editable
+                    else (
+                        "Lưu job đã xong/lỗi sẽ đưa job về Đang chờ để chạy lại."
+                        if editable and job.status != WAITING
+                        else "Thay đổi được lưu riêng cho job này."
+                    )
                 )
                 if editable
-                else "Job đã xếp chạy hoặc đang chạy nên cấu hình được khóa để bảo vệ kết quả."
+                else "Các job đã chọn đang chạy hoặc đã xếp hàng nên cấu hình được khóa."
             ),
             style="Subtitle.TLabel",
         ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 14))
@@ -731,7 +784,11 @@ class MultiJobView(ttk.Frame):
             state="normal" if editable else "disabled",
         ).grid(row=4, column=1, sticky="ew", pady=7)
 
-        ttk.Label(card, text="Nơi lưu", font=("Segoe UI", 9, "bold")).grid(
+        ttk.Label(
+            card,
+            text="Thư mục gốc" if bulk_edit else "Nơi lưu",
+            font=("Segoe UI", 9, "bold"),
+        ).grid(
             row=5, column=0, sticky="w", padx=(0, 14), pady=7
         )
         output_row = ttk.Frame(card)
@@ -746,8 +803,8 @@ class MultiJobView(ttk.Frame):
         def choose_output() -> None:
             selected = filedialog.askdirectory(
                 parent=dialog,
-                title="Chọn thư mục lưu riêng cho job",
-                initialdir=str(job.output_dir.parent),
+                title="Chọn thư mục gốc cho các job" if bulk_edit else "Chọn thư mục lưu riêng cho job",
+                initialdir=output_dir.get(),
             )
             if selected:
                 output_dir.set(str(Path(selected).resolve()))
@@ -771,43 +828,62 @@ class MultiJobView(ttk.Frame):
                 messagebox.showwarning("Thiếu nơi lưu", "Hãy chọn thư mục lưu kết quả.", parent=dialog)
                 return
             option = selected_voice()
-            if job.voice_audio_path and option is None:
+            if any(target.voice_audio_path for target in editable_jobs) and option is None:
                 messagebox.showwarning("Thiếu giọng đọc", "Hãy chọn một giọng đọc hợp lệ.", parent=dialog)
                 return
             settings = VoiceSettings.load()
+            changed_ids: list[str] = []
             try:
-                changed = self.store.update_settings(
-                    job.job_id,
-                    aspect_ratio=aspect_ratio.get(),
-                    pen_brand=brand,
-                    voice_profile_id=option[0] if option else "",
-                    voice_name=option[1] if option else "",
-                    voice_audio_path=option[2] if option else None,
-                    cli_path=settings.cli_path.strip() or job.cli_path,
-                    output_dir=Path(raw_output),
-                )
+                output_root = Path(raw_output)
+                for target in editable_jobs:
+                    changed = self.store.update_settings(
+                        target.job_id,
+                        aspect_ratio=aspect_ratio.get(),
+                        pen_brand=brand,
+                        voice_profile_id=option[0] if option else "",
+                        voice_name=option[1] if option else "",
+                        voice_audio_path=option[2] if option else None,
+                        cli_path=settings.cli_path.strip() or target.cli_path,
+                        output_dir=(
+                            bulk_output_directory(output_root, target.job_id)
+                            if bulk_edit
+                            else output_root
+                        ),
+                    )
+                    if changed:
+                        changed_ids.append(target.job_id)
             except (OSError, ValueError) as exc:
                 messagebox.showerror("Không thể lưu thiết lập", str(exc), parent=dialog)
                 return
-            if not changed:
+            if not changed_ids:
                 messagebox.showwarning(
                     "Job đã bị khóa",
-                    "Worker đã lấy job này. Hãy hủy job trước khi thay đổi cấu hình.",
+                    "Worker đã lấy các job này. Hãy hủy job trước khi thay đổi cấu hình.",
                     parent=dialog,
                 )
                 return
             stop_audio()
             dialog.destroy()
-            self.checked_job_ids.add(job.job_id)
+            self.checked_job_ids.update(changed_ids)
             self.refresh()
-            self._show_job(job.job_id)
-            self.worker_status.set(f"Đã lưu thiết lập cho job: {job.title}")
+            if self.detail_job_id:
+                self._show_job(self.detail_job_id)
+            skipped = len(target_jobs) - len(changed_ids)
+            self.worker_status.set(
+                f"Đã áp dụng thiết lập cho {len(changed_ids)} job"
+                + (f"  •  Bỏ qua {skipped} job đang bị khóa" if skipped else "")
+            )
 
         actions = ttk.Frame(card)
         actions.grid(row=7, column=0, columnspan=2, sticky="e")
         ttk.Button(actions, text="Hủy", command=dialog.destroy).pack(side="left", padx=(0, 7))
         if editable:
-            ttk.Button(actions, text="Lưu thay đổi", style="Accent.TButton", command=save_settings).pack(
+            ttk.Button(
+                actions,
+                text=f"Áp dụng cho {len(editable_jobs)} job" if bulk_edit else "Lưu thay đổi",
+                style="Accent.TButton",
+                command=save_settings,
+            ).pack(
                 side="left"
             )
         else:
@@ -856,6 +932,42 @@ class MultiJobView(ttk.Frame):
     def _video_error(self, message: str) -> None:
         self.worker_status.set(f"Lỗi trình phát: {message}")
 
+    def _apply_workspace_layout(self, mode: str) -> None:
+        if mode == self._workspace_layout:
+            return
+        self._workspace_layout = mode
+        for card in (self.queue_card, self.script_card, self.detail_card):
+            card.grid_forget()
+        for column in range(3):
+            self.workspace.grid_columnconfigure(column, weight=0, minsize=0)
+        for row in range(3):
+            self.workspace.grid_rowconfigure(row, weight=0, minsize=0)
+
+        if mode == "three":
+            self.workspace.grid_rowconfigure(0, weight=1)
+            self.workspace.grid_columnconfigure(0, weight=9, minsize=340)
+            self.workspace.grid_columnconfigure(1, weight=10, minsize=340)
+            self.workspace.grid_columnconfigure(2, weight=10, minsize=340)
+            self.queue_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+            self.script_card.grid(row=0, column=1, sticky="nsew", padx=5)
+            self.detail_card.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
+        elif mode == "two":
+            self.workspace.grid_columnconfigure(0, weight=4, minsize=330)
+            self.workspace.grid_columnconfigure(1, weight=6, minsize=390)
+            self.workspace.grid_rowconfigure(0, weight=1)
+            self.workspace.grid_rowconfigure(1, weight=1)
+            self.queue_card.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 6))
+            self.script_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0), pady=(0, 5))
+            self.detail_card.grid(row=1, column=1, sticky="nsew", padx=(6, 0), pady=(5, 0))
+        else:
+            self.workspace.grid_columnconfigure(0, weight=1)
+            self.workspace.grid_rowconfigure(0, weight=2)
+            self.workspace.grid_rowconfigure(1, weight=1)
+            self.workspace.grid_rowconfigure(2, weight=2)
+            self.queue_card.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+            self.script_card.grid(row=1, column=0, sticky="nsew", pady=5)
+            self.detail_card.grid(row=2, column=0, sticky="nsew", pady=(5, 0))
+
     def _poll_events(self) -> None:
         if self._closed:
             return
@@ -898,22 +1010,7 @@ class MultiJobView(ttk.Frame):
     def _on_resize(self, event: tk.Event) -> None:
         if event.widget is not self:
             return
-        self.queue_card.grid_forget()
-        self.detail_card.grid_forget()
-        if event.width >= 1000:
-            self.workspace.grid_columnconfigure(0, weight=3)
-            self.workspace.grid_columnconfigure(1, weight=2)
-            self.workspace.grid_rowconfigure(0, weight=1)
-            self.workspace.grid_rowconfigure(1, weight=0)
-            self.queue_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-            self.detail_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        else:
-            self.workspace.grid_columnconfigure(0, weight=1)
-            self.workspace.grid_columnconfigure(1, weight=0)
-            self.workspace.grid_rowconfigure(0, weight=1)
-            self.workspace.grid_rowconfigure(1, weight=1)
-            self.queue_card.grid(row=0, column=0, sticky="nsew", pady=(0, 6))
-            self.detail_card.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
+        self._apply_workspace_layout(multi_job_layout(event.width))
 
     def close(self) -> None:
         self._closed = True

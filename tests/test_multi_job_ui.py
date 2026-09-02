@@ -5,11 +5,14 @@ from unittest.mock import Mock
 from whiteboard_app.jobs import CANCELED, COMPLETED, FAILED, QUEUED, RUNNING, WAITING
 from whiteboard_app.multi_job_ui import (
     FILTERS,
+    bulk_output_directory,
     header_checkbox_text,
     job_settings_editable,
     job_settings_rows,
     job_status_label,
+    multi_job_layout,
     run_button_label,
+    settings_target_ids,
 )
 
 
@@ -54,3 +57,25 @@ class MultiJobUiTests(unittest.TestCase):
         self.assertEqual(header_checkbox_text(visible, set()), "☐")
         self.assertEqual(header_checkbox_text(visible, {"job-1"}), "▣")
         self.assertEqual(header_checkbox_text(visible, set(visible)), "☑")
+
+    def test_settings_apply_to_every_checked_job(self) -> None:
+        jobs = [Mock(job_id=f"job-{index}") for index in range(1, 6)]
+        checked = {job.job_id for job in jobs}
+        self.assertEqual(
+            settings_target_ids(jobs, checked, "job-1"),
+            ["job-1", "job-2", "job-3", "job-4", "job-5"],
+        )
+        self.assertEqual(settings_target_ids(jobs, set(), "job-3"), ["job-3"])
+
+    def test_bulk_output_keeps_each_job_in_a_separate_folder(self) -> None:
+        root = Path("output") / "runs"
+        first = bulk_output_directory(root, "job-1")
+        second = bulk_output_directory(root, "job-2")
+        self.assertNotEqual(first, second)
+        self.assertEqual(first.name, "job-1")
+        self.assertEqual(second.name, "job-2")
+
+    def test_multi_job_layout_uses_three_columns_on_desktop(self) -> None:
+        self.assertEqual(multi_job_layout(1280), "three")
+        self.assertEqual(multi_job_layout(1000), "two")
+        self.assertEqual(multi_job_layout(760), "stack")

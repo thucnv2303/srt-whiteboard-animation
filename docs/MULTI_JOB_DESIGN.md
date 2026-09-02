@@ -35,7 +35,7 @@ Mỗi lần bấm thêm vào hàng đợi, app chụp một cấu hình bất bi
 | `run_dir` | `output/runs/<job_id>/` riêng biệt |
 | `created_at` | Thời điểm tạo job |
 
-Không dùng lựa chọn hiện thời trên màn hình khi worker bắt đầu; worker chỉ đọc snapshot của job. Người dùng được sửa snapshot trong popup khi job chờ, lỗi, đã hủy hoặc hoàn tất. Lưu snapshot của job ở trạng thái kết thúc sẽ đưa job về chờ để chạy lại. Chỉ job đã xếp chạy hoặc đang chạy bị khóa nhằm tránh thay đổi cấu hình giữa một lượt dựng.
+Không dùng lựa chọn hiện thời trên màn hình khi worker bắt đầu; worker chỉ đọc snapshot của job. Người dùng được sửa snapshot trong popup khi job chờ, lỗi, đã hủy hoặc hoàn tất. Nếu nhiều checkbox đang được chọn, popup áp dụng cùng voice, tỷ lệ và nhãn bút cho toàn bộ job; thư mục được chọn là thư mục gốc và mỗi job vẫn ghi vào thư mục con `<job_id>`. Lưu snapshot của job ở trạng thái kết thúc sẽ đưa job về chờ để chạy lại. Chỉ job đã xếp chạy hoặc đang chạy bị khóa nhằm tránh thay đổi cấu hình giữa một lượt dựng.
 
 ## Trạng thái và pipeline
 
@@ -101,9 +101,10 @@ File đang tạo có hậu tố `.partial`; chỉ đổi tên nguyên tử thàn
 ## Giao diện dự kiến
 
 - Thanh trên đổi giữa **Đơn nhiệm** và **Hàng đợi**.
-- Bảng job: thứ tự, tên dự án, trạng thái, phase, tiến độ, thời lượng, kết quả.
+- Bố cục rộng có ba cột: bảng job thu gọn, kịch bản riêng và preview/tiến độ; cửa sổ vừa/nhỏ tự chuyển sang hai cột hoặc xếp dọc.
+- Bảng job: checkbox, thứ tự, tên dự án, trạng thái, phase và tiến độ; video kết quả được mở/phát ở cột preview.
 - Thao tác: thêm nhiều dự án, đổi thứ tự job đang chờ, hủy, thử lại, mở thư mục kết quả.
-- Chọn một dòng dùng màn hình hiện tại làm trang chi tiết: preview, kịch bản, cấu hình snapshot và log riêng.
+- Chọn một dòng cập nhật đồng thời kịch bản, preview, tiến độ và log; checkbox xác định phạm vi áp dụng của popup thiết lập.
 - Job đang chạy vẫn tiếp tục khi người dùng xem job khác.
 
 ## Lộ trình triển khai

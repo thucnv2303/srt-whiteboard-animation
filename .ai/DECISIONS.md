@@ -148,3 +148,11 @@
 - Concurrency: Chỉ cho render song song có giới hạn sau benchmark máy thật; không mặc định nạp nhiều model voice.
 - Reason: Có ngay lợi ích xếp hàng nhiều dự án mà không đánh đổi tính ổn định, khả năng hủy và tính toàn vẹn kết quả.
 - Implementation: `whiteboard_app/jobs.py` lưu SQLite và chạy `SequentialJobRunner`; `whiteboard_app/multi_job_ui.py` cung cấp dashboard KPI/filter/checkbox/retry. Mỗi job ghi vào `output/runs/<job_id>/`.
+
+## DEC-20260902-06 — Dashboard ba cột và thiết lập hàng loạt
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Multi Job dùng ba cột trên màn hình rộng: hàng đợi thu gọn, kịch bản riêng và preview/tiến độ. Checkbox là phạm vi của popup thiết lập; không có checkbox thì chỉ sửa job đang xem.
+- Output safety: Khi áp dụng cho nhiều job, nơi lưu là thư mục gốc và app tự thêm thư mục con theo `job_id`; không cho nhiều job ghi chung một output.
+- Locking: Job queued/running không đổi snapshot; các job còn lại nhận cấu hình và chuyển về waiting nếu cần chạy lại.

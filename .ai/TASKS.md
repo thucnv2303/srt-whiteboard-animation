@@ -83,8 +83,8 @@
 - Trạng thái: `READY_FOR_USER_TEST`; chi tiết tại `docs/MULTI_JOB_DESIGN.md`.
 - M2A: đã thêm phase/progress cho pipeline và giữ nguyên luồng đơn nhiệm.
 - M2B: đã có SQLite queue, một worker tuần tự, dashboard, hủy/thử lại và recovery.
-- UI: KPI lọc, checkbox, Chạy N job, mở thư mục, chi tiết/preview/log theo job và hành động Chạy lại.
-- Thiết lập video của job dùng popup chỉnh sửa thật cho mọi job trừ queued/running; lưu job hoàn tất/lỗi/đã hủy đưa về chờ để chạy lại.
+- UI: dashboard ba cột responsive gồm hàng đợi thu gọn, kịch bản riêng, preview/tiến độ và log theo job.
+- Thiết lập video dùng popup cho một hoặc nhiều checkbox; áp dụng đồng loạt nhưng vẫn cô lập output theo `job_id`. Job queued/running bị khóa; job hoàn tất/lỗi/đã hủy được đưa về chờ để chạy lại.
 - Checkbox tiêu đề chọn/bỏ chọn toàn bộ job đang hiển thị và phản ánh trạng thái chọn một phần/toàn bộ.
 - M2C còn lại: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
 - M2D: chỉ tăng render concurrency sau benchmark; không chạy nhiều model voice đồng thời.

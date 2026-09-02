@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 51 test pass.
+- Unit test local: 54 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -63,9 +63,9 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Cột phải đã tăng vùng kịch bản, thêm thanh cuộn và cỡ chữ; **Thiết lập video** mặc định thu gọn và chứa luôn đường dẫn lưu.
 - Multi-job đã có thiết kế kỹ thuật tại `docs/MULTI_JOB_DESIGN.md`: queue SQLite tuần tự trước, output riêng theo `job_id`, một worker OmniVoice dùng GPU và retry theo phase.
 - Multi-job M2B đã được triển khai: SQLite tại `%APPDATA%\NetChuyenDong\jobs.db`, worker tuần tự, output riêng, checkbox chọn job, KPI lọc, hủy, chạy lại và recovery sau khi app đóng.
-- UI có hai chế độ **ĐƠN NHIỆM / MULTI JOB**. Dashboard hiển thị queue bên trái, chi tiết/preview/kịch bản bên phải và log theo job phía dưới.
-- Thiết lập snapshot của job trong Multi job mở bằng popup thay vì accordion để không bị che khi cửa sổ thiếu chiều cao. Popup cho sửa voice, nghe thử, tỷ lệ, nhãn bút và nơi lưu đối với mọi job trừ queued/running; lưu job hoàn tất/lỗi/đã hủy tự đưa về chờ để chạy lại.
-- Checkbox tiêu đề bảng có trạng thái chưa chọn/một phần/tất cả và chọn toàn bộ job đang hiển thị, trừ job đang chạy.
+- UI có hai chế độ **ĐƠN NHIỆM / MULTI JOB**. Dashboard rộng dùng ba cột: queue thu gọn, kịch bản ở giữa, preview/tiến độ bên phải và log theo job phía dưới; cửa sổ vừa/nhỏ tự chuyển sang hai cột hoặc xếp dọc.
+- Thiết lập snapshot mở bằng popup. Khi có checkbox, popup áp dụng voice, tỷ lệ, nhãn bút và thư mục gốc cho toàn bộ job được chọn; output vẫn tách theo `job_id`. Job queued/running bị bỏ qua, job hoàn tất/lỗi/đã hủy được đưa về chờ để chạy lại.
+- Checkbox tiêu đề bảng có trạng thái chưa chọn/một phần/tất cả và chọn toàn bộ job đang hiển thị, trừ job đang chạy. Nút Chạy N job nhận cả job lỗi/đã hủy để đưa về chờ rồi retry.
 - Đã thêm `examples/multi-job-5-pack/`: năm job nội dung thật, mỗi job có ảnh riêng, bốn cue/region và ZIP đặt cùng một thư mục để nạp đồng thời.
 - Job snapshot giọng, tỷ lệ, nhãn bút và output khi được thêm; job lỗi không chặn job sau. Cache voice cue và render song song vẫn ở backlog.
 
