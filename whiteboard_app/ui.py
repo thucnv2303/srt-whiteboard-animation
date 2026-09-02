@@ -489,8 +489,18 @@ class WhiteboardApp(tk.Tk):
                 self._final_video = existing_video
                 existing_poster = self.output_dir / "preview.jpg"
                 self._final_poster = existing_poster if existing_poster.is_file() else None
-                existing_audio = self.output_dir / "preview-audio.wav"
-                self._final_preview_audio = existing_audio if existing_audio.is_file() else None
+                self._final_preview_audio = next(
+                    (
+                        candidate
+                        for candidate in (
+                            self.output_dir / "preview-audio.wav",
+                            self.output_dir / "voice-timeline.wav",
+                            self.output_dir / "voice-clone.wav",
+                        )
+                        if candidate.is_file()
+                    ),
+                    None,
+                )
                 self.result_path.set(f"Video: {existing_video.name}")
                 self.result_preview_button.configure(state="normal")
                 self._set_result_controls(True)
