@@ -5,7 +5,12 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from whiteboard_app.project import load_project
-from whiteboard_app.ui import WhiteboardApp, project_preview_items, responsive_layout
+from whiteboard_app.ui import (
+    WhiteboardApp,
+    project_preview_items,
+    responsive_layout,
+    video_settings_heading,
+)
 
 
 class FileDialogTests(unittest.TestCase):
@@ -34,6 +39,26 @@ class ResponsiveLayoutTests(unittest.TestCase):
 
     def test_small_window_stacks_settings(self) -> None:
         self.assertEqual(responsive_layout(800), "stacked")
+
+
+class VideoSettingsTests(unittest.TestCase):
+    def test_heading_indicates_collapsed_and_expanded_state(self) -> None:
+        self.assertEqual(video_settings_heading(False), "Thiết lập video  ▸")
+        self.assertEqual(video_settings_heading(True), "Thiết lập video  ▾")
+
+    def test_toggle_shows_then_hides_settings_body(self) -> None:
+        fake_app = Mock()
+        fake_app.video_settings_expanded = False
+
+        WhiteboardApp._toggle_video_settings(fake_app)
+        self.assertTrue(fake_app.video_settings_expanded)
+        fake_app.video_settings_heading.set.assert_called_with("Thiết lập video  ▾")
+        fake_app.video_settings_body.grid.assert_called_once_with(row=1, column=0, sticky="ew")
+
+        WhiteboardApp._toggle_video_settings(fake_app)
+        self.assertFalse(fake_app.video_settings_expanded)
+        fake_app.video_settings_heading.set.assert_called_with("Thiết lập video  ▸")
+        fake_app.video_settings_body.grid_remove.assert_called_once_with()
 
 
 class PreviewItemTests(unittest.TestCase):

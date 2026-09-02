@@ -24,6 +24,7 @@
 - Trình phát video tích hợp có hình, âm thanh, phát/tạm dừng/dừng và tua timeline.
 - Sửa player Windows: không đưa raw PCM trực tiếp vào mixer; bảo toàn sample rate bằng WAV header và chống video frame backlog.
 - Bảo vệ âm đầu cue OmniVoice: token đệm, boost thích ứng và viết số thứ tự theo cụm “Món thứ…”.
+- Card thiết lập video thu gọn, nơi lưu nằm trong card và vùng kịch bản lớn có thanh cuộn.
 
 ## Backlog ưu tiên
 
@@ -73,3 +74,11 @@
 
 - Fixture ảnh + annotation nhỏ.
 - Kiểm tra first/mid/final frame và duration.
+
+### `TASK-010` — Multi-job bền vững
+
+- Trạng thái: `DESIGN_READY`; chi tiết tại `docs/MULTI_JOB_DESIGN.md`.
+- M2A: tách pipeline thành phase có artifact/progress nhưng giữ nguyên luồng đơn nhiệm.
+- M2B: SQLite queue, một worker tuần tự, dashboard, hủy/thử lại và phục hồi sau khi mở app.
+- M2C: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
+- M2D: chỉ tăng render concurrency sau benchmark; không chạy nhiều model voice đồng thời.

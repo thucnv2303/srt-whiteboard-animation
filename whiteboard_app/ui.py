@@ -39,6 +39,10 @@ def responsive_layout(width: int) -> str:
     return "horizontal" if width >= 920 else "stacked"
 
 
+def video_settings_heading(expanded: bool) -> str:
+    return "Thiết lập video  ▾" if expanded else "Thiết lập video  ▸"
+
+
 @dataclass(frozen=True)
 class PreviewItem:
     item_id: str
@@ -146,6 +150,8 @@ class WhiteboardApp(tk.Tk):
         self.video_seek = tk.DoubleVar(value=0.0)
         self.video_time = tk.StringVar(value="00:00 / 00:00")
         self.progress_text = tk.StringVar(value="Sẵn sàng")
+        self.video_settings_expanded = False
+        self.video_settings_heading = tk.StringVar(value=video_settings_heading(False))
 
         self._build_styles()
         self._build_ui()
@@ -174,6 +180,7 @@ class WhiteboardApp(tk.Tk):
         style.configure("Badge.TLabel", font=("Segoe UI", 9, "bold"), foreground="#136c4a")
         style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"), padding=(18, 10))
         style.configure("Scene.TButton", padding=(10, 8))
+        style.configure("Section.TButton", font=("Segoe UI", 10, "bold"), padding=(10, 8), anchor="w")
 
     def _build_ui(self) -> None:
         self.configure(background="#f4f6f8")
@@ -300,13 +307,15 @@ class WhiteboardApp(tk.Tk):
 
     def _build_settings_card(self) -> None:
         self.settings_card.grid_columnconfigure(0, weight=1)
+        self.settings_card.grid_rowconfigure(1, weight=1)
         ttk.Label(self.settings_card, text="Dự án từ GPT", style="CardTitle.TLabel").grid(
             row=0, column=0, sticky="w"
         )
 
         project_info = ttk.LabelFrame(self.settings_card, text="Thông tin đã quét", padding=10)
-        project_info.grid(row=1, column=0, sticky="ew", pady=(10, 7))
+        project_info.grid(row=1, column=0, sticky="nsew", pady=(10, 7))
         project_info.grid_columnconfigure(0, weight=1)
+        project_info.grid_rowconfigure(4, weight=1)
         ttk.Label(project_info, textvariable=self.project_title_text, font=("Segoe UI", 10, "bold")).grid(
             row=0, column=0, sticky="w"
         )
@@ -319,14 +328,32 @@ class WhiteboardApp(tk.Tk):
         ttk.Label(project_info, text="Kịch bản lời đọc", style="Subtitle.TLabel").grid(
             row=3, column=0, sticky="w", pady=(2, 3)
         )
+        script_box = ttk.Frame(project_info)
+        script_box.grid(row=4, column=0, sticky="nsew")
+        script_box.grid_rowconfigure(0, weight=1)
+        script_box.grid_columnconfigure(0, weight=1)
         self.project_script = tk.Text(
-            project_info, height=5, wrap="word", state="disabled", relief="solid", borderwidth=1,
-            padx=7, pady=6, font=("Segoe UI", 9), background="#ffffff",
+            script_box, height=12, wrap="word", state="disabled", relief="solid", borderwidth=1,
+            padx=9, pady=8, font=("Segoe UI", 10), background="#ffffff",
         )
-        self.project_script.grid(row=4, column=0, sticky="ew")
+        self.project_script.grid(row=0, column=0, sticky="nsew")
+        script_scroll = ttk.Scrollbar(script_box, orient="vertical", command=self.project_script.yview)
+        script_scroll.grid(row=0, column=1, sticky="ns")
+        self.project_script.configure(yscrollcommand=script_scroll.set)
 
-        video_settings = ttk.LabelFrame(self.settings_card, text="Thiết lập video", padding=10)
-        video_settings.grid(row=2, column=0, sticky="ew", pady=7)
+        self.video_settings_shell = ttk.Frame(self.settings_card, style="Card.TFrame")
+        self.video_settings_shell.grid(row=2, column=0, sticky="ew", pady=7)
+        self.video_settings_shell.grid_columnconfigure(0, weight=1)
+        self.video_settings_toggle = ttk.Button(
+            self.video_settings_shell,
+            textvariable=self.video_settings_heading,
+            style="Section.TButton",
+            command=self._toggle_video_settings,
+        )
+        self.video_settings_toggle.grid(row=0, column=0, sticky="ew")
+
+        video_settings = ttk.Frame(self.video_settings_shell, padding=(10, 10, 10, 4))
+        self.video_settings_body = video_settings
         video_settings.grid_columnconfigure(1, weight=1)
         ttk.Label(video_settings, text="Giọng đọc", style="Subtitle.TLabel").grid(
             row=0, column=0, sticky="w", padx=(0, 8)
@@ -361,12 +388,12 @@ class WhiteboardApp(tk.Tk):
         ttk.Entry(video_settings, textvariable=self.pen_brand).grid(
             row=2, column=1, columnspan=4, sticky="ew", pady=(10, 0)
         )
-        ttk.Label(video_settings, textvariable=self.timeline_text, style="Subtitle.TLabel").grid(
-            row=3, column=0, columnspan=5, sticky="ew", pady=(8, 0)
-        )
 
-        output = ttk.LabelFrame(self.settings_card, text="Nơi xuất", padding=10)
-        output.grid(row=3, column=0, sticky="ew", pady=7)
+        ttk.Label(video_settings, text="Nơi lưu", style="Subtitle.TLabel").grid(
+            row=3, column=0, sticky="w", padx=(0, 8), pady=(10, 0)
+        )
+        output = ttk.Frame(video_settings)
+        output.grid(row=3, column=1, columnspan=4, sticky="ew", pady=(10, 0))
         output.grid_columnconfigure(0, weight=1)
         ttk.Label(output, textvariable=self.output_path, style="Subtitle.TLabel").grid(
             row=0, column=0, sticky="ew", padx=(0, 8)
@@ -374,14 +401,26 @@ class WhiteboardApp(tk.Tk):
         self.output_button = ttk.Button(output, text="Chọn…", command=self._choose_output)
         self.output_button.grid(row=0, column=1)
 
+        ttk.Label(video_settings, textvariable=self.timeline_text, style="Subtitle.TLabel").grid(
+            row=4, column=0, columnspan=5, sticky="ew", pady=(8, 0)
+        )
+
         status = ttk.Frame(self.settings_card, style="Card.TFrame")
-        status.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        status.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         status.grid_columnconfigure(0, weight=1)
         ttk.Label(status, textvariable=self.progress_text, style="Meta.TLabel").grid(row=0, column=0, sticky="w")
         self.cancel_button = ttk.Button(status, text="Hủy", command=self.cancel_event.set, state="disabled")
         self.cancel_button.grid(row=0, column=1)
         self.progress = ttk.Progressbar(status, mode="indeterminate")
         self.progress.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+
+    def _toggle_video_settings(self) -> None:
+        self.video_settings_expanded = not self.video_settings_expanded
+        self.video_settings_heading.set(video_settings_heading(self.video_settings_expanded))
+        if self.video_settings_expanded:
+            self.video_settings_body.grid(row=1, column=0, sticky="ew")
+        else:
+            self.video_settings_body.grid_remove()
 
     def _on_window_resize(self, event: tk.Event) -> None:
         if event.widget is self:

@@ -73,7 +73,8 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Sau khi hoàn tất, cột trái tự chuyển sang trình phát video tích hợp: phát/tạm dừng, dừng, tua timeline, đồng hồ thời gian và âm thanh ngay trong app. Nút ↗ mở trình phát Windows chỉ là phương án dự phòng.
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
-- Card **Thiết lập video** gom giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra và chữ trên thân bút.
+- Card **Thiết lập video** mặc định thu gọn; bấm tiêu đề để mở giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra, chữ trên thân bút và nơi lưu kết quả.
+- Vùng kịch bản chiếm phần không gian còn lại của cột phải, dùng cỡ chữ lớn hơn và có thanh cuộn cho nội dung dài.
 - Popup **Cài đặt giọng** quản lý đường dẫn OmniVoice và thêm giọng clone mới.
 - Mẫu mới được tự chọn đoạn nói liên tục 3–8 giây, chấm điểm SNR, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.
 - Nếu dự án có `narration`, OmniVoice tạo WAV riêng cho từng cue trong một lần nạp model. App lấy thời lượng WAV thực tế làm đồng hồ, tạo `timeline.json` và annotation runtime để vùng hình tương ứng vẽ cùng câu nói.
@@ -82,7 +83,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
 
-Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotation và đóng gói `.exe`.
+Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotation và đóng gói `.exe`. Kiến trúc hàng đợi bền vững và lộ trình triển khai nằm trong `docs/MULTI_JOB_DESIGN.md`.
 
 ## Dùng chung OmniVoice, không clone lại
 
@@ -121,7 +122,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 31 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive và thư viện giọng.
+Hiện có 33 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, card thiết lập thu gọn và thư viện giọng.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 
