@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 28 test pass.
+- Unit test local: 29 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -57,6 +57,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
 - Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
 - Cột trái có trình phát MP4 tích hợp bằng PyAV + pygame: phát/tạm dừng, dừng, tua, thời gian và âm thanh. FFmpeg tạo `preview-audio.wav`; nút mở ngoài chỉ là fallback.
+- Nghiệm thu player phát hiện raw PCM 24 kHz có thể bị mixer Windows 48 kHz hiểu sai, làm voice nhanh/méo; đã đổi sang WAV-header resampling và bỏ toàn bộ frame canvas bị trễ để giữ A/V sync.
 
 ## Task an toàn tiếp theo
 

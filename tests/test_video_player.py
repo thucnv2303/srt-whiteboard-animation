@@ -1,6 +1,7 @@
 import unittest
+import wave
 
-from whiteboard_app.video_player import format_media_time, pcm_offset
+from whiteboard_app.video_player import format_media_time, pcm_offset, wav_tail_buffer
 
 
 class VideoPlayerTests(unittest.TestCase):
@@ -12,6 +13,15 @@ class VideoPlayerTests(unittest.TestCase):
         pcm_length = 24000 * 2 * 10
         self.assertEqual(pcm_offset(2.5, 24000, 1, 2, pcm_length), 120000)
         self.assertEqual(pcm_offset(99, 24000, 1, 2, pcm_length), pcm_length)
+
+    def test_seek_audio_keeps_wav_header_and_original_sample_rate(self) -> None:
+        pcm = b"\0\0" * 24000 * 4
+        buffer = wav_tail_buffer(pcm, 1.5, 24000, 1, 2)
+        with wave.open(buffer, "rb") as audio:
+            self.assertEqual(audio.getframerate(), 24000)
+            self.assertEqual(audio.getnchannels(), 1)
+            self.assertEqual(audio.getsampwidth(), 2)
+            self.assertEqual(audio.getnframes(), 24000 * 2.5)
 
 
 if __name__ == "__main__":

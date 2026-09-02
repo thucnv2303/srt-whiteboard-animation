@@ -120,9 +120,9 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 28 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, annotation runtime, poster/audio preview, phép tua PCM, render, UI responsive và thư viện giọng.
+Hiện có 29 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive và thư viện giọng.
 
-Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
+Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 
 ## Gói kiểm thử 52 giây
 

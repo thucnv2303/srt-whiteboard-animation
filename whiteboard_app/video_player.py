@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import time
 import wave
 from pathlib import Path
@@ -28,6 +29,25 @@ def pcm_offset(
     return min(requested, available)
 
 
+def wav_tail_buffer(
+    pcm: bytes,
+    seconds: float,
+    frame_rate: int,
+    channels: int,
+    sample_width: int,
+) -> io.BytesIO:
+    """Gói phần PCM cần phát vào WAV có header để SDL tự resample đúng tốc độ."""
+    offset = pcm_offset(seconds, frame_rate, channels, sample_width, len(pcm))
+    output = io.BytesIO()
+    with wave.open(output, "wb") as target:
+        target.setnchannels(channels)
+        target.setsampwidth(sample_width)
+        target.setframerate(frame_rate)
+        target.writeframes(pcm[offset:])
+    output.seek(0)
+    return output
+
+
 class WaveAudioTrack:
     def __init__(self) -> None:
         self.path: Path | None = None
@@ -38,6 +58,7 @@ class WaveAudioTrack:
         self._pygame: Any = None
         self._sound: Any = None
         self._channel: Any = None
+        self._wave_buffer: io.BytesIO | None = None
 
     def load(self, path: Path | None) -> bool:
         self.close()
@@ -57,11 +78,13 @@ class WaveAudioTrack:
             import pygame
 
             self._pygame = pygame
-            expected = (self.frame_rate, -16, self.channels)
+            # Thiết bị Windows thường chạy 48 kHz stereo. WAV header bên dưới giúp
+            # SDL resample từ nguồn 24 kHz mono, tránh phát nhanh/méo như raw buffer.
+            expected = (48000, -16, 2)
             if pygame.mixer.get_init() != expected:
                 if pygame.mixer.get_init():
                     pygame.mixer.quit()
-                pygame.mixer.init(frequency=self.frame_rate, size=-16, channels=self.channels)
+                pygame.mixer.init(frequency=48000, size=-16, channels=2)
         except Exception as exc:
             self.pcm = b""
             raise VideoPlaybackError(f"Không khởi tạo được âm thanh nội bộ: {exc}") from exc
@@ -72,12 +95,12 @@ class WaveAudioTrack:
         if not self.pcm or self._pygame is None:
             return
         self.stop()
-        offset = pcm_offset(
-            seconds, self.frame_rate, self.channels, self.sample_width, len(self.pcm)
+        self._wave_buffer = wav_tail_buffer(
+            self.pcm, seconds, self.frame_rate, self.channels, self.sample_width
         )
-        if offset >= len(self.pcm):
+        if self._wave_buffer.getbuffer().nbytes <= 44:
             return
-        self._sound = self._pygame.mixer.Sound(buffer=self.pcm[offset:])
+        self._sound = self._pygame.mixer.Sound(file=self._wave_buffer)
         self._channel = self._sound.play()
 
     def pause(self) -> None:
@@ -93,6 +116,7 @@ class WaveAudioTrack:
             self._channel.stop()
         self._channel = None
         self._sound = None
+        self._wave_buffer = None
 
     def close(self) -> None:
         self.stop()
@@ -324,10 +348,12 @@ class TkVideoPlayer:
                 frame = next(self._frames)
                 self._pending_frame = (frame, self._frame_time(frame))
             current = time.monotonic() - self._clock_started
-            # Nếu máy giải mã chậm, bỏ vài frame cũ để hình luôn bám đồng hồ âm thanh.
-            for _ in range(8):
+            # Video đầu ra có thể là 60 fps trong khi Tkinter chỉ vẽ ổn định khoảng
+            # 25–30 fps. Bỏ toàn bộ frame đã trễ thay vì phát bù khiến hình tụt sau tiếng.
+            for _ in range(240):
                 _, frame_time = self._pending_frame
-                if frame_time >= current - 0.08:
+                current = time.monotonic() - self._clock_started
+                if frame_time >= current - 0.04:
                     break
                 frame = next(self._frames)
                 self._pending_frame = (frame, self._frame_time(frame))

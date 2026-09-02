@@ -22,6 +22,7 @@
 - Audio-clock timeline: cue voice → thời lượng WAV → runtime annotation → render đồng bộ.
 - Danh sách cue thành phân cảnh nội dung, preview video kết quả và pipeline một nút.
 - Trình phát video tích hợp có hình, âm thanh, phát/tạm dừng/dừng và tua timeline.
+- Sửa player Windows: không đưa raw PCM trực tiếp vào mixer; bảo toàn sample rate bằng WAV header và chống video frame backlog.
 
 ## Backlog ưu tiên
 

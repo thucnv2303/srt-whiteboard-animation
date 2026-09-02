@@ -127,3 +127,5 @@
 - Decision: Phát MP4 trực tiếp trong canvas Tkinter bằng PyAV; FFmpeg trích WAV PCM và pygame phát từ đúng offset khi tua. Âm thanh là clock, player bỏ frame trễ để hạn chế lệch tiếng/hình.
 - Controls: phát/tạm dừng, dừng, thanh tua, thời gian hiện tại/tổng và nút mở ngoài dự phòng.
 - Dependency: `run_app.bat` luôn chạy kiểm tra môi trường để tự bổ sung pygame cho `.venv` cũ; không yêu cầu người dùng clone/cài lại dự án.
+- Windows audio: mixer chạy cố định 48 kHz stereo; audio nguồn 24 kHz mono được đóng gói WAV có header để SDL tự resample. Không truyền raw PCM vì thiết bị có thể đổi sample rate và làm tiếng nhanh/méo.
+- Video sync: audio/monotonic clock là chuẩn; frame 60 fps đã trễ bị bỏ thay vì phát bù, tránh hình tụt dần sau tiếng trên canvas Tkinter.
