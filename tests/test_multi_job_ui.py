@@ -2,8 +2,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from whiteboard_app.jobs import COMPLETED, FAILED, RUNNING, WAITING
-from whiteboard_app.multi_job_ui import FILTERS, job_settings_rows, job_status_label, run_button_label
+from whiteboard_app.jobs import CANCELED, COMPLETED, FAILED, QUEUED, RUNNING, WAITING
+from whiteboard_app.multi_job_ui import (
+    FILTERS,
+    job_settings_editable,
+    job_settings_rows,
+    job_status_label,
+    run_button_label,
+)
 
 
 class MultiJobUiTests(unittest.TestCase):
@@ -33,3 +39,11 @@ class MultiJobUiTests(unittest.TestCase):
         self.assertEqual(rows["Giọng đọc"], "Xuân Dung")
         self.assertEqual(rows["Khung hình"], "9:16")
         self.assertIn("job-01", rows["Nơi lưu"])
+
+    def test_only_unstarted_or_retryable_jobs_have_editable_settings(self) -> None:
+        self.assertTrue(job_settings_editable(WAITING))
+        self.assertTrue(job_settings_editable(FAILED))
+        self.assertTrue(job_settings_editable(CANCELED))
+        self.assertFalse(job_settings_editable(QUEUED))
+        self.assertFalse(job_settings_editable(RUNNING))
+        self.assertFalse(job_settings_editable(COMPLETED))

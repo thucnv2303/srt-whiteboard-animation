@@ -75,7 +75,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
 - Card **Thiết lập video** mặc định thu gọn; bấm tiêu đề để mở giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra, chữ trên thân bút và nơi lưu kết quả.
 - Vùng kịch bản chiếm phần không gian còn lại của cột phải, dùng cỡ chữ lớn hơn và có thanh cuộn cho nội dung dài.
-- Nút **MULTI JOB** mở dashboard hàng đợi: KPI lọc, checkbox chọn job, tiến độ, chi tiết dự án, preview và log riêng. Nút **Thiết lập video…** mở popup cấu hình snapshot nên không làm panel bên phải bị tràn chiều cao.
+- Nút **MULTI JOB** mở dashboard hàng đợi: KPI lọc, checkbox chọn job, tiến độ, chi tiết dự án, preview và log riêng. Nút **Thiết lập video…** mở popup chỉnh giọng, nghe thử, tỷ lệ, chữ trên bút và nơi lưu mà không làm panel bên phải bị tràn chiều cao.
 - Nút **Chạy N job** chỉ xếp các job đang chờ đã được đánh dấu; **Bắt đầu hàng đợi** xếp toàn bộ job đang chờ.
 - Job lỗi không chặn job sau và có hành động **Chạy lại**. Hủy job nằm trong thanh công cụ hàng đợi.
 - Hàng đợi được lưu bằng SQLite; đóng/mở app không mất danh sách. Job đang chạy khi app đóng được đánh dấu lỗi gián đoạn để người dùng chạy lại.
@@ -97,6 +97,8 @@ Chưa bao gồm render song song, cache cue OmniVoice, đồng bộ ChatGPT/MCP,
 4. Đánh dấu checkbox rồi bấm **Chạy N job**, hoặc bấm **Bắt đầu hàng đợi** để chạy tất cả job đang chờ.
 5. Bấm KPI **Tổng job / Đang chạy / Đang chờ / Hoàn tất / Lỗi** để lọc bảng. Việc lọc không xóa lựa chọn checkbox.
 6. Chọn một dòng để xem kịch bản, cấu hình snapshot, preview, log và thư mục output của job đó.
+
+Job **Đang chờ**, **Lỗi** hoặc **Đã hủy** có thể sửa trực tiếp trong popup **Thiết lập video…** rồi lưu, không cần xóa và thêm lại. Job đã được xếp chạy, đang chạy hoặc hoàn tất sẽ khóa cấu hình để worker không đọc một snapshot đang thay đổi. Với job lỗi/đã hủy, sau khi sửa hãy bấm **Chạy lại**.
 
 Worker xử lý tuần tự một job tại một thời điểm. **Tạm dừng hàng đợi** chỉ ngăn lấy job tiếp theo; công đoạn đang chạy vẫn hoàn tất an toàn. **Hủy job** dừng job đang chọn. Job lỗi có nút **Chạy lại** và các job sau vẫn tiếp tục.
 
@@ -163,7 +165,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 43 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, popup thiết lập job và thư viện giọng.
+Hiện có 47 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, popup chỉnh thiết lập job và thư viện giọng.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 

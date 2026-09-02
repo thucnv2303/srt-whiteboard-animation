@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 45 test pass.
+- Unit test local: 47 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -63,7 +63,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Multi-job đã có thiết kế kỹ thuật tại `docs/MULTI_JOB_DESIGN.md`: queue SQLite tuần tự trước, output riêng theo `job_id`, một worker OmniVoice dùng GPU và retry theo phase.
 - Multi-job M2B đã được triển khai: SQLite tại `%APPDATA%\NetChuyenDong\jobs.db`, worker tuần tự, output riêng, checkbox chọn job, KPI lọc, hủy, chạy lại và recovery sau khi app đóng.
 - UI có hai chế độ **ĐƠN NHIỆM / MULTI JOB**. Dashboard hiển thị queue bên trái, chi tiết/preview/kịch bản bên phải và log theo job phía dưới.
-- Thiết lập snapshot của job trong Multi job mở bằng popup thay vì accordion để không bị che khi cửa sổ thiếu chiều cao.
+- Thiết lập snapshot của job trong Multi job mở bằng popup thay vì accordion để không bị che khi cửa sổ thiếu chiều cao. Popup cho sửa voice, nghe thử, tỷ lệ, nhãn bút và nơi lưu đối với job chờ/lỗi/đã hủy; job đã xếp chạy, đang chạy hoặc hoàn tất bị khóa.
 - Đã thêm `examples/multi-job-5-pack/`: năm job nội dung thật, mỗi job có ảnh riêng, bốn cue/region và ZIP đặt cùng một thư mục để nạp đồng thời.
 - Job snapshot giọng, tỷ lệ, nhãn bút và output khi được thêm; job lỗi không chặn job sau. Cache voice cue và render song song vẫn ở backlog.
 

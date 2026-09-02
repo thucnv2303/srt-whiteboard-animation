@@ -35,7 +35,7 @@ Mỗi lần bấm thêm vào hàng đợi, app chụp một cấu hình bất bi
 | `run_dir` | `output/runs/<job_id>/` riêng biệt |
 | `created_at` | Thời điểm tạo job |
 
-Không dùng lựa chọn hiện thời trên màn hình khi worker bắt đầu; worker chỉ đọc snapshot của job. Nhờ đó người dùng có thể mở dự án khác mà job đang chạy không bị đổi cấu hình.
+Không dùng lựa chọn hiện thời trên màn hình khi worker bắt đầu; worker chỉ đọc snapshot của job. Người dùng được sửa snapshot trong popup khi job còn chờ, lỗi hoặc đã hủy. Khi job đã được xếp chạy, đang chạy hoặc hoàn tất, snapshot bị khóa để tránh thay đổi cấu hình giữa một lượt dựng.
 
 ## Trạng thái và pipeline
 

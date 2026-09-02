@@ -86,6 +86,45 @@ class JobStoreTests(unittest.TestCase):
             self.assertTrue(store.retry(job.job_id))
             self.assertEqual(store.get(job.job_id).status, WAITING)  # type: ignore[union-attr]
 
+    def test_updates_waiting_job_settings_but_not_running_job(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root / "project")
+            project = load_project(manifest)
+            store = JobStore(root / "jobs.db")
+            job = store.add(manifest, project, "16:9", "Cũ", "voice-1", "Giọng cũ", root / "old.wav", "old.exe", root / "old-run")
+
+            self.assertTrue(
+                store.update_settings(
+                    job.job_id,
+                    aspect_ratio="9:16",
+                    pen_brand="Thương hiệu mới",
+                    voice_profile_id="voice-2",
+                    voice_name="Giọng mới",
+                    voice_audio_path=root / "new.wav",
+                    cli_path="new.exe",
+                    output_dir=root / "new-run",
+                )
+            )
+            updated = store.get(job.job_id)
+            self.assertEqual(updated.aspect_ratio, "9:16")  # type: ignore[union-attr]
+            self.assertEqual(updated.voice_name, "Giọng mới")  # type: ignore[union-attr]
+            self.assertEqual(updated.output_dir, root / "new-run")  # type: ignore[union-attr]
+            store.mark_running(job.job_id)
+            self.assertFalse(
+                store.update_settings(
+                    job.job_id,
+                    aspect_ratio="1:1",
+                    pen_brand="Không được lưu",
+                    voice_profile_id="",
+                    voice_name="",
+                    voice_audio_path=None,
+                    cli_path="",
+                    output_dir=root / "blocked",
+                )
+            )
+            self.assertEqual(store.get(job.job_id).aspect_ratio, "9:16")  # type: ignore[union-attr]
+
 
 class SequentialRunnerTests(unittest.TestCase):
     def test_cancel_waiting_job_without_starting_it(self) -> None:

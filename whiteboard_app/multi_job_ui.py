@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from .jobs import (
     CANCELED,
     COMPLETED,
+    EDITABLE_STATES,
     FAILED,
     QUEUED,
     RUNNING,
@@ -23,8 +24,9 @@ from .jobs import (
     VideoJob,
 )
 from .project import ProjectError, load_project
+from .renderer import ASPECT_RATIOS
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
-from .voice import VoiceSettings
+from .voice import OmniVoiceError, VoiceLibrary, VoiceSettings, play_audio, stop_audio
 
 if TYPE_CHECKING:
     from .ui import WhiteboardApp
@@ -61,6 +63,10 @@ def job_settings_rows(job: VideoJob) -> list[tuple[str, str]]:
         ("Chữ trên bút", job.pen_brand or "Không có"),
         ("Nơi lưu", str(job.output_dir)),
     ]
+
+
+def job_settings_editable(status: str) -> bool:
+    return status in EDITABLE_STATES
 
 
 def open_path(path: Path) -> None:
@@ -612,8 +618,25 @@ class MultiJobView(ttk.Frame):
         dialog.title(f"Thiết lập video — {job.title}")
         dialog.transient(self.app)
         dialog.resizable(True, False)
-        dialog.minsize(560, 300)
+        dialog.minsize(620, 420)
         dialog.grid_columnconfigure(0, weight=1)
+
+        editable = job_settings_editable(job.status)
+        aspect_ratio = tk.StringVar(value=job.aspect_ratio)
+        pen_brand = tk.StringVar(value=job.pen_brand)
+        output_dir = tk.StringVar(value=str(job.output_dir))
+        voice_library = VoiceLibrary.load()
+        voice_options: list[tuple[str, str, Path]] = []
+        seen_voice_ids: set[str] = set()
+        if job.voice_profile_id and job.voice_audio_path and job.voice_audio_path.is_file():
+            voice_options.append((job.voice_profile_id, job.voice_name or "Giọng hiện tại", job.voice_audio_path))
+            seen_voice_ids.add(job.voice_profile_id)
+        for profile in voice_library.profiles:
+            if profile.profile_id not in seen_voice_ids and profile.audio_path.is_file():
+                voice_options.append((profile.profile_id, profile.name, profile.audio_path))
+                seen_voice_ids.add(profile.profile_id)
+        voice_values = [name for _profile_id, name, _audio_path in voice_options]
+        voice_name = tk.StringVar(value=job.voice_name or (voice_values[0] if voice_values else ""))
 
         card = ttk.Frame(dialog, padding=18)
         card.grid(row=0, column=0, sticky="nsew")
@@ -623,37 +646,165 @@ class MultiJobView(ttk.Frame):
         )
         ttk.Label(
             card,
-            text="Cấu hình đã được lưu riêng khi thêm job vào hàng đợi.",
+            text=(
+                "Thay đổi được lưu riêng cho job này."
+                if editable
+                else "Job đang chạy/đã hoàn tất nên cấu hình được khóa để bảo vệ kết quả."
+            ),
             style="Subtitle.TLabel",
         ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 14))
 
-        for row, (label, value) in enumerate(job_settings_rows(job), start=2):
-            ttk.Label(card, text=label, font=("Segoe UI", 9, "bold")).grid(
-                row=row, column=0, sticky="nw", padx=(0, 14), pady=6
+        ttk.Label(card, text="Giọng đọc", font=("Segoe UI", 9, "bold")).grid(
+            row=2, column=0, sticky="w", padx=(0, 14), pady=7
+        )
+        voice_row = ttk.Frame(card)
+        voice_row.grid(row=2, column=1, sticky="ew", pady=7)
+        voice_row.grid_columnconfigure(0, weight=1)
+        voice_combo = ttk.Combobox(
+            voice_row,
+            textvariable=voice_name,
+            values=voice_values,
+            state="readonly" if editable and voice_values else "disabled",
+        )
+        voice_combo.grid(row=0, column=0, sticky="ew", padx=(0, 7))
+        if voice_values:
+            selected_index = next(
+                (index for index, option in enumerate(voice_options) if option[0] == job.voice_profile_id),
+                0,
             )
-            ttk.Label(
-                card,
-                text=value,
-                justify="left",
-                anchor="w",
-                wraplength=520 if label == "Nơi lưu" else 440,
-            ).grid(row=row, column=1, sticky="ew", pady=6)
+            voice_combo.current(selected_index)
+
+        def selected_voice() -> tuple[str, str, Path] | None:
+            index = voice_combo.current()
+            return voice_options[index] if 0 <= index < len(voice_options) else None
+
+        def preview_voice() -> None:
+            option = selected_voice()
+            if not option:
+                messagebox.showinfo("Chưa có giọng", "Hãy thêm giọng trong phần Cài đặt giọng.", parent=dialog)
+                return
+            try:
+                play_audio(option[2])
+            except OmniVoiceError as exc:
+                messagebox.showerror("Không thể nghe thử", str(exc), parent=dialog)
+
+        ttk.Button(voice_row, text="▶ Nghe thử", command=preview_voice).grid(row=0, column=1)
+
+        ttk.Label(card, text="Khung hình", font=("Segoe UI", 9, "bold")).grid(
+            row=3, column=0, sticky="w", padx=(0, 14), pady=7
+        )
+        ratio_row = ttk.Frame(card)
+        ratio_row.grid(row=3, column=1, sticky="w", pady=7)
+        for column, ratio in enumerate(ASPECT_RATIOS):
+            ttk.Radiobutton(
+                ratio_row,
+                text=ratio,
+                value=ratio,
+                variable=aspect_ratio,
+                state="normal" if editable else "disabled",
+            ).grid(row=0, column=column, padx=(0, 18))
+
+        ttk.Label(card, text="Chữ trên bút", font=("Segoe UI", 9, "bold")).grid(
+            row=4, column=0, sticky="w", padx=(0, 14), pady=7
+        )
+        ttk.Entry(
+            card,
+            textvariable=pen_brand,
+            state="normal" if editable else "disabled",
+        ).grid(row=4, column=1, sticky="ew", pady=7)
+
+        ttk.Label(card, text="Nơi lưu", font=("Segoe UI", 9, "bold")).grid(
+            row=5, column=0, sticky="w", padx=(0, 14), pady=7
+        )
+        output_row = ttk.Frame(card)
+        output_row.grid(row=5, column=1, sticky="ew", pady=7)
+        output_row.grid_columnconfigure(0, weight=1)
+        ttk.Entry(
+            output_row,
+            textvariable=output_dir,
+            state="normal" if editable else "disabled",
+        ).grid(row=0, column=0, sticky="ew", padx=(0, 7))
+
+        def choose_output() -> None:
+            selected = filedialog.askdirectory(
+                parent=dialog,
+                title="Chọn thư mục lưu riêng cho job",
+                initialdir=str(job.output_dir.parent),
+            )
+            if selected:
+                output_dir.set(str(Path(selected).resolve()))
+
+        ttk.Button(
+            output_row,
+            text="Chọn…",
+            command=choose_output,
+            state="normal" if editable else "disabled",
+        ).grid(row=0, column=1)
 
         ttk.Separator(card).grid(row=6, column=0, columnspan=2, sticky="ew", pady=(12, 10))
-        ttk.Label(
-            card,
-            text="Muốn thay cấu hình của job này: xóa job và thêm lại với thiết lập mới.",
-            style="Subtitle.TLabel",
-        ).grid(row=7, column=0, sticky="w")
-        ttk.Button(card, text="Đóng", command=dialog.destroy).grid(row=7, column=1, sticky="e")
+
+        def save_settings() -> None:
+            brand = pen_brand.get().strip()
+            if len(brand) > 40:
+                messagebox.showwarning("Chữ trên bút quá dài", "Chỉ nhập tối đa 40 ký tự.", parent=dialog)
+                return
+            raw_output = output_dir.get().strip()
+            if not raw_output:
+                messagebox.showwarning("Thiếu nơi lưu", "Hãy chọn thư mục lưu kết quả.", parent=dialog)
+                return
+            option = selected_voice()
+            if job.voice_audio_path and option is None:
+                messagebox.showwarning("Thiếu giọng đọc", "Hãy chọn một giọng đọc hợp lệ.", parent=dialog)
+                return
+            settings = VoiceSettings.load()
+            try:
+                changed = self.store.update_settings(
+                    job.job_id,
+                    aspect_ratio=aspect_ratio.get(),
+                    pen_brand=brand,
+                    voice_profile_id=option[0] if option else "",
+                    voice_name=option[1] if option else "",
+                    voice_audio_path=option[2] if option else None,
+                    cli_path=settings.cli_path.strip() or job.cli_path,
+                    output_dir=Path(raw_output),
+                )
+            except (OSError, ValueError) as exc:
+                messagebox.showerror("Không thể lưu thiết lập", str(exc), parent=dialog)
+                return
+            if not changed:
+                messagebox.showwarning(
+                    "Job đã bị khóa",
+                    "Worker đã lấy job này. Hãy hủy job trước khi thay đổi cấu hình.",
+                    parent=dialog,
+                )
+                return
+            stop_audio()
+            dialog.destroy()
+            self.refresh()
+            self._show_job(job.job_id)
+            self.worker_status.set(f"Đã lưu thiết lập cho job: {job.title}")
+
+        actions = ttk.Frame(card)
+        actions.grid(row=7, column=0, columnspan=2, sticky="e")
+        ttk.Button(actions, text="Hủy", command=dialog.destroy).pack(side="left", padx=(0, 7))
+        if editable:
+            ttk.Button(actions, text="Lưu thay đổi", style="Accent.TButton", command=save_settings).pack(
+                side="left"
+            )
+        else:
+            ttk.Button(actions, text="Đóng", command=dialog.destroy).pack(side="left")
 
         dialog.update_idletasks()
-        width = max(620, dialog.winfo_reqwidth())
-        height = max(320, dialog.winfo_reqheight())
+        width = max(700, dialog.winfo_reqwidth())
+        height = max(440, dialog.winfo_reqheight())
         x = self.app.winfo_rootx() + max(0, (self.app.winfo_width() - width) // 2)
         y = self.app.winfo_rooty() + max(0, (self.app.winfo_height() - height) // 2)
         dialog.geometry(f"{width}x{height}+{x}+{y}")
-        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        def close_dialog() -> None:
+            stop_audio()
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", close_dialog)
         dialog.grab_set()
         dialog.focus_set()
 

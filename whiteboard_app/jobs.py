@@ -24,6 +24,7 @@ CANCELED = "CANCELED"
 
 WAITING_STATES = (WAITING, QUEUED)
 TERMINAL_STATES = (COMPLETED, FAILED, CANCELED)
+EDITABLE_STATES = (WAITING, FAILED, CANCELED)
 
 
 def jobs_database_path() -> Path:
@@ -330,6 +331,49 @@ class JobStore:
             self.append_log(job_id, "Đã đưa job về trạng thái chờ để chạy lại.")
         return bool(cursor.rowcount)
 
+    def update_settings(
+        self,
+        job_id: str,
+        *,
+        aspect_ratio: str,
+        pen_brand: str,
+        voice_profile_id: str,
+        voice_name: str,
+        voice_audio_path: Path | None,
+        cli_path: str,
+        output_dir: Path,
+    ) -> bool:
+        """Cập nhật snapshot khi job chưa chạy; không đổi cấu hình giữa một lượt dựng."""
+        if aspect_ratio not in ("16:9", "9:16", "1:1"):
+            raise ValueError(f"Tỷ lệ video chưa được hỗ trợ: {aspect_ratio}")
+        brand = pen_brand.strip()
+        if len(brand) > 40:
+            raise ValueError("Chữ trên bút không được dài quá 40 ký tự.")
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE jobs SET aspect_ratio = ?, pen_brand = ?, voice_profile_id = ?,
+                    voice_name = ?, voice_audio_path = ?, cli_path = ?, output_dir = ?,
+                    updated_at = ?
+                WHERE job_id = ? AND status IN (?, ?, ?)
+                """,
+                (
+                    aspect_ratio,
+                    brand,
+                    voice_profile_id,
+                    voice_name,
+                    str(voice_audio_path.resolve()) if voice_audio_path else "",
+                    cli_path.strip(),
+                    str(output_dir.resolve()),
+                    now_iso(),
+                    job_id,
+                    *EDITABLE_STATES,
+                ),
+            )
+        if cursor.rowcount:
+            self.append_log(job_id, "Đã cập nhật thiết lập video của job.")
+        return bool(cursor.rowcount)
+
     def recover_interrupted(self) -> int:
         message = "App đã đóng khi job đang chạy. Hãy bấm Chạy lại để tiếp tục."
         with self._connect() as connection:
@@ -550,4 +594,3 @@ class SequentialJobRunner:
             finally:
                 self.active_job_id = None
                 self.on_event("idle", job.job_id, None)
-
