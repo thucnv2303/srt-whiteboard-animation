@@ -12,8 +12,15 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from .project import ProjectError, Scene, VideoProject, load_project
-from .renderer import ASPECT_RATIOS, RenderError, create_video_poster, run_pipeline
+from .renderer import (
+    ASPECT_RATIOS,
+    RenderError,
+    create_video_poster,
+    create_video_preview_audio,
+    run_pipeline,
+)
 from .timeline import TimelineError, TimelineResult, compile_timeline
+from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
 from .voice import (
     OmniVoiceError,
     VoiceLibrary,
@@ -122,6 +129,9 @@ class WhiteboardApp(tk.Tk):
         self._preview_kind = "scene"
         self._final_video: Path | None = None
         self._final_poster: Path | None = None
+        self._final_preview_audio: Path | None = None
+        self._seeking_video = False
+        self.video_player: TkVideoPlayer | None = None
 
         self.aspect_ratio = tk.StringVar(value="16:9")
         self.pen_brand = tk.StringVar(value="Ăn dặm mẹ Dâu")
@@ -133,10 +143,19 @@ class WhiteboardApp(tk.Tk):
         self.selected_voice_text = tk.StringVar(value="Chưa có giọng đã lưu")
         self.output_path = tk.StringVar(value="Tự động: thư mục output của dự án")
         self.result_path = tk.StringVar(value="Chưa có video kết quả")
+        self.video_seek = tk.DoubleVar(value=0.0)
+        self.video_time = tk.StringVar(value="00:00 / 00:00")
         self.progress_text = tk.StringVar(value="Sẵn sàng")
 
         self._build_styles()
         self._build_ui()
+        self.video_player = TkVideoPlayer(
+            self,
+            self.preview_canvas,
+            on_position=self._video_position_changed,
+            on_state=self._video_state_changed,
+            on_error=self._video_error,
+        )
         self._refresh_voice_profiles()
         self.bind("<Configure>", self._on_window_resize)
         self.after(100, self._poll_events)
@@ -232,14 +251,31 @@ class WhiteboardApp(tk.Tk):
 
         result_bar = ttk.Frame(self.preview_card, style="Card.TFrame")
         result_bar.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        result_bar.grid_columnconfigure(0, weight=1)
+        result_bar.grid_columnconfigure(2, weight=1)
         ttk.Label(result_bar, textvariable=self.result_path, style="Meta.TLabel").grid(
-            row=0, column=0, sticky="ew", padx=(0, 8)
+            row=0, column=0, columnspan=5, sticky="ew", pady=(0, 5)
         )
         self.play_result_button = ttk.Button(
-            result_bar, text="▶ Phát video", command=self._play_result, state="disabled"
+            result_bar, text="▶ Phát", command=self._play_result, state="disabled", width=10
         )
-        self.play_result_button.grid(row=0, column=1)
+        self.play_result_button.grid(row=1, column=0, padx=(0, 4))
+        self.stop_result_button = ttk.Button(
+            result_bar, text="■", command=self._stop_result, state="disabled", width=3
+        )
+        self.stop_result_button.grid(row=1, column=1, padx=(0, 6))
+        self.video_seek_bar = ttk.Scale(
+            result_bar, from_=0.0, to=1.0, variable=self.video_seek, state="disabled"
+        )
+        self.video_seek_bar.grid(row=1, column=2, sticky="ew")
+        self.video_seek_bar.bind("<ButtonPress-1>", self._video_seek_started)
+        self.video_seek_bar.bind("<ButtonRelease-1>", self._video_seek_finished)
+        ttk.Label(result_bar, textvariable=self.video_time, style="Meta.TLabel").grid(
+            row=1, column=3, padx=(8, 5)
+        )
+        self.external_result_button = ttk.Button(
+            result_bar, text="↗", width=3, command=self._open_result_external, state="disabled"
+        )
+        self.external_result_button.grid(row=1, column=4)
 
         ttk.Label(self.preview_card, text="Danh sách cảnh", style="CardTitle.TLabel").grid(
             row=3, column=0, sticky="w", pady=(12, 7)
@@ -393,6 +429,8 @@ class WhiteboardApp(tk.Tk):
             return
         if self.project:
             self.project.close()
+        if self.video_player:
+            self.video_player.close()
         self.project = loaded
         self.output_dir = loaded.root / "output" if loaded.temporary_root is None else None
         preview_items = project_preview_items(loaded)
@@ -439,18 +477,23 @@ class WhiteboardApp(tk.Tk):
         self.progress_text.set("Sẵn sàng — bấm Tạo video để chạy toàn bộ quy trình")
         self._final_video = None
         self._final_poster = None
+        self._final_preview_audio = None
         self.result_path.set("Chưa có video kết quả")
         self.result_preview_button.configure(state="disabled")
-        self.play_result_button.configure(state="disabled")
+        self._set_result_controls(False)
+        self.video_seek.set(0.0)
+        self.video_time.set("00:00 / 00:00")
         if self.output_dir:
             existing_video = self.output_dir / "final.mp4"
             if existing_video.is_file():
                 self._final_video = existing_video
                 existing_poster = self.output_dir / "preview.jpg"
                 self._final_poster = existing_poster if existing_poster.is_file() else None
+                existing_audio = self.output_dir / "preview-audio.wav"
+                self._final_preview_audio = existing_audio if existing_audio.is_file() else None
                 self.result_path.set(f"Video: {existing_video.name}")
                 self.result_preview_button.configure(state="normal")
-                self.play_result_button.configure(state="normal")
+                self._set_result_controls(True)
         first_row = self.scene_list.get_children()[0]
         self.scene_list.selection_set(first_row)
         self.scene_list.focus(first_row)
@@ -467,6 +510,9 @@ class WhiteboardApp(tk.Tk):
     def _select_preview_item(self, item: PreviewItem) -> None:
         self._active_preview_item = item
         self._preview_kind = "scene"
+        if self.video_player and self.video_player.state == "playing":
+            self.video_player.pause()
+        self.preview_canvas.configure(background="#e9edf2")
         try:
             from PIL import Image
             with Image.open(item.scene.image) as source:
@@ -497,19 +543,32 @@ class WhiteboardApp(tk.Tk):
         if not self._final_video:
             return
         self._preview_kind = "result"
-        self._preview_image = None
-        if self._final_poster and self._final_poster.is_file():
-            try:
-                from PIL import Image
-                with Image.open(self._final_poster) as source:
-                    self._preview_image = source.convert("RGB")
-            except Exception as exc:
-                self._append_log(f"Không đọc được ảnh xem trước video: {exc}")
-        self._render_preview()
+        try:
+            if self.video_player is None:
+                raise VideoPlaybackError("Trình phát nội bộ chưa được khởi tạo.")
+            if self.video_player.path != self._final_video:
+                self.video_player.load(self._final_video, self._final_preview_audio)
+            else:
+                self.video_player.redraw()
+            self._set_result_controls(True)
+        except VideoPlaybackError as exc:
+            self._append_log(f"Trình phát nội bộ: {exc}")
+            self._show_result_poster_fallback()
 
     def _play_result(self) -> None:
         if not self._final_video or not self._final_video.is_file():
             messagebox.showwarning("Chưa có video", "Hãy tạo video trước khi xem kết quả.", parent=self)
+            return
+        self._show_result_preview()
+        if self.video_player and self.video_player.loaded:
+            self.video_player.play_pause()
+
+    def _stop_result(self) -> None:
+        if self.video_player:
+            self.video_player.stop()
+
+    def _open_result_external(self) -> None:
+        if not self._final_video or not self._final_video.is_file():
             return
         try:
             open_media(self._final_video)
@@ -519,6 +578,46 @@ class WhiteboardApp(tk.Tk):
     def _preview_canvas_clicked(self, _event: tk.Event | None = None) -> None:
         if self._preview_kind == "result":
             self._play_result()
+
+    def _show_result_poster_fallback(self) -> None:
+        self._preview_image = None
+        if self._final_poster and self._final_poster.is_file():
+            try:
+                from PIL import Image
+                with Image.open(self._final_poster) as source:
+                    self._preview_image = source.convert("RGB")
+            except Exception as exc:
+                self._append_log(f"Không đọc được ảnh xem trước video: {exc}")
+        self._render_preview()
+        self.external_result_button.configure(state="normal")
+
+    def _set_result_controls(self, enabled: bool) -> None:
+        state = "normal" if enabled else "disabled"
+        self.play_result_button.configure(state=state)
+        self.stop_result_button.configure(state=state)
+        self.video_seek_bar.configure(state=state)
+        self.external_result_button.configure(state=state)
+
+    def _video_position_changed(self, position: float, duration: float) -> None:
+        if not self._seeking_video:
+            self.video_seek_bar.configure(to=max(0.01, duration))
+            self.video_seek.set(position)
+        self.video_time.set(f"{format_media_time(position)} / {format_media_time(duration)}")
+
+    def _video_state_changed(self, state: str) -> None:
+        self.play_result_button.configure(text="⏸ Tạm dừng" if state == "playing" else "▶ Phát")
+
+    def _video_error(self, message: str) -> None:
+        self._append_log(message)
+        self.progress_text.set("Lỗi trình phát — có thể dùng nút ↗ để mở ngoài")
+
+    def _video_seek_started(self, _event: tk.Event | None = None) -> None:
+        self._seeking_video = True
+
+    def _video_seek_finished(self, _event: tk.Event | None = None) -> None:
+        self._seeking_video = False
+        if self.video_player and self.video_player.loaded:
+            self.video_player.seek(float(self.video_seek.get()))
 
     def _mark_scene_status(self, status: str) -> None:
         for row_id in self.scene_list.get_children():
@@ -536,6 +635,9 @@ class WhiteboardApp(tk.Tk):
         self._preview_after = None
         width = max(1, self.preview_canvas.winfo_width())
         height = max(1, self.preview_canvas.winfo_height())
+        if self._preview_kind == "result" and self.video_player and self.video_player.loaded:
+            self.video_player.redraw()
+            return
         if self._preview_image is None:
             self.preview_canvas.delete("all")
             label = (
@@ -666,6 +768,9 @@ class WhiteboardApp(tk.Tk):
             "Ghi đè video", f"{final} đã tồn tại. Bạn có muốn ghi đè?", parent=self
         ):
             return
+        if self.video_player:
+            self.video_player.close()
+        self._set_result_controls(False)
         self.cancel_event.clear()
         self._mark_scene_status("Đang xử lý")
         self._set_busy(True, "Bước 1/3 — đang tạo giọng đọc…")
@@ -707,7 +812,10 @@ class WhiteboardApp(tk.Tk):
                     project, output_dir, log, self.cancel_event, aspect_ratio=aspect_ratio,
                 )
                 poster = create_video_poster(result, output_dir / "preview.jpg", log)
-                self.events.put(("done", (result, poster)))
+                preview_audio = create_video_preview_audio(
+                    result, output_dir / "preview-audio.wav", log
+                )
+                self.events.put(("done", (result, poster, preview_audio)))
             except (OmniVoiceError, TimelineError, RenderError, OSError) as exc:
                 self.events.put(("error", str(exc)))
         threading.Thread(target=worker, daemon=True).start()
@@ -755,18 +863,19 @@ class WhiteboardApp(tk.Tk):
                     self._append_log(f"Timeline: {timeline.timeline_path}")
                 elif kind == "done":
                     self._set_busy(False, "Đã tạo video")
-                    result, poster = payload
+                    result, poster, preview_audio = payload
                     self._final_video = Path(result)
                     self._final_poster = Path(poster) if poster else None
+                    self._final_preview_audio = Path(preview_audio) if preview_audio else None
                     self.result_path.set(f"Video: {self._final_video.name}")
                     self.result_preview_button.configure(state="normal")
-                    self.play_result_button.configure(state="normal")
+                    self._set_result_controls(True)
                     self._mark_scene_status("Đã dựng")
                     self._append_log(f"Hoàn tất: {self._final_video}")
                     self._show_result_preview()
                     messagebox.showinfo(
                         "Hoàn tất",
-                        f"Video đã được tạo tại:\n{self._final_video}\n\nBấm Phát video ở cột bên trái để xem.",
+                        f"Video đã được tạo tại:\n{self._final_video}\n\nBấm Phát ở cột bên trái để xem ngay trong app.",
                         parent=self,
                     )
                 elif kind == "error":
@@ -780,6 +889,8 @@ class WhiteboardApp(tk.Tk):
 
     def _on_close(self) -> None:
         self.cancel_event.set()
+        if self.video_player:
+            self.video_player.close()
         if self.project:
             self.project.close()
         self.destroy()

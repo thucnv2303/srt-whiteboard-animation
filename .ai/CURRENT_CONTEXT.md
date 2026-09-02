@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 25 test pass.
+- Unit test local: 28 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -55,8 +55,9 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Timeline compiler đo thời lượng từng WAV, sinh `timeline.json`, `voice-timeline.wav` và annotation runtime; renderer ưu tiên annotation runtime mà không sửa dữ liệu nguồn.
 - Gói bò phiên bản 5 có 5 cue ánh xạ trực tiếp tới 5 món.
 - UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
-- Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4. Sau khi xong, cột trái có poster và nút phát video kết quả.
+- Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
+- Cột trái có trình phát MP4 tích hợp bằng PyAV + pygame: phát/tạm dừng, dừng, tua, thời gian và âm thanh. FFmpeg tạo `preview-audio.wav`; nút mở ngoài chỉ là fallback.
 
 ## Task an toàn tiếp theo
 
-Người dùng pull branch, chọn giọng rồi bấm một lần **Tạo video** cho gói bò v5; kiểm tra đủ 5 phân cảnh, preview kết quả và quy trình tự động.
+Người dùng pull branch, để `run_app.bat` tự cài pygame, rồi kiểm tra phát/tạm dừng/tua và âm thanh của video ngay trong cột trái.

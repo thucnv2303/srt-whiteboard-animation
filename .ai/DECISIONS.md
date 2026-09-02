@@ -119,3 +119,11 @@
 - Decision: Màn hình chính chỉ có một hành động **Tạo video**, tự chạy tạo voice, đồng bộ timeline, render và ghép MP4. Narration cue được hiển thị như phân cảnh nội dung, kể cả khi nhiều cue dùng chung một ảnh nguồn.
 - Preview: Sau khi dựng xong, app tạo `preview.jpg`, chuyển cột trái sang chế độ video kết quả và mở `final.mp4` bằng trình phát mặc định khi người dùng bấm phát.
 - Reason: Giảm thao tác thủ công, hiển thị đúng cấu trúc nội dung mà người dùng cần kiểm tra và dành thêm không gian cho thông tin dự án.
+
+## DEC-20260902-03 — Trình phát video tích hợp
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Phát MP4 trực tiếp trong canvas Tkinter bằng PyAV; FFmpeg trích WAV PCM và pygame phát từ đúng offset khi tua. Âm thanh là clock, player bỏ frame trễ để hạn chế lệch tiếng/hình.
+- Controls: phát/tạm dừng, dừng, thanh tua, thời gian hiện tại/tổng và nút mở ngoài dự phòng.
+- Dependency: `run_app.bat` luôn chạy kiểm tra môi trường để tự bổ sung pygame cho `.venv` cũ; không yêu cầu người dùng clone/cài lại dự án.

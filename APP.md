@@ -70,7 +70,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Mở `project.json` hoặc ZIP.
 - Kiểm tra cấu trúc và tài nguyên trước khi render.
 - Danh sách bên trái hiển thị từng narration cue như một phân cảnh nội dung; dù nhiều cue dùng chung một ảnh tổng, app vẫn liệt kê và phóng đúng vùng ảnh của từng cue.
-- Sau khi hoàn tất, cột trái tự chuyển sang ảnh đại diện của video kết quả; bấm vào khung hoặc **Phát video** để mở MP4 bằng trình phát mặc định.
+- Sau khi hoàn tất, cột trái tự chuyển sang trình phát video tích hợp: phát/tạm dừng, dừng, tua timeline, đồng hồ thời gian và âm thanh ngay trong app. Nút ↗ mở trình phát Windows chỉ là phương án dự phòng.
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
 - Card **Thiết lập video** gom giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra và chữ trên thân bút.
@@ -100,6 +100,7 @@ output/
 ├── timeline.json            # ánh xạ cue ↔ scene ↔ element
 ├── voice-timeline.wav       # voice hoàn chỉnh có khoảng nghỉ
 ├── preview.jpg              # ảnh đại diện cho khung xem video kết quả
+├── preview-audio.wav        # PCM phục vụ phát/tua âm thanh trong app
 └── final.mp4
 ```
 
@@ -119,7 +120,9 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 25 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, annotation runtime, poster video, an toàn ZIP, render, UI responsive và thư viện giọng.
+Hiện có 28 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, annotation runtime, poster/audio preview, phép tua PCM, render, UI responsive và thư viện giọng.
+
+Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 
 ## Gói kiểm thử 52 giây
 

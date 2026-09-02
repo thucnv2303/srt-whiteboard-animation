@@ -21,6 +21,7 @@
 - Tự phân tích, chọn đoạn sạch và giảm nhiễu mẫu clone bằng FFmpeg.
 - Audio-clock timeline: cue voice → thời lượng WAV → runtime annotation → render đồng bộ.
 - Danh sách cue thành phân cảnh nội dung, preview video kết quả và pipeline một nút.
+- Trình phát video tích hợp có hình, âm thanh, phát/tạm dừng/dừng và tua timeline.
 
 ## Backlog ưu tiên
 
@@ -52,6 +53,7 @@
 - Chạy gói bò v5, xác nhận 5 câu khớp 5 vùng hình; ghi nhận offset cần tinh chỉnh.
 - Xác nhận cột trái hiện đủ 5 phân cảnh dù gói chỉ dùng một ảnh tổng.
 - Xác nhận một lần bấm **Tạo video** tự chạy voice, timeline, render và mở được preview kết quả.
+- Xác nhận player nội bộ phát tiếng, tua không lệch hình và nút ↗ mở ngoài khi cần.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

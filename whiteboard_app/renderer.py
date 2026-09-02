@@ -273,3 +273,47 @@ def create_video_poster(
     if on_log:
         on_log(f"Đã tạo ảnh xem trước: {output}")
     return output
+
+
+def create_video_preview_audio(
+    video: Path,
+    output: Path,
+    on_log: Callable[[str], None] | None = None,
+) -> Path | None:
+    """Trích WAV PCM để trình phát Tkinter phát và tua đồng bộ với khung hình."""
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None or not video.is_file():
+        return None
+    output.parent.mkdir(parents=True, exist_ok=True)
+    command = [
+        ffmpeg,
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        str(video),
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "24000",
+        "-c:a",
+        "pcm_s16le",
+        str(output),
+    ]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=subprocess_environment(),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    if result.returncode != 0 or not output.is_file():
+        if on_log:
+            on_log("Không trích được âm thanh preview; video MP4 vẫn hoàn chỉnh.")
+        return None
+    if on_log:
+        on_log(f"Đã chuẩn bị âm thanh cho trình phát: {output}")
+    return output

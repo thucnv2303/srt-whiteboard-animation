@@ -6,7 +6,12 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from whiteboard_app.project import load_project
-from whiteboard_app.renderer import build_commands, create_video_poster, subprocess_environment
+from whiteboard_app.renderer import (
+    build_commands,
+    create_video_poster,
+    create_video_preview_audio,
+    subprocess_environment,
+)
 
 
 class RendererCommandTests(unittest.TestCase):
@@ -140,6 +145,25 @@ class RendererCommandTests(unittest.TestCase):
                 result = create_video_poster(video, poster)
             self.assertEqual(result, poster)
             self.assertIn("-frames:v", run.call_args.args[0])
+
+    def test_extracts_pcm_audio_for_embedded_player(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "final.mp4"
+            audio = root / "preview-audio.wav"
+            video.write_bytes(b"video")
+
+            def fake_run(command: list[str], **_kwargs: object) -> Mock:
+                Path(command[-1]).write_bytes(b"wav")
+                return Mock(returncode=0)
+
+            with (
+                patch("whiteboard_app.renderer.shutil.which", return_value="ffmpeg-fixture"),
+                patch("whiteboard_app.renderer.subprocess.run", side_effect=fake_run) as run,
+            ):
+                result = create_video_preview_audio(video, audio)
+            self.assertEqual(result, audio)
+            self.assertIn("pcm_s16le", run.call_args.args[0])
 
 
 if __name__ == "__main__":
