@@ -69,14 +69,15 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Card nhật ký toàn chiều ngang luôn nằm ở dưới cùng.
 - Mở `project.json` hoặc ZIP.
 - Kiểm tra cấu trúc và tài nguyên trước khi render.
-- Xem trước ảnh và chuyển cảnh bằng dải cảnh ngang.
+- Danh sách bên trái hiển thị từng narration cue như một phân cảnh nội dung; dù nhiều cue dùng chung một ảnh tổng, app vẫn liệt kê và phóng đúng vùng ảnh của từng cue.
+- Sau khi hoàn tất, cột trái tự chuyển sang ảnh đại diện của video kết quả; bấm vào khung hoặc **Phát video** để mở MP4 bằng trình phát mặc định.
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
-- Chọn giọng trong thư viện, nghe thử rồi tạo voice từ kịch bản bằng OmniVoice.
+- Card **Thiết lập video** gom giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra và chữ trên thân bút.
 - Popup **Cài đặt giọng** quản lý đường dẫn OmniVoice và thêm giọng clone mới.
 - Mẫu mới được tự chọn đoạn nói liên tục 3–8 giây, chấm điểm SNR, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.
 - Nếu dự án có `narration`, OmniVoice tạo WAV riêng cho từng cue trong một lần nạp model. App lấy thời lượng WAV thực tế làm đồng hồ, tạo `timeline.json` và annotation runtime để vùng hình tương ứng vẽ cùng câu nói.
-- Dựng từng cảnh bằng renderer upstream rồi ghép thành `final.mp4`.
+- Một nút **Tạo video** chạy lần lượt: tạo voice → biên dịch timeline → dựng cảnh → ghép âm thanh và MP4 → tạo ảnh preview.
 - Gắn voice bằng FFmpeg nếu dự án có `voice`.
 - Có nút hủy và khóa thao tác trong lúc render.
 
@@ -88,16 +89,18 @@ Chưa bao gồm chạy nhiều job, đồng bộ ChatGPT/MCP, tự tạo annotat
 2. Bấm **Cài đặt giọng…**, chọn `omnivoice-infer.exe` một lần.
 3. Đặt tên giọng, chọn file ghi âm và bấm **Phân tích, làm sạch và lưu giọng**.
 4. Nghe thử bản đã xử lý. Đóng popup, chọn giọng đó trong danh sách của màn hình chính.
-5. Bấm **Tạo âm thanh bằng giọng đã chọn**. Khi hoàn tất, nút **Tạo video** được bật.
+5. Bấm **Tạo video**. App tự tạo toàn bộ cue voice, đồng bộ timeline rồi dựng MP4; không còn bước tạo âm thanh riêng.
 
-Với dự án schema mới, nút này có tên **Tạo âm thanh và đồng bộ timeline**. Các file sinh ra nằm trong thư mục output:
+Các file sinh ra nằm trong thư mục output:
 
 ```text
 output/
 ├── audio-cues/              # WAV riêng cho từng câu
 ├── runtime-annotations/     # startMs/durationMs theo voice thật
 ├── timeline.json            # ánh xạ cue ↔ scene ↔ element
-└── voice-timeline.wav       # voice hoàn chỉnh có khoảng nghỉ
+├── voice-timeline.wav       # voice hoàn chỉnh có khoảng nghỉ
+├── preview.jpg              # ảnh đại diện cho khung xem video kết quả
+└── final.mp4
 ```
 
 Quy tắc mặc định: bắt đầu vẽ sau khi cue bắt đầu 100 ms, hoàn tất trước cuối câu khoảng 500 ms, nghỉ 250 ms giữa các cue và giữ hình hoàn chỉnh 500 ms cuối cảnh. App không sửa annotation nguồn do GPT gửi; chỉ dùng bản runtime khi render.
@@ -116,7 +119,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 23 unit test cho import dự án, narration cue, timeline theo WAV, annotation runtime, an toàn ZIP, render, UI responsive và thư viện giọng.
+Hiện có 25 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, annotation runtime, poster video, an toàn ZIP, render, UI responsive và thư viện giọng.
 
 ## Gói kiểm thử 52 giây
 

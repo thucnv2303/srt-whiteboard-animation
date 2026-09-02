@@ -3,7 +3,7 @@
 ## Task đang hoạt động
 
 - ID: `TASK-005`
-- Trạng thái: `READY_FOR_USER_TEST` sau khi cập nhật PR.
+- Trạng thái: `READY_FOR_USER_TEST` sau khi cập nhật UI và pipeline một nút.
 - Mục tiêu: desktop app MVP nhận gói dự án và điều phối render.
 - Branch: `feat/desktop-app-mvp`
 - Phạm vi: UI, schema gói dự án, pipeline, test, CI và hướng dẫn Windows.
@@ -20,6 +20,7 @@
 - Thư viện giọng dùng chung, nghe thử và popup quản lý/thêm giọng.
 - Tự phân tích, chọn đoạn sạch và giảm nhiễu mẫu clone bằng FFmpeg.
 - Audio-clock timeline: cue voice → thời lượng WAV → runtime annotation → render đồng bộ.
+- Danh sách cue thành phân cảnh nội dung, preview video kết quả và pipeline một nút.
 
 ## Backlog ưu tiên
 
@@ -49,6 +50,8 @@
 - Xác nhận app lấy thẳng `script.txt`, không yêu cầu copy lời thoại vào giao diện.
 - Thêm một mẫu giọng thật, nghe trước/sau xử lý và đánh giá mức nhiễu còn lại hoặc méo tiếng.
 - Chạy gói bò v5, xác nhận 5 câu khớp 5 vùng hình; ghi nhận offset cần tinh chỉnh.
+- Xác nhận cột trái hiện đủ 5 phân cảnh dù gói chỉ dùng một ảnh tổng.
+- Xác nhận một lần bấm **Tạo video** tự chạy voice, timeline, render và mở được preview kết quả.
 
 ### `TASK-008` — Tự tạo annotation từ scene
 

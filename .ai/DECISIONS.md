@@ -111,3 +111,11 @@
 - Decision: GPT cung cấp `narration[]` với cue, `sceneId` và `elementIds`. OmniVoice tạo từng cue trong một lần nạp model; app đo thời lượng WAV thật rồi sinh timeline và annotation runtime. Không kéo/cắt voice để ép vào duration hình cố định.
 - Timing defaults: vẽ bắt đầu sau voice 100 ms, hoàn tất trước cuối cue khoảng 500 ms, nghỉ mặc định 200–250 ms và giữ hình 500 ms cuối cảnh.
 - Source safety: không ghi đè annotation từ GPT; renderer chỉ dùng file trong `output/runtime-annotations/` cho lần dựng hiện tại.
+
+## DEC-20260902-02 — Pipeline một nút và cue là phân cảnh UI
+
+- Status: approved
+- Decision owner: người dùng
+- Decision: Màn hình chính chỉ có một hành động **Tạo video**, tự chạy tạo voice, đồng bộ timeline, render và ghép MP4. Narration cue được hiển thị như phân cảnh nội dung, kể cả khi nhiều cue dùng chung một ảnh nguồn.
+- Preview: Sau khi dựng xong, app tạo `preview.jpg`, chuyển cột trái sang chế độ video kết quả và mở `final.mp4` bằng trình phát mặc định khi người dùng bấm phát.
+- Reason: Giảm thao tác thủ công, hiển thị đúng cấu trúc nội dung mà người dùng cần kiểm tra và dành thêm không gian cho thông tin dự án.

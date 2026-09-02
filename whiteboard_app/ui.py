@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import json
+import os
 import queue
+import subprocess
+import sys
 import threading
 import tkinter as tk
+from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from .project import ProjectError, Scene, VideoProject, load_project
-from .renderer import ASPECT_RATIOS, RenderError, run_pipeline
+from .renderer import ASPECT_RATIOS, RenderError, create_video_poster, run_pipeline
 from .timeline import TimelineError, TimelineResult, compile_timeline
 from .voice import (
     OmniVoiceError,
@@ -27,6 +32,74 @@ def responsive_layout(width: int) -> str:
     return "horizontal" if width >= 920 else "stacked"
 
 
+@dataclass(frozen=True)
+class PreviewItem:
+    item_id: str
+    title: str
+    scene: Scene
+    region: tuple[int, int, int, int] | None = None
+
+
+def project_preview_items(project: VideoProject) -> list[PreviewItem]:
+    """Biến narration cue thành các phân cảnh nội dung để UI hiển thị đầy đủ."""
+    annotations: dict[str, dict[str, object]] = {}
+    scenes = {scene.scene_id: scene for scene in project.scenes}
+    for scene in project.scenes:
+        try:
+            data = json.loads(scene.annotation.read_text(encoding="utf-8-sig"))
+            annotations[scene.scene_id] = data if isinstance(data, dict) else {}
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            annotations[scene.scene_id] = {}
+
+    items: list[PreviewItem] = []
+    for cue in project.narration_cues:
+        scene = scenes[cue.scene_id]
+        raw_elements = annotations[cue.scene_id].get("elements", [])
+        element_lookup = {
+            str(element.get("id")): element
+            for element in raw_elements
+            if isinstance(element, dict) and isinstance(element.get("id"), str)
+        }
+        labels: list[str] = []
+        regions: list[tuple[int, int, int, int]] = []
+        for element_id in cue.element_ids:
+            element = element_lookup.get(element_id, {})
+            label = element.get("label")
+            if isinstance(label, str) and label.strip():
+                labels.append(label.strip())
+            region = element.get("region")
+            if isinstance(region, dict):
+                values = (region.get("x"), region.get("y"), region.get("width"), region.get("height"))
+                if all(isinstance(value, int) for value in values):
+                    x, y, width, height = values
+                    if width > 0 and height > 0:
+                        regions.append((x, y, x + width, y + height))
+        union_region = None
+        if regions:
+            union_region = (
+                min(region[0] for region in regions),
+                min(region[1] for region in regions),
+                max(region[2] for region in regions),
+                max(region[3] for region in regions),
+            )
+        fallback = cue.text.split(".", 1)[0].strip()
+        title = " + ".join(labels) or fallback or cue.cue_id
+        items.append(PreviewItem(cue.cue_id, title, scene, union_region))
+    if items:
+        return items
+    return [PreviewItem(scene.scene_id, scene.title, scene) for scene in project.scenes]
+
+
+def open_media(path: Path) -> None:
+    """Mở video bằng trình phát mặc định của hệ điều hành."""
+    if os.name == "nt":
+        os.startfile(str(path))  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(path)])
+    else:
+        subprocess.Popen(["xdg-open", str(path)])
+
+
 class WhiteboardApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -44,6 +117,11 @@ class WhiteboardApp(tk.Tk):
         self._preview_image = None
         self._preview_photo = None
         self._preview_after: str | None = None
+        self._preview_items: dict[str, PreviewItem] = {}
+        self._active_preview_item: PreviewItem | None = None
+        self._preview_kind = "scene"
+        self._final_video: Path | None = None
+        self._final_poster: Path | None = None
 
         self.aspect_ratio = tk.StringVar(value="16:9")
         self.pen_brand = tk.StringVar(value="Ăn dặm mẹ Dâu")
@@ -54,6 +132,7 @@ class WhiteboardApp(tk.Tk):
         self.timeline_text = tk.StringVar(value="Timeline: chưa đồng bộ")
         self.selected_voice_text = tk.StringVar(value="Chưa có giọng đã lưu")
         self.output_path = tk.StringVar(value="Tự động: thư mục output của dự án")
+        self.result_path = tk.StringVar(value="Chưa có video kết quả")
         self.progress_text = tk.StringVar(value="Sẵn sàng")
 
         self._build_styles()
@@ -131,35 +210,57 @@ class WhiteboardApp(tk.Tk):
         top = ttk.Frame(self.preview_card, style="Card.TFrame")
         top.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         top.grid_columnconfigure(0, weight=1)
-        ttk.Label(top, text="Xem trước cảnh", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(top, text="Xem trước", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
         self.scene_counter = ttk.Label(top, text="0 cảnh", style="Meta.TLabel")
-        self.scene_counter.grid(row=0, column=1, sticky="e")
+        self.scene_counter.grid(row=0, column=1, sticky="e", padx=(8, 10))
+        self.scene_preview_button = ttk.Button(top, text="Ảnh cảnh", command=self._show_scene_preview)
+        self.scene_preview_button.grid(row=0, column=2, padx=(0, 5))
+        self.result_preview_button = ttk.Button(
+            top, text="Video kết quả", command=self._show_result_preview, state="disabled"
+        )
+        self.result_preview_button.grid(row=0, column=3)
 
         self.preview_canvas = tk.Canvas(
-            self.preview_card, background="#e9edf2", highlightthickness=0, relief="flat", height=370
+            self.preview_card, background="#e9edf2", highlightthickness=0, relief="flat", height=330
         )
         self.preview_canvas.grid(row=1, column=0, sticky="nsew")
         self.preview_canvas.bind("<Configure>", self._schedule_preview)
+        self.preview_canvas.bind("<Button-1>", self._preview_canvas_clicked)
         self.preview_canvas.create_text(
             0, 0, text="Mở một dự án để xem trước", fill="#667085", font=("Segoe UI", 11), tags="empty"
         )
 
+        result_bar = ttk.Frame(self.preview_card, style="Card.TFrame")
+        result_bar.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        result_bar.grid_columnconfigure(0, weight=1)
+        ttk.Label(result_bar, textvariable=self.result_path, style="Meta.TLabel").grid(
+            row=0, column=0, sticky="ew", padx=(0, 8)
+        )
+        self.play_result_button = ttk.Button(
+            result_bar, text="▶ Phát video", command=self._play_result, state="disabled"
+        )
+        self.play_result_button.grid(row=0, column=1)
+
         ttk.Label(self.preview_card, text="Danh sách cảnh", style="CardTitle.TLabel").grid(
-            row=2, column=0, sticky="w", pady=(12, 7)
+            row=3, column=0, sticky="w", pady=(12, 7)
         )
-        scene_canvas = tk.Canvas(self.preview_card, height=76, background="#ffffff", highlightthickness=0)
-        scene_canvas.grid(row=3, column=0, sticky="ew")
-        scene_scroll = ttk.Scrollbar(self.preview_card, orient="horizontal", command=scene_canvas.xview)
-        scene_scroll.grid(row=4, column=0, sticky="ew", pady=(4, 0))
-        scene_canvas.configure(xscrollcommand=scene_scroll.set)
-        self.scene_strip = ttk.Frame(scene_canvas, style="Card.TFrame")
-        scene_window = scene_canvas.create_window((0, 0), window=self.scene_strip, anchor="nw")
-        self.scene_strip.bind(
-            "<Configure>", lambda _event: scene_canvas.configure(scrollregion=scene_canvas.bbox("all"))
+        scene_table = ttk.Frame(self.preview_card, style="Card.TFrame")
+        scene_table.grid(row=4, column=0, sticky="ew")
+        scene_table.grid_columnconfigure(0, weight=1)
+        self.scene_list = ttk.Treeview(
+            scene_table, columns=("number", "title", "status"), show="headings", height=5, selectmode="browse"
         )
-        scene_canvas.bind(
-            "<Configure>", lambda event: scene_canvas.itemconfigure(scene_window, height=event.height)
-        )
+        self.scene_list.heading("number", text="#")
+        self.scene_list.heading("title", text="Phân cảnh nội dung")
+        self.scene_list.heading("status", text="Trạng thái")
+        self.scene_list.column("number", width=42, minwidth=42, stretch=False, anchor="center")
+        self.scene_list.column("title", width=310, minwidth=160, stretch=True)
+        self.scene_list.column("status", width=90, minwidth=80, stretch=False, anchor="center")
+        self.scene_list.grid(row=0, column=0, sticky="ew")
+        self.scene_list.bind("<<TreeviewSelect>>", self._scene_list_selected)
+        scene_scroll = ttk.Scrollbar(scene_table, orient="vertical", command=self.scene_list.yview)
+        scene_scroll.grid(row=0, column=1, sticky="ns")
+        self.scene_list.configure(yscrollcommand=scene_scroll.set)
 
     def _build_settings_card(self) -> None:
         self.settings_card.grid_columnconfigure(0, weight=1)
@@ -188,47 +289,48 @@ class WhiteboardApp(tk.Tk):
         )
         self.project_script.grid(row=4, column=0, sticky="ew")
 
-        audio = ttk.LabelFrame(self.settings_card, text="Giọng đọc", padding=10)
-        audio.grid(row=2, column=0, sticky="ew", pady=7)
-        audio.grid_columnconfigure(0, weight=1)
-        ttk.Label(audio, textvariable=self.voice_path, style="Subtitle.TLabel").grid(
-            row=0, column=0, columnspan=4, sticky="ew", pady=(0, 6)
+        video_settings = ttk.LabelFrame(self.settings_card, text="Thiết lập video", padding=10)
+        video_settings.grid(row=2, column=0, sticky="ew", pady=7)
+        video_settings.grid_columnconfigure(1, weight=1)
+        ttk.Label(video_settings, text="Giọng đọc", style="Subtitle.TLabel").grid(
+            row=0, column=0, sticky="w", padx=(0, 8)
         )
-        self.voice_combo = ttk.Combobox(audio, textvariable=self.selected_voice_text, state="readonly")
-        self.voice_combo.grid(row=1, column=0, columnspan=4, sticky="ew")
+        self.voice_combo = ttk.Combobox(video_settings, textvariable=self.selected_voice_text, state="readonly")
+        self.voice_combo.grid(row=0, column=1, sticky="ew")
         self.voice_combo.bind("<<ComboboxSelected>>", self._voice_selected)
-        self.preview_voice_button = ttk.Button(audio, text="▶ Nghe thử", command=self._preview_voice)
-        self.preview_voice_button.grid(row=2, column=0, sticky="ew", pady=(7, 0), padx=(0, 4))
-        ttk.Button(audio, text="■ Dừng", command=stop_audio).grid(
-            row=2, column=1, sticky="ew", pady=(7, 0), padx=4
+        self.preview_voice_button = ttk.Button(video_settings, text="▶", width=3, command=self._preview_voice)
+        self.preview_voice_button.grid(row=0, column=2, padx=(5, 2))
+        self.stop_voice_button = ttk.Button(video_settings, text="■", width=3, command=stop_audio)
+        self.stop_voice_button.grid(row=0, column=3, padx=2)
+        self.voice_settings_button = ttk.Button(
+            video_settings, text="⚙", width=3, command=self._open_voice_manager
         )
-        self.voice_settings_button = ttk.Button(audio, text="⚙ Cài đặt giọng…", command=self._open_voice_manager)
-        self.voice_settings_button.grid(row=2, column=2, columnspan=2, sticky="ew", pady=(7, 0), padx=(4, 0))
-        self.clone_button = ttk.Button(
-            audio, text="Tạo âm thanh và đồng bộ timeline", command=self._start_voice_clone
-        )
-        self.clone_button.grid(row=3, column=0, columnspan=4, sticky="ew", pady=(8, 0))
-        ttk.Label(audio, textvariable=self.timeline_text, style="Subtitle.TLabel").grid(
-            row=4, column=0, columnspan=4, sticky="ew", pady=(6, 0)
-        )
+        self.voice_settings_button.grid(row=0, column=4, padx=(2, 0))
 
-        ratio = ttk.LabelFrame(self.settings_card, text="Tỷ lệ đầu ra", padding=10)
-        ratio.grid(row=3, column=0, sticky="ew", pady=7)
+        ttk.Label(video_settings, text="Khung hình", style="Subtitle.TLabel").grid(
+            row=1, column=0, sticky="w", padx=(0, 8), pady=(10, 0)
+        )
+        ratio = ttk.Frame(video_settings)
+        ratio.grid(row=1, column=1, columnspan=4, sticky="ew", pady=(10, 0))
         for column, (key, spec) in enumerate(ASPECT_RATIOS.items()):
             ratio.grid_columnconfigure(column, weight=1)
             ttk.Radiobutton(
-                ratio, text=f"{key}\n{spec.width}×{spec.height}", value=key,
+                ratio, text=f"{key}  {spec.width}×{spec.height}", value=key,
                 variable=self.aspect_ratio, command=self._schedule_preview,
-            ).grid(row=0, column=column, sticky="ew", padx=3)
+            ).grid(row=0, column=column, sticky="w", padx=(0, 8))
 
-        pen = ttk.LabelFrame(self.settings_card, text="Chữ trên thân bút", padding=10)
-        pen.grid(row=4, column=0, sticky="ew", pady=7)
-        pen.grid_columnconfigure(0, weight=1)
-        ttk.Entry(pen, textvariable=self.pen_brand).grid(row=0, column=0, sticky="ew")
-        ttk.Label(pen, text="Tối đa 40 ký tự", style="Subtitle.TLabel").grid(row=1, column=0, sticky="w", pady=(4, 0))
+        ttk.Label(video_settings, text="Chữ trên bút", style="Subtitle.TLabel").grid(
+            row=2, column=0, sticky="w", padx=(0, 8), pady=(10, 0)
+        )
+        ttk.Entry(video_settings, textvariable=self.pen_brand).grid(
+            row=2, column=1, columnspan=4, sticky="ew", pady=(10, 0)
+        )
+        ttk.Label(video_settings, textvariable=self.timeline_text, style="Subtitle.TLabel").grid(
+            row=3, column=0, columnspan=5, sticky="ew", pady=(8, 0)
+        )
 
         output = ttk.LabelFrame(self.settings_card, text="Nơi xuất", padding=10)
-        output.grid(row=5, column=0, sticky="ew", pady=7)
+        output.grid(row=3, column=0, sticky="ew", pady=7)
         output.grid_columnconfigure(0, weight=1)
         ttk.Label(output, textvariable=self.output_path, style="Subtitle.TLabel").grid(
             row=0, column=0, sticky="ew", padx=(0, 8)
@@ -237,7 +339,7 @@ class WhiteboardApp(tk.Tk):
         self.output_button.grid(row=0, column=1)
 
         status = ttk.Frame(self.settings_card, style="Card.TFrame")
-        status.grid(row=6, column=0, sticky="ew", pady=(8, 0))
+        status.grid(row=4, column=0, sticky="ew", pady=(8, 0))
         status.grid_columnconfigure(0, weight=1)
         ttk.Label(status, textvariable=self.progress_text, style="Meta.TLabel").grid(row=0, column=0, sticky="w")
         self.cancel_button = ttk.Button(status, text="Hủy", command=self.cancel_event.set, state="disabled")
@@ -293,14 +395,20 @@ class WhiteboardApp(tk.Tk):
             self.project.close()
         self.project = loaded
         self.output_dir = loaded.root / "output" if loaded.temporary_root is None else None
-        self.project_header.configure(text=f"{loaded.title}  •  phiên bản {loaded.version}  •  {len(loaded.scenes)} cảnh")
-        self.scene_counter.configure(text=f"{len(loaded.scenes)} cảnh")
+        preview_items = project_preview_items(loaded)
+        item_count = len(preview_items)
+        self.project_header.configure(
+            text=f"{loaded.title}  •  phiên bản {loaded.version}  •  {item_count} phân cảnh"
+        )
+        self.scene_counter.configure(text=f"{item_count} phân cảnh")
         self.output_path.set(str(self.output_dir) if self.output_dir else "Chọn nơi xuất cho dự án ZIP")
         self.pen_brand.set(loaded.pen_brand or "Ăn dặm mẹ Dâu")
         total_ms = sum(scene.duration_ms for scene in loaded.scenes)
         duration_text = f"{total_ms / 1000:.1f} giây" if total_ms else "chưa có thời lượng"
         self.project_title_text.set(loaded.title)
-        self.project_meta_text.set(f"{len(loaded.scenes)} cảnh  •  {duration_text}  •  phiên bản {loaded.version}")
+        self.project_meta_text.set(
+            f"{item_count} phân cảnh  •  {len(loaded.scenes)} ảnh nguồn  •  {duration_text}  •  phiên bản {loaded.version}"
+        )
         self.project_source_text.set(f"Nguồn: {loaded.manifest_path.name}")
         self.project_script.configure(state="normal")
         self.project_script.delete("1.0", "end")
@@ -314,30 +422,64 @@ class WhiteboardApp(tk.Tk):
             if loaded.narration_cues
             else "Timeline: dự án cũ chưa có narration cue"
         )
-        for child in self.scene_strip.winfo_children():
-            child.destroy()
-        for index, scene in enumerate(loaded.scenes, start=1):
-            ttk.Button(
-                self.scene_strip, text=f"{index:02d}  {scene.title}", style="Scene.TButton",
-                command=lambda selected=scene: self._select_scene(selected),
-            ).grid(row=0, column=index - 1, padx=(0, 7), sticky="ns")
+        self._preview_items.clear()
+        for row in self.scene_list.get_children():
+            self.scene_list.delete(row)
+        for index, item in enumerate(preview_items, start=1):
+            row_id = f"preview-{index}"
+            self._preview_items[row_id] = item
+            self.scene_list.insert("", "end", iid=row_id, values=(f"{index:02d}", item.title, "Sẵn sàng"))
         self._append_log(f"Đã mở dự án: {loaded.title}")
         self._append_log(f"Nguồn: {loaded.manifest_path}")
         if loaded.script_path:
             self._append_log(f"Kịch bản: {loaded.script_path.name}")
         else:
             self._append_log("CẢNH BÁO: Gói dự án chưa có kịch bản để tạo voice.")
-        self.render_button.configure(state="normal" if loaded.voice else "disabled")
-        self.progress_text.set(
-            "Đã có âm thanh — sẵn sàng dựng" if loaded.voice else "Bước tiếp theo: tạo âm thanh bằng OmniVoice"
-        )
-        self._select_scene(loaded.scenes[0])
+        self.render_button.configure(state="normal")
+        self.progress_text.set("Sẵn sàng — bấm Tạo video để chạy toàn bộ quy trình")
+        self._final_video = None
+        self._final_poster = None
+        self.result_path.set("Chưa có video kết quả")
+        self.result_preview_button.configure(state="disabled")
+        self.play_result_button.configure(state="disabled")
+        if self.output_dir:
+            existing_video = self.output_dir / "final.mp4"
+            if existing_video.is_file():
+                self._final_video = existing_video
+                existing_poster = self.output_dir / "preview.jpg"
+                self._final_poster = existing_poster if existing_poster.is_file() else None
+                self.result_path.set(f"Video: {existing_video.name}")
+                self.result_preview_button.configure(state="normal")
+                self.play_result_button.configure(state="normal")
+        first_row = self.scene_list.get_children()[0]
+        self.scene_list.selection_set(first_row)
+        self.scene_list.focus(first_row)
+        self._select_preview_item(self._preview_items[first_row])
 
     def _select_scene(self, scene: Scene) -> None:
+        self._select_preview_item(PreviewItem(scene.scene_id, scene.title, scene))
+
+    def _scene_list_selected(self, _event: tk.Event | None = None) -> None:
+        selected = self.scene_list.selection()
+        if selected and selected[0] in self._preview_items:
+            self._select_preview_item(self._preview_items[selected[0]])
+
+    def _select_preview_item(self, item: PreviewItem) -> None:
+        self._active_preview_item = item
+        self._preview_kind = "scene"
         try:
             from PIL import Image
-            with Image.open(scene.image) as source:
-                self._preview_image = source.convert("RGB")
+            with Image.open(item.scene.image) as source:
+                image = source.convert("RGB")
+                if item.region:
+                    x1, y1, x2, y2 = item.region
+                    padding = max(12, round(min(image.size) * 0.02))
+                    crop = (
+                        max(0, x1 - padding), max(0, y1 - padding),
+                        min(image.width, x2 + padding), min(image.height, y2 + padding),
+                    )
+                    image = image.crop(crop)
+                self._preview_image = image
             self._render_preview()
         except Exception as exc:
             self._preview_image = None
@@ -346,6 +488,44 @@ class WhiteboardApp(tk.Tk):
                 max(1, self.preview_canvas.winfo_width() // 2), max(1, self.preview_canvas.winfo_height() // 2),
                 text=f"Không thể xem trước ảnh\n{exc}", justify="center", fill="#667085",
             )
+
+    def _show_scene_preview(self) -> None:
+        if self._active_preview_item:
+            self._select_preview_item(self._active_preview_item)
+
+    def _show_result_preview(self) -> None:
+        if not self._final_video:
+            return
+        self._preview_kind = "result"
+        self._preview_image = None
+        if self._final_poster and self._final_poster.is_file():
+            try:
+                from PIL import Image
+                with Image.open(self._final_poster) as source:
+                    self._preview_image = source.convert("RGB")
+            except Exception as exc:
+                self._append_log(f"Không đọc được ảnh xem trước video: {exc}")
+        self._render_preview()
+
+    def _play_result(self) -> None:
+        if not self._final_video or not self._final_video.is_file():
+            messagebox.showwarning("Chưa có video", "Hãy tạo video trước khi xem kết quả.", parent=self)
+            return
+        try:
+            open_media(self._final_video)
+        except OSError as exc:
+            messagebox.showerror("Không thể mở video", str(exc), parent=self)
+
+    def _preview_canvas_clicked(self, _event: tk.Event | None = None) -> None:
+        if self._preview_kind == "result":
+            self._play_result()
+
+    def _mark_scene_status(self, status: str) -> None:
+        for row_id in self.scene_list.get_children():
+            values = list(self.scene_list.item(row_id, "values"))
+            if len(values) >= 3:
+                values[2] = status
+                self.scene_list.item(row_id, values=values)
 
     def _schedule_preview(self, _event: tk.Event | None = None) -> None:
         if self._preview_after:
@@ -357,7 +537,16 @@ class WhiteboardApp(tk.Tk):
         width = max(1, self.preview_canvas.winfo_width())
         height = max(1, self.preview_canvas.winfo_height())
         if self._preview_image is None:
-            self.preview_canvas.coords("empty", width // 2, height // 2)
+            self.preview_canvas.delete("all")
+            label = (
+                "▶ Video đã sẵn sàng\nBấm vào đây hoặc nút Phát video để xem"
+                if self._preview_kind == "result"
+                else "Mở một dự án để xem trước"
+            )
+            self.preview_canvas.create_text(
+                width // 2, height // 2, text=label, justify="center",
+                fill="#667085", font=("Segoe UI", 11), tags="empty",
+            )
             return
         try:
             from PIL import ImageOps, ImageTk
@@ -372,6 +561,14 @@ class WhiteboardApp(tk.Tk):
             self._preview_photo = ImageTk.PhotoImage(preview)
             self.preview_canvas.delete("all")
             self.preview_canvas.create_image(width // 2, height // 2, image=self._preview_photo, anchor="center")
+            if self._preview_kind == "result":
+                self.preview_canvas.create_text(
+                    width // 2, height // 2, text="▶", fill="white", font=("Segoe UI", 38, "bold")
+                )
+                self.preview_canvas.create_text(
+                    width // 2, height // 2 + 50, text="Bấm để phát video", fill="white",
+                    font=("Segoe UI", 10, "bold"),
+                )
         except Exception as exc:
             self._append_log(f"Không thể cập nhật xem trước: {exc}")
 
@@ -431,50 +628,6 @@ class WhiteboardApp(tk.Tk):
             on_log=self._append_log,
         )
 
-    def _start_voice_clone(self) -> None:
-        if not self.project:
-            messagebox.showwarning("Chưa có dự án", "Hãy mở dự án trước khi tạo voice.", parent=self)
-            return
-        project = self.project
-        text = project.script_text.strip() or " ".join(cue.text for cue in project.narration_cues)
-        profile = self._selected_voice_profile()
-        cli = VoiceSettings.load().cli_path.strip()
-        if not text or not profile or not cli:
-            messagebox.showwarning(
-                "Thiếu thông tin",
-                "Gói dự án phải có kịch bản. Hãy chọn một giọng đã lưu; nếu chưa có, mở Cài đặt giọng.",
-                parent=self,
-            )
-            return
-        output_root = self.output_dir or project.root
-        voice_output = output_root / "voice-clone.wav"
-        self.cancel_event.clear()
-        self._set_busy(True, f"Đang tạo âm thanh bằng giọng {profile.name}…")
-
-        def worker() -> None:
-            try:
-                log = lambda line: self.events.put(("log", line))
-                if project.narration_cues:
-                    cue_audio = generate_cue_voices(
-                        cli_path=cli,
-                        cues=project.narration_cues,
-                        reference_audio=profile.audio_path,
-                        output_dir=output_root / "audio-cues",
-                        on_log=log,
-                        cancel_event=self.cancel_event,
-                    )
-                    timeline = compile_timeline(project, cue_audio, output_root, log)
-                    self.events.put(("timeline_done", timeline))
-                else:
-                    result = generate_clone_voice(
-                        cli_path=cli, text=text, reference_audio=profile.audio_path, output=voice_output,
-                        on_log=log, cancel_event=self.cancel_event,
-                    )
-                    self.events.put(("voice_done", result))
-            except (OmniVoiceError, TimelineError, OSError) as exc:
-                self.events.put(("error", str(exc)))
-        threading.Thread(target=worker, daemon=True).start()
-
     def _choose_output(self) -> None:
         selected = filedialog.askdirectory(title="Chọn thư mục xuất video")
         if selected:
@@ -485,10 +638,19 @@ class WhiteboardApp(tk.Tk):
     def _start_render(self) -> None:
         if not self.project:
             return
-        if not self.project.voice:
+        project = self.project
+        text = project.script_text.strip() or " ".join(cue.text for cue in project.narration_cues)
+        profile = self._selected_voice_profile()
+        cli = VoiceSettings.load().cli_path.strip()
+        if (project.narration_cues or text) and (not profile or not cli):
             messagebox.showwarning(
-                "Chưa có âm thanh", "Hãy tạo âm thanh bằng OmniVoice trước khi dựng video.", parent=self
+                "Thiếu giọng đọc",
+                "Hãy chọn một giọng đã lưu. Nếu chưa có, bấm nút ⚙ trong Thiết lập video.",
+                parent=self,
             )
+            return
+        if not project.narration_cues and not text and not project.voice:
+            messagebox.showwarning("Thiếu kịch bản", "Dự án chưa có nội dung để tạo giọng đọc.", parent=self)
             return
         if self.output_dir is None:
             self._choose_output()
@@ -498,24 +660,55 @@ class WhiteboardApp(tk.Tk):
         if len(brand) > 40:
             messagebox.showwarning("Chữ trên bút quá dài", "Chỉ nhập tối đa 40 ký tự.", parent=self)
             return
-        self.project.pen_brand = brand or None
+        project.pen_brand = brand or None
         final = self.output_dir / "final.mp4"
         if final.exists() and not messagebox.askyesno(
             "Ghi đè video", f"{final} đã tồn tại. Bạn có muốn ghi đè?", parent=self
         ):
             return
         self.cancel_event.clear()
-        self._set_busy(True, "Đang dựng video…")
-        project, output_dir, aspect_ratio = self.project, self.output_dir, self.aspect_ratio.get()
+        self._mark_scene_status("Đang xử lý")
+        self._set_busy(True, "Bước 1/3 — đang tạo giọng đọc…")
+        output_dir, aspect_ratio = self.output_dir, self.aspect_ratio.get()
 
         def worker() -> None:
             try:
+                log = lambda line: self.events.put(("log", line))
+                if project.narration_cues:
+                    assert profile is not None
+                    cue_audio = generate_cue_voices(
+                        cli_path=cli,
+                        cues=project.narration_cues,
+                        reference_audio=profile.audio_path,
+                        output_dir=output_dir / "audio-cues",
+                        on_log=log,
+                        cancel_event=self.cancel_event,
+                    )
+                    self.events.put(("stage", "Bước 2/3 — đang đồng bộ voice với hình ảnh…"))
+                    timeline = compile_timeline(project, cue_audio, output_dir, log)
+                    project.voice = timeline.voice_path
+                    project.runtime_annotations = timeline.runtime_annotations
+                    self.events.put(("pipeline_timeline", timeline))
+                elif text:
+                    assert profile is not None
+                    voice_output = output_dir / "voice-clone.wav"
+                    result_voice = generate_clone_voice(
+                        cli_path=cli,
+                        text=text,
+                        reference_audio=profile.audio_path,
+                        output=voice_output,
+                        on_log=log,
+                        cancel_event=self.cancel_event,
+                    )
+                    project.voice = result_voice
+                    self.events.put(("pipeline_voice", result_voice))
+                self.events.put(("stage", "Bước 3/3 — đang dựng và ghép video…"))
                 result = run_pipeline(
-                    project, output_dir, lambda line: self.events.put(("log", line)),
-                    self.cancel_event, aspect_ratio=aspect_ratio,
+                    project, output_dir, log, self.cancel_event, aspect_ratio=aspect_ratio,
                 )
-                self.events.put(("done", result))
-            except (RenderError, OSError) as exc:
+                poster = create_video_poster(result, output_dir / "preview.jpg", log)
+                self.events.put(("done", (result, poster)))
+            except (OmniVoiceError, TimelineError, RenderError, OSError) as exc:
                 self.events.put(("error", str(exc)))
         threading.Thread(target=worker, daemon=True).start()
 
@@ -523,11 +716,11 @@ class WhiteboardApp(tk.Tk):
         state = "disabled" if busy else "normal"
         for control in (
             self.open_file_button, self.output_button,
-            self.preview_voice_button, self.voice_settings_button, self.clone_button,
+            self.preview_voice_button, self.stop_voice_button, self.voice_settings_button,
         ):
             control.configure(state=state)
         self.voice_combo.configure(state="disabled" if busy else "readonly")
-        render_ready = bool(self.project and self.project.voice)
+        render_ready = bool(self.project)
         self.render_button.configure(state="normal" if not busy and render_ready else "disabled")
         self.cancel_button.configure(state="normal" if busy else "disabled")
         self.progress_text.set(label)
@@ -545,32 +738,40 @@ class WhiteboardApp(tk.Tk):
                 kind, payload = self.events.get_nowait()
                 if kind == "log":
                     self._append_log(str(payload))
-                elif kind == "voice_done":
-                    self._set_busy(False, "Voice clone đã sẵn sàng")
-                    assert self.project is not None
-                    self.project.voice = Path(payload)
+                elif kind == "stage":
+                    self.progress_text.set(str(payload))
+                elif kind == "pipeline_voice":
                     self.voice_path.set(str(payload))
-                    self.render_button.configure(state="normal")
+                    self.timeline_text.set("Voice đã tạo • dự án cũ không có narration cue")
                     self._append_log(f"Hoàn tất voice clone: {payload}")
-                elif kind == "timeline_done":
-                    self._set_busy(False, "Voice và hình ảnh đã đồng bộ")
-                    assert self.project is not None
+                elif kind == "pipeline_timeline":
                     timeline = payload
                     assert isinstance(timeline, TimelineResult)
-                    self.project.voice = timeline.voice_path
-                    self.project.runtime_annotations = timeline.runtime_annotations
                     self.voice_path.set(str(timeline.voice_path))
                     self.timeline_text.set(
                         f"Timeline: {len(timeline.cues)} cue • {timeline.total_duration_ms / 1000:.1f} giây"
                     )
-                    self.render_button.configure(state="normal")
+                    self._mark_scene_status("Đã đồng bộ")
                     self._append_log(f"Timeline: {timeline.timeline_path}")
                 elif kind == "done":
                     self._set_busy(False, "Đã tạo video")
-                    self._append_log(f"Hoàn tất: {payload}")
-                    messagebox.showinfo("Hoàn tất", f"Video đã được tạo tại:\n{payload}", parent=self)
+                    result, poster = payload
+                    self._final_video = Path(result)
+                    self._final_poster = Path(poster) if poster else None
+                    self.result_path.set(f"Video: {self._final_video.name}")
+                    self.result_preview_button.configure(state="normal")
+                    self.play_result_button.configure(state="normal")
+                    self._mark_scene_status("Đã dựng")
+                    self._append_log(f"Hoàn tất: {self._final_video}")
+                    self._show_result_preview()
+                    messagebox.showinfo(
+                        "Hoàn tất",
+                        f"Video đã được tạo tại:\n{self._final_video}\n\nBấm Phát video ở cột bên trái để xem.",
+                        parent=self,
+                    )
                 elif kind == "error":
                     self._set_busy(False, "Có lỗi — xem nhật ký phía dưới")
+                    self._mark_scene_status("Có lỗi")
                     self._append_log(f"LỖI: {payload}")
                     messagebox.showerror("Tác vụ thất bại", str(payload), parent=self)
         except queue.Empty:

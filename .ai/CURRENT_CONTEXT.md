@@ -1,6 +1,6 @@
 # Bối cảnh hiện tại
 
-Cập nhật: 2026-09-01 UTC
+Cập nhật: 2026-09-02 UTC
 
 ## Milestone hiện tại
 
@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 23 test pass.
+- Unit test local: 25 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -44,17 +44,19 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Người dùng đã dựng được MP4 có màu bằng gói `examples/beef-5-dishes/`, sau đó yêu cầu ảnh chân thực hơn và sửa voice tiếng Việt.
 - Gói bò phiên bản 2 dùng ảnh món ăn bán chân thực do ImageGen tạo, voice neural `vi-VN-HoaiMyNeural` qua edge-tts; `penBrand` xóa chữ Trung Quốc và ghi Unicode trực tiếp lên thân bút.
 - Chưa nghiệm thu phiên bản 2 trên Windows thật.
-- UI mới có preview ảnh theo tỷ lệ, dải cảnh ngang, thiết lập bên phải và card log toàn chiều ngang ở đáy.
+- UI mới có preview ảnh theo tỷ lệ, bảng phân cảnh nội dung, thiết lập bên phải và card log toàn chiều ngang ở đáy.
 - Pipeline đã hỗ trợ đầu ra 16:9, 9:16 và 1:1; hai tỷ lệ mới dùng FFmpeg scale/crop giữa.
 - Cấu hình OmniVoice lưu ngoài repo tại `%APPDATA%\NetChuyenDong\settings.json`; app gọi `omnivoice-infer.exe` hiện có thay vì clone/cài lại.
-- Cột phải đọc thông tin dự án và `script.txt` từ gói GPT. Khi chưa có voice, nút tạo video bị khóa cho tới khi OmniVoice hoàn tất.
+- Cột phải đọc thông tin dự án và `script.txt` từ gói GPT. Giọng, tỷ lệ và nhãn bút được gom trong card **Thiết lập video**.
 - Màn hình chính chỉ chọn/nghe thử giọng đã lưu; cài đặt OmniVoice và thêm giọng mới nằm trong popup riêng.
 - Voice profile dùng chung được lưu ở `%APPDATA%\NetChuyenDong\voices`; pipeline FFmpeg tự chọn đoạn 3–8 giây, ước tính SNR, high/low-pass, FFT denoise, dynamic normalize và limiter.
 - Smoke test pipeline làm sạch FFmpeg: pass; cần người dùng nghiệm thu trên mẫu giọng thật.
 - Schema hỗ trợ `narration[]` ánh xạ cue → scene → element. OmniVoice tạo cue trong một process để không nạp model nhiều lần.
 - Timeline compiler đo thời lượng từng WAV, sinh `timeline.json`, `voice-timeline.wav` và annotation runtime; renderer ưu tiên annotation runtime mà không sửa dữ liệu nguồn.
 - Gói bò phiên bản 5 có 5 cue ánh xạ trực tiếp tới 5 món.
+- UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
+- Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4. Sau khi xong, cột trái có poster và nút phát video kết quả.
 
 ## Task an toàn tiếp theo
 
-Người dùng pull branch, chọn giọng đã lưu, tạo audio+timeline cho gói bò v5 rồi render; kiểm tra mỗi món bắt đầu vẽ cùng câu tương ứng.
+Người dùng pull branch, chọn giọng rồi bấm một lần **Tạo video** cho gói bò v5; kiểm tra đủ 5 phân cảnh, preview kết quả và quy trình tự động.

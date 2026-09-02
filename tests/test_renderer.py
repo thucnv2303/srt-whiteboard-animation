@@ -3,10 +3,10 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from whiteboard_app.project import load_project
-from whiteboard_app.renderer import build_commands, subprocess_environment
+from whiteboard_app.renderer import build_commands, create_video_poster, subprocess_environment
 
 
 class RendererCommandTests(unittest.TestCase):
@@ -121,6 +121,25 @@ class RendererCommandTests(unittest.TestCase):
                 commands[-1].argv,
             )
             self.assertEqual(final, (root / "output" / "final.mp4").resolve())
+
+    def test_creates_poster_for_result_preview(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "final.mp4"
+            poster = root / "preview.jpg"
+            video.write_bytes(b"video")
+
+            def fake_run(command: list[str], **_kwargs: object) -> Mock:
+                Path(command[-1]).write_bytes(b"poster")
+                return Mock(returncode=0)
+
+            with (
+                patch("whiteboard_app.renderer.shutil.which", return_value="ffmpeg-fixture"),
+                patch("whiteboard_app.renderer.subprocess.run", side_effect=fake_run) as run,
+            ):
+                result = create_video_poster(video, poster)
+            self.assertEqual(result, poster)
+            self.assertIn("-frames:v", run.call_args.args[0])
 
 
 if __name__ == "__main__":

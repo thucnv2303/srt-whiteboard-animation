@@ -230,3 +230,46 @@ def run_pipeline(
     if not final_output.is_file():
         raise RenderError("Renderer kết thúc nhưng không tạo được final.mp4.")
     return final_output
+
+
+def create_video_poster(
+    video: Path,
+    output: Path,
+    on_log: Callable[[str], None] | None = None,
+) -> Path | None:
+    """Tạo ảnh đại diện để xem kết quả trong app; lỗi poster không làm hỏng video."""
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None or not video.is_file():
+        return None
+    output.parent.mkdir(parents=True, exist_ok=True)
+    command = [
+        ffmpeg,
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        "1",
+        "-i",
+        str(video),
+        "-frames:v",
+        "1",
+        "-vf",
+        "scale=960:-2",
+        str(output),
+    ]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=subprocess_environment(),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    if result.returncode != 0 or not output.is_file():
+        if on_log:
+            on_log("Không tạo được ảnh xem trước; video MP4 vẫn hoàn chỉnh.")
+        return None
+    if on_log:
+        on_log(f"Đã tạo ảnh xem trước: {output}")
+    return output
