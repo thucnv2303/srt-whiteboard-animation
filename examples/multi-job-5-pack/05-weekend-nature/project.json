@@ -1,0 +1,10 @@
+{
+  "schemaVersion":1,"title":"4 điểm đến thiên nhiên cho cuối tuần","version":1,"script":"script.txt","penBrand":"Studio vẽ tay",
+  "narration":[
+    {"id":"cue-forest","sceneId":"board","text":"Điểm đến đầu tiên là một cung đường rừng xanh, phù hợp để đi bộ nhẹ và hít thở không khí trong lành.","elementIds":["forest-trail"],"pauseBeforeMs":350,"pauseAfterMs":300},
+    {"id":"cue-lake","sceneId":"board","text":"Nếu thích yên tĩnh, hãy chọn hồ nước và chuẩn bị một buổi dã ngoại nhỏ gọn.","elementIds":["lake-picnic"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-beach","sceneId":"board","text":"Biển lúc bình minh mang ánh sáng dịu, không khí mát và ít đông đúc hơn ban ngày.","elementIds":["beach-sunrise"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-hill","sceneId":"board","text":"Cuối cùng, một đồi cao có tầm nhìn rộng sẽ là nơi đẹp để ngắm cảnh và kết thúc cuối tuần.","elementIds":["hill-viewpoint"],"pauseBeforeMs":250,"pauseAfterMs":500}
+  ],
+  "scenes":[{"id":"board","title":"Bốn điểm đến thiên nhiên","image":"board.webp","annotation":"board.annotation.json"}]
+}

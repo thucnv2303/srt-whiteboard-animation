@@ -29,6 +29,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 # 复用 stream 渲染器的全部构件（同目录）
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -36,6 +37,62 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 import stream_render as sr  # noqa: E402
 
 DEFAULT_HAND = _SCRIPT_DIR.parent / "assets" / "drawing-hand.png"
+
+
+def _load_brand_font(size: int):
+    """Chọn font Unicode có sẵn trên Windows/Linux để giữ đúng dấu tiếng Việt."""
+    candidates = (
+        "C:/Windows/Fonts/arialbd.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "DejaVuSans-Bold.ttf",
+    )
+    for candidate in candidates:
+        try:
+            return ImageFont.truetype(candidate, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def _brand_hand_asset(hand_bgr: np.ndarray, text: str) -> np.ndarray:
+    """Xóa chữ Trung Quốc và ghi thương hiệu trực tiếp lên thân bút mặc định."""
+    height, width = hand_bgr.shape[:2]
+    image = Image.fromarray(cv2.cvtColor(hand_bgr, cv2.COLOR_BGR2RGB)).convert("RGBA")
+    draw = ImageDraw.Draw(image)
+
+    # Vùng trắng bên trong thân bút của assets/drawing-hand.png.
+    barrel = [
+        (int(width * 0.34), int(height * 0.16)),
+        (int(width * 0.875), int(height * 0.40)),
+        (int(width * 0.825), int(height * 0.445)),
+        (int(width * 0.315), int(height * 0.205)),
+    ]
+    draw.polygon(barrel, fill=(250, 250, 248, 255))
+
+    # Co chữ vừa chiều dài thân bút rồi xoay theo đúng góc của cây bút.
+    font_size = max(13, height // 18)
+    max_text_width = int(width * 0.50)
+    while font_size > 11:
+        font = _load_brand_font(font_size)
+        bbox = ImageDraw.Draw(Image.new("RGBA", (1, 1))).textbbox((0, 0), text, font=font)
+        if bbox[2] - bbox[0] <= max_text_width:
+            break
+        font_size -= 1
+    font = _load_brand_font(font_size)
+    bbox = ImageDraw.Draw(Image.new("RGBA", (1, 1))).textbbox((0, 0), text, font=font)
+    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    text_layer = Image.new("RGBA", (text_width + 10, text_height + 8), (0, 0, 0, 0))
+    ImageDraw.Draw(text_layer).text(
+        (5 - bbox[0], 4 - bbox[1]), text, font=font, fill=(38, 38, 38, 255)
+    )
+    dx = (0.875 - 0.34) * width
+    dy = (0.40 - 0.16) * height
+    angle = -math.degrees(math.atan2(dy, dx))
+    rotated = text_layer.rotate(angle, expand=True, resample=Image.Resampling.BICUBIC)
+    center_x, center_y = int(width * 0.60), int(height * 0.30)
+    image.alpha_composite(rotated, (center_x - rotated.width // 2, center_y - rotated.height // 2))
+    return cv2.cvtColor(np.array(image)[:, :, :3], cv2.COLOR_RGB2BGR)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -69,7 +126,7 @@ class RegionStreamRenderer:
     """持有整段渲染的共享状态；逐区域把 stream 笔迹画进同一张画布。"""
 
     def __init__(self, image_bgr: np.ndarray, annotation: dict, cfg: sr.Config,
-                 hand_png: Path | None, bare_tip: bool) -> None:
+                 hand_png: Path | None, bare_tip: bool, pen_brand: str | None = None) -> None:
         self.cfg = cfg
         self.ann = annotation
         self.canvas_bgr = sr._hex_to_bgr(cfg.canvas_hex)
@@ -114,6 +171,8 @@ class RegionStreamRenderer:
             if hand_data is None:
                 hand_data = sr._procedural_tip(cfg.target_hand_height)
                 ax, ay = 0.5, 0.70
+            elif pen_brand:
+                hand_data = (_brand_hand_asset(hand_data[0], pen_brand), hand_data[1])
             self.tip = sr.TipOverlay(hand_data[0], hand_data[1], tip_anchor_x=ax, tip_anchor_y=ay)
 
     # 采样原图四角，把接近背景色的像素替换为画布底色
@@ -462,6 +521,8 @@ def _parse_args(argv=None):
     p.add_argument("hand", nargs="?", default=str(DEFAULT_HAND), help="手部素材 PNG（默认内置）")
     p.add_argument("--total-ms", type=int, default=None, help="总时长；缺省用标注 sceneDurationMs")
     p.add_argument("--bare-tip", action="store_true", help="不叠加笔尖/手部")
+    p.add_argument("--pen-brand", default=None,
+                   help="Chữ thay trực tiếp trên thân bút, ví dụ: Ăn dặm mẹ Dâu")
     p.add_argument("--ink-path", default="grid", choices=["grid", "skeleton"],
                    help="笔迹路径: grid 网格(默认); skeleton 骨架追踪")
     p.add_argument("--color-fill", default="contour-wipe", choices=["contour-wipe", "brush"],
@@ -523,7 +584,9 @@ def main(argv=None) -> int:
     raw_path = out_path.with_name(out_path.stem + "_raw.mp4")
 
     hand_png = Path(args.hand) if args.hand else None
-    renderer = RegionStreamRenderer(image_bgr, annotation, cfg, hand_png, args.bare_tip)
+    renderer = RegionStreamRenderer(
+        image_bgr, annotation, cfg, hand_png, args.bare_tip, args.pen_brand
+    )
     print(f"  输入: {args.image}")
     print(f"  输出尺寸: {renderer.out_w}x{renderer.out_h}, 帧率: {cfg.fps}")
     print(f"  区域数: {len(annotation['elements'])}, 总时长: {total_ms}ms, "

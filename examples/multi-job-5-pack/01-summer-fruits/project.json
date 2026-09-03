@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "title": "4 loại trái cây mùa hè dễ ăn",
+  "version": 1,
+  "script": "script.txt",
+  "penBrand": "Studio vẽ tay",
+  "narration": [
+    {"id":"cue-watermelon","sceneId":"board","text":"Gợi ý đầu tiên là dưa hấu mọng nước, nên cắt miếng vừa ăn và dùng ngay sau khi bổ.","elementIds":["watermelon"],"pauseBeforeMs":350,"pauseAfterMs":300},
+    {"id":"cue-mango","sceneId":"board","text":"Gợi ý tiếp theo là xoài chín mềm, có vị ngọt tự nhiên và mùi thơm dễ chịu.","elementIds":["mango"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-avocado","sceneId":"board","text":"Bơ chín cung cấp chất béo tốt, có thể dằm mịn hoặc ăn cùng sữa chua.","elementIds":["avocado"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-banana","sceneId":"board","text":"Cuối cùng là chuối chín, tiện chuẩn bị và phù hợp cho một bữa phụ nhanh gọn.","elementIds":["banana"],"pauseBeforeMs":250,"pauseAfterMs":500}
+  ],
+  "scenes": [
+    {"id":"board","title":"Bốn loại trái cây mùa hè","image":"board.webp","annotation":"board.annotation.json"}
+  ]
+}

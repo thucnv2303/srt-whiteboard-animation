@@ -1,0 +1,9 @@
+{
+  "sceneId":"board","canvas":{"width":1280,"height":720},"storyBasis":"Bốn mẹo chăm cây trong căn hộ.","sceneDurationMs":34000,
+  "elements":[
+    {"id":"indirect-light","label":"Ánh sáng gián tiếp","sequence":1,"narrativeRole":"Mẹo đầu tiên","subtitle":"Đặt cây nơi sáng gián tiếp.","type":"plant-care","region":{"x":20,"y":20,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[325,30],"end":[325,330],"easing":"easeInOut"}},
+    {"id":"check-soil","label":"Kiểm tra đất","sequence":2,"narrativeRole":"Mẹo tiếp theo","subtitle":"Kiểm tra đất trước khi tưới.","type":"plant-care","region":{"x":650,"y":20,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":8500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[955,30],"end":[955,330],"easing":"easeInOut"}},
+    {"id":"gentle-water","label":"Tưới chậm","sequence":3,"narrativeRole":"Mẹo thứ ba","subtitle":"Tưới chậm quanh gốc.","type":"plant-care","region":{"x":20,"y":380,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":16500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[325,390],"end":[325,690],"easing":"easeInOut"}},
+    {"id":"prune-leaves","label":"Tỉa lá vàng","sequence":4,"narrativeRole":"Mẹo cuối cùng","subtitle":"Tỉa lá vàng và vệ sinh kéo.","type":"plant-care","region":{"x":650,"y":380,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":24500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[955,390],"end":[955,690],"easing":"easeInOut"}}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "sceneId": "board",
+  "canvas": {"width": 1280, "height": 720},
+  "storyBasis": "Bốn loại trái cây mùa hè gồm dưa hấu, xoài, bơ và chuối.",
+  "sceneDurationMs": 34000,
+  "elements": [
+    {"id":"watermelon","label":"Dưa hấu","sequence":1,"narrativeRole":"Gợi ý đầu tiên","subtitle":"Dưa hấu mọng nước.","type":"food","region":{"x":20,"y":20,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[325,30],"end":[325,330],"easing":"easeInOut"}},
+    {"id":"mango","label":"Xoài chín","sequence":2,"narrativeRole":"Gợi ý tiếp theo","subtitle":"Xoài chín mềm và thơm.","type":"food","region":{"x":650,"y":20,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":8500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[955,30],"end":[955,330],"easing":"easeInOut"}},
+    {"id":"avocado","label":"Bơ chín","sequence":3,"narrativeRole":"Gợi ý thứ ba","subtitle":"Bơ cung cấp chất béo tốt.","type":"food","region":{"x":20,"y":380,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":16500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[325,390],"end":[325,690],"easing":"easeInOut"}},
+    {"id":"banana","label":"Chuối chín","sequence":4,"narrativeRole":"Gợi ý cuối cùng","subtitle":"Chuối tiện cho bữa phụ.","type":"food","region":{"x":650,"y":380,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":24500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[955,390],"end":[955,690],"easing":"easeInOut"}}
+  ]
+}

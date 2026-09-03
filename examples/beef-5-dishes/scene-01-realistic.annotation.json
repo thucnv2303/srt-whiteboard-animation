@@ -1,0 +1,13 @@
+{
+  "sceneId": "scene-01",
+  "canvas": { "width": 1280, "height": 720 },
+  "storyBasis": "Năm món ăn từ thịt bò cho bé: cháo bí đỏ, bò bông cải, viên bò khoai tây cà rốt, nui sốt cà chua và canh rau xanh.",
+  "sceneDurationMs": 50000,
+  "elements": [
+    {"id":"pumpkin-porridge","label":"Cháo bò bí đỏ","sequence":1,"narrativeRole":"Món thứ nhất","subtitle":"Cháo thịt bò bí đỏ mềm, ngọt tự nhiên và dễ nhai.","type":"food","region":{"x":46,"y":27,"width":563,"height":340},"reveal":{"direction":"top_to_bottom","startMs":500,"durationMs":8200,"maskPaddingPx":22,"protectedRegions":[]},"handPath":{"start":[322,38],"end":[322,356],"easing":"easeInOut"}},
+    {"id":"beef-broccoli","label":"Bò xào bông cải","sequence":2,"narrativeRole":"Món thứ hai","subtitle":"Bò xào bông cải với thịt cắt mỏng và nấu mềm.","type":"food","region":{"x":651,"y":34,"width":551,"height":333},"reveal":{"direction":"top_to_bottom","startMs":9500,"durationMs":8200,"maskPaddingPx":22,"protectedRegions":[]},"handPath":{"start":[926,46],"end":[926,356],"easing":"easeInOut"}},
+    {"id":"beef-balls","label":"Viên bò khoai tây cà rốt","sequence":3,"narrativeRole":"Món thứ ba","subtitle":"Viên bò nhỏ và mềm nấu cùng khoai tây, cà rốt.","type":"food","region":{"x":19,"y":371,"width":398,"height":337},"reveal":{"direction":"top_to_bottom","startMs":18500,"durationMs":8200,"maskPaddingPx":22,"protectedRegions":[]},"handPath":{"start":[218,383],"end":[218,697],"easing":"easeInOut"}},
+    {"id":"beef-macaroni","label":"Nui bò sốt cà chua","sequence":4,"narrativeRole":"Món thứ tư","subtitle":"Nui bò sốt cà chua có hương vị quen thuộc.","type":"food","region":{"x":417,"y":383,"width":467,"height":321},"reveal":{"direction":"top_to_bottom","startMs":27500,"durationMs":8200,"maskPaddingPx":22,"protectedRegions":[]},"handPath":{"start":[651,394],"end":[651,693],"easing":"easeInOut"}},
+    {"id":"beef-greens-soup","label":"Canh bò rau xanh","sequence":5,"narrativeRole":"Món thứ năm","subtitle":"Canh thịt bò rau xanh ấm và dễ ăn.","type":"food","region":{"x":888,"y":383,"width":383,"height":321},"reveal":{"direction":"top_to_bottom","startMs":36500,"durationMs":8200,"maskPaddingPx":22,"protectedRegions":[]},"handPath":{"start":[1080,394],"end":[1080,693],"easing":"easeInOut"}}
+  ]
+}

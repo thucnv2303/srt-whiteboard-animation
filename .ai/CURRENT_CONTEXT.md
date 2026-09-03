@@ -1,41 +1,80 @@
 # Bối cảnh hiện tại
 
-Cập nhật: 2026-08-31 UTC
+Cập nhật: 2026-09-03 UTC
 
 ## Milestone hiện tại
 
-M0 — Khởi tạo repo riêng và thiết lập bộ kiến thức để Codex trực tiếp phát triển dự án.
+M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer local.
 
 ## Trạng thái repository
 
-- Upstream: `geeklee/srt-whiteboard-animation`
-- Upstream base branch: `main`
-- Upstream SHA đã khảo sát: `696a7243c0e6ffb6827676e539c2ca5ebae2bf6b`
-- GitHub user đã xác minh: `thucnv2303`
 - Repo làm việc: `thucnv2303/srt-whiteboard-animation`
-- Quyền GitHub đã xác minh: admin/push
-- Working branch: `docs/bootstrap-project-knowledge`
-- Active PR: `#1` — https://github.com/thucnv2303/srt-whiteboard-animation/pull/1
-- CI: chưa có
+- Base branch: `main`
+- Base SHA: `5eda67e6e52cc2575de4fc15277d0fc3c6d04d7c`
+- Working branch: `feat/desktop-app-mvp`
+- PR bootstrap `#1`: đã merge.
+- CI: workflow compile + unit test được bổ sung trong branch M1.
 
-## Việc đã hoàn thành trong phiên khởi tạo
+## Quyết định sản phẩm mới
 
-- Đã đọc gói `Agent File.rar` và xác định workflow cũ dùng ChatGPT làm supervisor, các agent khác làm executor.
-- Đã khảo sát repo upstream, README, `SKILL.md` và các script cốt lõi.
-- Đã thiết kế lại authority model: Codex trực tiếp code/GitHub; người dùng chạy app và nghiệm thu.
-- Đã tạo bộ file kiến thức chuyên biệt cho dự án trong bản clone local.
+- ChatGPT Project sẽ đảm nhiệm ý tưởng, kịch bản, voice và có thể cả ảnh.
+- App local không gọi AI; app nhận gói dữ liệu chuẩn, kiểm tra và dựng video.
+- App đầu tiên là desktop Windows dùng Python/Tkinter để tận dụng renderer hiện tại.
+- Đồng bộ ChatGPT/MCP làm sau khi hợp đồng `project.json` và pipeline local ổn định.
+- UI vận hành là màn hình desktop ngang, đơn nhiệm và co giãn theo kích thước cửa sổ.
+- GPT chỉ cung cấp ảnh, annotation và kịch bản; app tạo voice local bằng OmniVoice dùng chung bên ngoài repo.
 
-## Blocker hiện tại
+## Phạm vi đã triển khai trong branch M1
 
-- Không có blocker cho bước đưa bộ kiến thức lên GitHub.
+- App shell tiếng Việt mở thư mục, `project.json` hoặc ZIP.
+- Hợp đồng dữ liệu `schemaVersion: 1`.
+- Chặn đường dẫn nguy hiểm, file thiếu, scene trùng và cặp tên sai.
+- Danh sách cảnh, chọn output, log, khóa thao tác và hủy render.
+- Điều phối render từng cảnh, ghép MP4 và gắn voice qua FFmpeg.
+- Script `run_app.bat`, tài liệu `APP.md`, unit test và CI.
+
+## Trạng thái kiểm tra
+
+- Unit test local: 63 test pass.
+- `py_compile`: pass cho app.
+- UI import smoke check: pass.
+- Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
+- Đã thêm gói fixture `examples/test-52s/` gồm 6 cảnh, thời lượng dự kiến 51,6 giây để người dùng kiểm tra render và merge trên Windows.
+- Nghiệm thu render lần 1 phát hiện child process dùng `cp1252` và lỗi khi script in ký tự CJK; đã ép `PYTHONIOENCODING=utf-8` và `PYTHONUTF8=1` cho toàn pipeline.
+- Người dùng đã dựng được MP4 có màu bằng gói `examples/beef-5-dishes/`, sau đó yêu cầu ảnh chân thực hơn và sửa voice tiếng Việt.
+- Gói bò phiên bản 2 dùng ảnh món ăn bán chân thực do ImageGen tạo, voice neural `vi-VN-HoaiMyNeural` qua edge-tts; `penBrand` xóa chữ Trung Quốc và ghi Unicode trực tiếp lên thân bút.
+- Chưa nghiệm thu phiên bản 2 trên Windows thật.
+- UI mới có preview ảnh theo tỷ lệ, bảng phân cảnh nội dung, thiết lập bên phải và card log toàn chiều ngang ở đáy.
+- Pipeline đã hỗ trợ đầu ra 16:9, 9:16 và 1:1; hai tỷ lệ mới dùng FFmpeg scale/crop giữa.
+- Cấu hình OmniVoice lưu ngoài repo tại `%APPDATA%\NetChuyenDong\settings.json`; app gọi `omnivoice-infer.exe` hiện có thay vì clone/cài lại.
+- Cột phải đọc thông tin dự án và `script.txt` từ gói GPT. Giọng, tỷ lệ và nhãn bút được gom trong card **Thiết lập video**.
+- Màn hình chính chỉ chọn/nghe thử giọng đã lưu; cài đặt OmniVoice và thêm giọng mới nằm trong popup riêng.
+- Voice profile dùng chung được lưu ở `%APPDATA%\NetChuyenDong\voices`; pipeline FFmpeg tự chọn đoạn 3–8 giây, ước tính SNR, high/low-pass, FFT denoise, dynamic normalize và limiter.
+- Smoke test pipeline làm sạch FFmpeg: pass; cần người dùng nghiệm thu trên mẫu giọng thật.
+- Schema hỗ trợ `narration[]` ánh xạ cue → scene → element. OmniVoice tạo cue trong một process để không nạp model nhiều lần.
+- Timeline compiler đo thời lượng từng WAV, sinh `timeline.json`, `voice-timeline.wav` và annotation runtime; renderer ưu tiên annotation runtime mà không sửa dữ liệu nguồn.
+- Gói bò phiên bản 6 có 5 cue ánh xạ trực tiếp tới 5 món; số thứ tự dùng cụm đầy đủ “Món thứ…” để tránh đặt âm số ngay biên sinh voice.
+- UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
+- Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
+- Cột trái có trình phát MP4 tích hợp bằng PyAV + pygame: phát/tạm dừng, dừng, tua, thời gian và âm thanh. FFmpeg tạo `preview-audio.wav`; nút mở ngoài chỉ là fallback.
+- Nghiệm thu player phát hiện raw PCM 24 kHz có thể bị mixer Windows 48 kHz hiểu sai, làm voice nhanh/méo; đã đổi sang WAV-header resampling và bỏ toàn bộ frame canvas bị trễ để giữ A/V sync.
+- Player preview đã được tối ưu cho video nguồn 60 FPS: trình xem giới hạn 30 FPS, scale bằng libswscale, tái sử dụng canvas item và throttle cập nhật timeline còn 5 lần/giây; chất lượng/FPS của MP4 đầu ra không đổi.
+- Nghiệm thu voice phát hiện 100 ms đầu của cue “Hai/Ba/Bốn” thấp hơn thân câu 5–6 dB. Pipeline nay thêm token đệm, onset lift thích ứng, soft peak và 60 ms safety pad trước khi biên dịch timeline.
+- Cột phải đã tăng vùng kịch bản, thêm thanh cuộn và cỡ chữ; **Thiết lập video** mặc định thu gọn và chứa luôn đường dẫn lưu.
+- Multi-job đã có thiết kế kỹ thuật tại `docs/MULTI_JOB_DESIGN.md`: queue SQLite tuần tự trước, output riêng theo `job_id`, một worker OmniVoice dùng GPU và retry theo phase.
+- Multi-job M2B đã được triển khai: SQLite tại `%APPDATA%\NetChuyenDong\jobs.db`, worker tuần tự, output riêng, checkbox chọn job, KPI lọc, hủy, chạy lại và recovery sau khi app đóng.
+- UI có hai chế độ **ĐƠN NHIỆM / MULTI JOB**. Dashboard rộng dùng ba cột: queue thu gọn, kịch bản ở giữa, preview/tiến độ bên phải và log theo job phía dưới; cửa sổ vừa/nhỏ tự chuyển sang hai cột hoặc xếp dọc.
+- Thiết lập snapshot mở bằng popup. Khi có checkbox, popup áp dụng voice, tỷ lệ, nhãn bút và thư mục gốc cho toàn bộ job được chọn; output vẫn tách theo `job_id`. Job queued/running bị bỏ qua, job hoàn tất/lỗi/đã hủy được đưa về chờ để chạy lại.
+- Checkbox tiêu đề bảng có trạng thái chưa chọn/một phần/tất cả và chọn toàn bộ job đang hiển thị, trừ job đang chạy. Nút Chạy N job nhận cả job lỗi/đã hủy để đưa về chờ rồi retry.
+- Nút Thiết lập N job đã được đưa lên thanh công cụ cạnh Chạy N job. Đường dẫn OmniVoice nhập tay/duyệt file tự lưu khi bấm Lưu, xử lý giọng hoặc đóng popup; profile vừa dùng được ghi nhớ.
+- Preview ảnh nay crop và đổi hình dạng đúng theo tỷ lệ `16:9`, `9:16`, `1:1`; Multi Job luôn đọc tỷ lệ snapshot đã lưu của job đang xem.
+- Popup thiết lập có preview trực tiếp theo radio tỷ lệ. Tỷ lệ/chữ trên bút gần nhất được lưu bền vững mà không ghi đè cấu hình OmniVoice.
+- Khi mở app, job còn `QUEUED` từ phiên trước được trả về `WAITING`; worker không tự chạy nếu phiên hiện tại chưa bấm Chạy/Bắt đầu.
+- Preview tỷ lệ có viền/nhãn trực quan; popup ưu tiên voice job rồi fallback sang voice mặc định đã lưu. Nút chạy hiển thị số job của lượt chạy và đồng hồ `hh:mm:ss`.
+- Bảng queue hiển thị thêm Voice/Khung hình. Snapshot voice cũ được chuẩn hóa theo profile ID, đường dẫn hoặc tên để combobox tự chọn đúng khi mở lại.
+- Đã thêm `examples/multi-job-5-pack/`: năm job nội dung thật, mỗi job có ảnh riêng, bốn cue/region và ZIP đặt cùng một thư mục để nạp đồng thời.
+- Job snapshot giọng, tỷ lệ, nhãn bút và output khi được thêm; job lỗi không chặn job sau. Cache voice cue và render song song vẫn ở backlog.
 
 ## Task an toàn tiếp theo
 
-1. Người dùng xem và duyệt PR bootstrap `#1`.
-2. Thiết lập test nền và sửa lỗi font hard-code.
-3. Sau đó chốt hình thức app đầu tiên với người dùng: desktop local hay web local.
-
-## Trạng thái runtime
-
-- Chưa chạy luồng render mẫu trong milestone này.
-- Chưa có nghiệm thu người dùng.
+Người dùng pull branch, mở **MULTI JOB**, chọn đồng thời năm ZIP trong `examples/multi-job-5-pack/zips/` và nghiệm thu hàng đợi tuần tự trên Windows.
