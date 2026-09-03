@@ -89,5 +89,6 @@
 - Nút Thiết lập N job nằm cạnh Chạy N job; cấu hình OmniVoice nhập tay và giọng được chọn được lưu bền vững qua lần mở app tiếp theo.
 - Preview trong Đơn nhiệm và Multi Job bám theo tỷ lệ đầu ra đã chọn/lưu thay vì giữ nguyên tỷ lệ ảnh nguồn.
 - Popup thiết lập preview live theo tỷ lệ, nhớ lựa chọn gần nhất; queue cũ không được tự chạy khi mở app.
+- Preview có nhãn tỷ lệ, voice mặc định tự chọn lại và nút chạy hiển thị trạng thái cùng thời gian đã chạy.
 - M2C còn lại: worker OmniVoice sống lâu, cache cue theo nội dung và resume theo phase.
 - M2D: chỉ tăng render concurrency sau benchmark; không chạy nhiều model voice đồng thời.

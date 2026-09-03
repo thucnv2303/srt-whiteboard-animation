@@ -74,6 +74,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
 - Khung preview đổi ngay theo tỷ lệ đã chọn; trong Multi Job, preview đọc tỷ lệ đã lưu riêng của job sau khi bấm lưu thiết lập.
 - Popup **Thiết lập job** có preview riêng: bấm `16:9`, `9:16` hoặc `1:1` sẽ thấy vùng crop đổi ngay trước khi lưu.
+- Preview chính và preview trong popup có viền cùng nhãn tỷ lệ để nhận biết rõ khung ngang, dọc hoặc vuông.
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
 - Card **Thiết lập video** mặc định thu gọn; bấm tiêu đề để mở giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra, chữ trên thân bút và nơi lưu kết quả.
 - Vùng kịch bản chiếm phần không gian còn lại của cột phải, dùng cỡ chữ lớn hơn và có thanh cuộn cho nội dung dài.
@@ -104,6 +105,8 @@ Chưa bao gồm render song song, cache cue OmniVoice, đồng bộ ChatGPT/MCP,
 Job **Đang chờ**, **Lỗi**, **Đã hủy** hoặc **Hoàn tất** có thể sửa trực tiếp trong popup **Thiết lập video…**, không cần xóa và thêm lại. Nếu đang tích nhiều checkbox, giọng đọc, tỷ lệ, chữ trên bút và thư mục gốc được áp dụng đồng loạt; mỗi job vẫn dùng một thư mục con riêng. Khi lưu job lỗi/đã hủy/hoàn tất, app tự đưa job về trạng thái chờ và giữ đánh dấu để chạy lại. Chỉ job đã xếp chạy hoặc đang chạy bị khóa để worker không đọc một snapshot đang thay đổi.
 
 Tỷ lệ và chữ trên bút được nhớ trong `%APPDATA%\NetChuyenDong\settings.json`, cùng tệp cấu hình OmniVoice nhưng mỗi nhóm thiết lập được cập nhật độc lập. Mở lại app hoặc thêm job mới sẽ dùng lựa chọn gần nhất. Job còn ở trạng thái đã xếp từ phiên trước được trả về **Đang chờ**; worker chỉ bắt đầu sau khi người dùng bấm nút Chạy/Bắt đầu trong phiên hiện tại.
+
+Voice được chọn trong popup trở thành voice mặc định trên máy. Khi mở lại thiết lập, app ưu tiên voice đã lưu của chính job; nếu job chưa có voice thì tự chọn voice mặc định, không bắt người dùng chọn lại. Trong lúc chạy, nút **Chạy N job** đổi thành **Đang chạy N job • hh:mm:ss** và trở lại trạng thái chọn job khi hàng đợi kết thúc.
 
 Checkbox ở tiêu đề bảng chọn/bỏ chọn toàn bộ job đang hiển thị, trừ job đang chạy. Biểu tượng `☐ / ▣ / ☑` lần lượt thể hiện chưa chọn, chọn một phần và chọn tất cả. Nút **Chạy N job** đếm job đang chờ cùng job lỗi/đã hủy có thể đưa về chờ để chạy lại.
 
@@ -173,7 +176,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 60 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, tỷ lệ khung preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, chống tự chạy job cũ, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, chọn tất cả, thiết lập hàng loạt và lưu cấu hình giọng/video.
+Hiện có 62 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, tỷ lệ khung preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, chống tự chạy job cũ, bộ đếm thời gian, voice mặc định, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, chọn tất cả, thiết lập hàng loạt và lưu cấu hình giọng/video.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. Preview được giới hạn tối đa 30 FPS, resize bằng libswscale và chỉ cập nhật thanh thời gian 5 lần/giây để video 60 FPS không làm nghẽn UI; file MP4 đầu ra không bị hạ FPS. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 

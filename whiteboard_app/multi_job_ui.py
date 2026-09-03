@@ -4,6 +4,7 @@ import os
 import queue
 import subprocess
 import sys
+import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -56,6 +57,42 @@ def job_status_label(status: str) -> str:
 
 def run_button_label(count: int) -> str:
     return f"▶ Chạy {count} job"
+
+
+def format_queue_elapsed(elapsed_seconds: float) -> str:
+    total = max(0, int(elapsed_seconds))
+    hours, remainder = divmod(total, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def running_button_label(count: int, elapsed_seconds: float) -> str:
+    return f"● Đang chạy {count} job • {format_queue_elapsed(elapsed_seconds)}"
+
+
+def preferred_voice_index(
+    options: list[tuple[str, str, Path]],
+    job_profile_id: str,
+    job_voice_name: str,
+    default_profile_id: str,
+) -> int:
+    """Ưu tiên voice của job, sau đó voice mặc định đã lưu trên máy."""
+    for profile_id in (job_profile_id, default_profile_id):
+        if profile_id:
+            match = next(
+                (index for index, option in enumerate(options) if option[0] == profile_id),
+                None,
+            )
+            if match is not None:
+                return match
+    if job_voice_name:
+        match = next(
+            (index for index, option in enumerate(options) if option[1] == job_voice_name),
+            None,
+        )
+        if match is not None:
+            return match
+    return 0 if options else -1
 
 
 def settings_button_label(count: int, has_checked_jobs: bool) -> str:
@@ -130,6 +167,8 @@ class MultiJobView(ttk.Frame):
         self.detail_aspect_ratio = "16:9"
         self.settings_dialog: tk.Toplevel | None = None
         self.queue_paused = False
+        self.batch_started_at: float | None = None
+        self.batch_job_count = 0
         self._detail_image = None
         self._detail_photo = None
         self._closed = False
@@ -425,9 +464,20 @@ class MultiJobView(ttk.Frame):
         self.waiting_kpi.set(f"ĐANG CHỜ\n{counts['waiting']}")
         self.completed_kpi.set(f"HOÀN TẤT\n{counts['completed']}")
         self.failed_kpi.set(f"LỖI\n{counts['failed']}")
-        runnable = self._runnable_checked()
-        self.run_selected_text.set(run_button_label(len(runnable)))
-        self.run_selected_button.configure(state="normal" if runnable else "disabled")
+        active_jobs = [job for job in all_jobs if job.status in (QUEUED, RUNNING)]
+        if active_jobs:
+            if self.batch_started_at is None:
+                self.batch_started_at = time.monotonic()
+            if self.batch_job_count <= 0:
+                self.batch_job_count = len(active_jobs)
+            self._update_run_button_clock()
+            self.run_selected_button.configure(state="disabled")
+        else:
+            self.batch_started_at = None
+            self.batch_job_count = 0
+            runnable = self._runnable_checked()
+            self.run_selected_text.set(run_button_label(len(runnable)))
+            self.run_selected_button.configure(state="normal" if runnable else "disabled")
         setting_ids = settings_target_ids(all_jobs, self.checked_job_ids, self.detail_job_id)
         has_checked_settings = bool(self.checked_job_ids and setting_ids)
         self.detail_settings_text.set(
@@ -507,7 +557,10 @@ class MultiJobView(ttk.Frame):
                 job = self.store.get(job_id)
                 if job and job.status in (FAILED, CANCELED):
                     self.store.retry(job_id)
-            self.runner.queue(ids)
+            queued = self.runner.queue(ids)
+            if queued:
+                self.batch_started_at = time.monotonic()
+                self.batch_job_count = queued
             self.checked_job_ids.difference_update(ids)
             self.refresh()
 
@@ -515,7 +568,20 @@ class MultiJobView(ttk.Frame):
         count = self.runner.queue_all()
         if not count:
             messagebox.showinfo("Hàng đợi", "Không có job mới đang chờ.", parent=self.app)
+        else:
+            self.batch_started_at = time.monotonic()
+            self.batch_job_count = count
         self.refresh()
+
+    def _update_run_button_clock(self) -> None:
+        if self.batch_started_at is None or self.batch_job_count <= 0:
+            return
+        self.run_selected_text.set(
+            running_button_label(
+                self.batch_job_count,
+                time.monotonic() - self.batch_started_at,
+            )
+        )
 
     def _toggle_pause(self) -> None:
         self.queue_paused = not self.queue_paused
@@ -662,6 +728,25 @@ class MultiJobView(ttk.Frame):
             preview = ImageOps.fit(self._detail_image, target_size)
             self._detail_photo = ImageTk.PhotoImage(preview)
             self.detail_canvas.create_image(width // 2, height // 2, image=self._detail_photo, anchor="center")
+            target_width, target_height = target_size
+            left = (width - target_width) // 2
+            top = (height - target_height) // 2
+            self.detail_canvas.create_rectangle(
+                left,
+                top,
+                left + target_width,
+                top + target_height,
+                outline="#22c55e",
+                width=2,
+            )
+            self.detail_canvas.create_text(
+                left + 8,
+                top + 8,
+                text=self.detail_aspect_ratio,
+                fill="#ffffff",
+                anchor="nw",
+                font=("Segoe UI", 9, "bold"),
+            )
         except Exception:
             self.detail_canvas.create_text(width // 2, height // 2, text="Không thể hiển thị preview", fill="#9ca3af")
 
@@ -719,6 +804,7 @@ class MultiJobView(ttk.Frame):
                 voice_options.append((profile.profile_id, profile.name, profile.audio_path))
                 seen_voice_ids.add(profile.profile_id)
         voice_values = [name for _profile_id, name, _audio_path in voice_options]
+        saved_voice_settings = VoiceSettings.load()
         voice_name = tk.StringVar(value=job.voice_name or (voice_values[0] if voice_values else ""))
 
         card = ttk.Frame(dialog, padding=18)
@@ -789,6 +875,17 @@ class MultiJobView(ttk.Frame):
                     image=settings_preview_photo,
                     anchor="center",
                 )
+                target_width, target_height = target_size
+                left = (width - target_width) // 2
+                top = (height - target_height) // 2
+                settings_preview.create_rectangle(
+                    left,
+                    top,
+                    left + target_width,
+                    top + target_height,
+                    outline="#22c55e",
+                    width=2,
+                )
             except Exception:
                 settings_preview.create_text(
                     width // 2,
@@ -813,15 +910,30 @@ class MultiJobView(ttk.Frame):
         )
         voice_combo.grid(row=0, column=0, sticky="ew", padx=(0, 7))
         if voice_values:
-            selected_index = next(
-                (index for index, option in enumerate(voice_options) if option[0] == job.voice_profile_id),
-                0,
+            selected_index = preferred_voice_index(
+                voice_options,
+                job.voice_profile_id,
+                job.voice_name,
+                saved_voice_settings.selected_profile_id,
             )
             voice_combo.current(selected_index)
 
         def selected_voice() -> tuple[str, str, Path] | None:
             index = voice_combo.current()
             return voice_options[index] if 0 <= index < len(voice_options) else None
+
+        library_profile_ids = {profile.profile_id for profile in voice_library.profiles}
+
+        def remember_default_voice(_event: tk.Event | None = None) -> None:
+            option = selected_voice()
+            if option and option[0] in library_profile_ids:
+                current = VoiceSettings.load()
+                VoiceSettings(
+                    cli_path=current.cli_path,
+                    selected_profile_id=option[0],
+                ).save()
+
+        voice_combo.bind("<<ComboboxSelected>>", remember_default_voice)
 
         def preview_voice() -> None:
             option = selected_voice()
@@ -937,7 +1049,7 @@ class MultiJobView(ttk.Frame):
                     parent=dialog,
                 )
                 return
-            if option and not option[0].startswith("job:"):
+            if option and option[0] in library_profile_ids:
                 VoiceSettings(
                     cli_path=settings.cli_path.strip() or job.cli_path,
                     selected_profile_id=option[0],
@@ -945,6 +1057,7 @@ class MultiJobView(ttk.Frame):
             VideoPreferences(aspect_ratio=aspect_ratio.get(), pen_brand=brand).save()
             self.app.aspect_ratio.set(aspect_ratio.get())
             self.app.pen_brand.set(brand)
+            self.app._refresh_voice_profiles()
             stop_audio()
             dialog.destroy()
             self.checked_job_ids.update(changed_ids)
@@ -1085,6 +1198,8 @@ class MultiJobView(ttk.Frame):
             pass
         if table_dirty:
             self.refresh()
+        else:
+            self._update_run_button_clock()
         if detail_dirty and self.detail_job_id:
             self._show_job(self.detail_job_id)
         elif log_dirty and self.detail_job_id:

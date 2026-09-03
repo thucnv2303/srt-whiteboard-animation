@@ -6,12 +6,15 @@ from whiteboard_app.jobs import CANCELED, COMPLETED, FAILED, QUEUED, RUNNING, WA
 from whiteboard_app.multi_job_ui import (
     FILTERS,
     bulk_output_directory,
+    format_queue_elapsed,
     header_checkbox_text,
     job_settings_editable,
     job_settings_rows,
     job_status_label,
     multi_job_layout,
+    preferred_voice_index,
     run_button_label,
+    running_button_label,
     settings_button_label,
     settings_target_ids,
 )
@@ -28,6 +31,18 @@ class MultiJobUiTests(unittest.TestCase):
     def test_run_button_counts_selected_jobs(self) -> None:
         self.assertEqual(run_button_label(0), "▶ Chạy 0 job")
         self.assertEqual(run_button_label(3), "▶ Chạy 3 job")
+
+    def test_running_button_shows_batch_count_and_elapsed_time(self) -> None:
+        self.assertEqual(format_queue_elapsed(65), "00:01:05")
+        self.assertEqual(running_button_label(5, 3661), "● Đang chạy 5 job • 01:01:01")
+
+    def test_popup_prefers_saved_voice_when_job_has_no_voice(self) -> None:
+        options = [
+            ("voice-1", "Giọng một", Path("one.wav")),
+            ("voice-2", "Giọng hai", Path("two.wav")),
+        ]
+        self.assertEqual(preferred_voice_index(options, "", "", "voice-2"), 1)
+        self.assertEqual(preferred_voice_index(options, "voice-1", "", "voice-2"), 0)
 
     def test_settings_button_counts_checked_jobs(self) -> None:
         self.assertEqual(settings_button_label(1, False), "⚙ Thiết lập job")
