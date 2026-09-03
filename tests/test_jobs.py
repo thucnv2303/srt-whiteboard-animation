@@ -86,6 +86,20 @@ class JobStoreTests(unittest.TestCase):
             self.assertTrue(store.retry(job.job_id))
             self.assertEqual(store.get(job.job_id).status, WAITING)  # type: ignore[union-attr]
 
+    def test_queued_job_from_previous_session_waits_for_a_new_start_click(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = make_project(root / "project")
+            project = load_project(manifest)
+            store = JobStore(root / "jobs.db")
+            job = store.add(manifest, project, "16:9", "", "", "", None, "", root / "run")
+            self.assertEqual(store.queue([job.job_id]), 1)
+
+            self.assertEqual(store.recover_interrupted(), 1)
+            recovered = store.get(job.job_id)
+            self.assertEqual(recovered.status, WAITING)  # type: ignore[union-attr]
+            self.assertEqual(recovered.phase, "")  # type: ignore[union-attr]
+
     def test_updates_waiting_job_settings_but_not_running_job(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

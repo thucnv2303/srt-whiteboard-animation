@@ -24,6 +24,7 @@ from .jobs import (
     VideoJob,
 )
 from .project import ProjectError, load_project
+from .preferences import VideoPreferences
 from .preview import preview_frame_size
 from .renderer import ASPECT_RATIOS
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
@@ -744,13 +745,65 @@ class MultiJobView(ttk.Frame):
                 else "Các job đã chọn đang chạy hoặc đã xếp hàng nên cấu hình được khóa."
             ),
             style="Subtitle.TLabel",
-        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 14))
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 10))
+
+        preview_card = ttk.Frame(card)
+        preview_card.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        preview_card.grid_columnconfigure(0, weight=1)
+        settings_preview_label = tk.StringVar(value=f"Xem trước khung hình {aspect_ratio.get()}")
+        ttk.Label(preview_card, textvariable=settings_preview_label, style="Subtitle.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 4)
+        )
+        settings_preview = tk.Canvas(
+            preview_card,
+            height=170,
+            background="#111820",
+            highlightthickness=0,
+        )
+        settings_preview.grid(row=1, column=0, sticky="ew")
+        settings_preview_photo = None
+
+        def render_settings_preview(_event: tk.Event | None = None) -> None:
+            nonlocal settings_preview_photo
+            settings_preview_label.set(f"Xem trước khung hình {aspect_ratio.get()} • crop giữa")
+            width = max(1, settings_preview.winfo_width())
+            height = max(1, settings_preview.winfo_height())
+            settings_preview.delete("all")
+            if self._detail_image is None:
+                settings_preview.create_text(
+                    width // 2,
+                    height // 2,
+                    text="Chưa có ảnh để xem trước",
+                    fill="#9ca3af",
+                )
+                return
+            try:
+                from PIL import ImageOps, ImageTk
+
+                target_size = preview_frame_size(width - 16, height - 16, aspect_ratio.get())
+                preview = ImageOps.fit(self._detail_image, target_size)
+                settings_preview_photo = ImageTk.PhotoImage(preview)
+                settings_preview.create_image(
+                    width // 2,
+                    height // 2,
+                    image=settings_preview_photo,
+                    anchor="center",
+                )
+            except Exception:
+                settings_preview.create_text(
+                    width // 2,
+                    height // 2,
+                    text="Không thể hiển thị preview",
+                    fill="#9ca3af",
+                )
+
+        settings_preview.bind("<Configure>", render_settings_preview)
 
         ttk.Label(card, text="Giọng đọc", font=("Segoe UI", 9, "bold")).grid(
-            row=2, column=0, sticky="w", padx=(0, 14), pady=7
+            row=3, column=0, sticky="w", padx=(0, 14), pady=7
         )
         voice_row = ttk.Frame(card)
-        voice_row.grid(row=2, column=1, sticky="ew", pady=7)
+        voice_row.grid(row=3, column=1, sticky="ew", pady=7)
         voice_row.grid_columnconfigure(0, weight=1)
         voice_combo = ttk.Combobox(
             voice_row,
@@ -783,10 +836,10 @@ class MultiJobView(ttk.Frame):
         ttk.Button(voice_row, text="▶ Nghe thử", command=preview_voice).grid(row=0, column=1)
 
         ttk.Label(card, text="Khung hình", font=("Segoe UI", 9, "bold")).grid(
-            row=3, column=0, sticky="w", padx=(0, 14), pady=7
+            row=4, column=0, sticky="w", padx=(0, 14), pady=7
         )
         ratio_row = ttk.Frame(card)
-        ratio_row.grid(row=3, column=1, sticky="w", pady=7)
+        ratio_row.grid(row=4, column=1, sticky="w", pady=7)
         for column, ratio in enumerate(ASPECT_RATIOS):
             ttk.Radiobutton(
                 ratio_row,
@@ -794,26 +847,27 @@ class MultiJobView(ttk.Frame):
                 value=ratio,
                 variable=aspect_ratio,
                 state="normal" if editable else "disabled",
+                command=render_settings_preview,
             ).grid(row=0, column=column, padx=(0, 18))
 
         ttk.Label(card, text="Chữ trên bút", font=("Segoe UI", 9, "bold")).grid(
-            row=4, column=0, sticky="w", padx=(0, 14), pady=7
+            row=5, column=0, sticky="w", padx=(0, 14), pady=7
         )
         ttk.Entry(
             card,
             textvariable=pen_brand,
             state="normal" if editable else "disabled",
-        ).grid(row=4, column=1, sticky="ew", pady=7)
+        ).grid(row=5, column=1, sticky="ew", pady=7)
 
         ttk.Label(
             card,
             text="Thư mục gốc" if bulk_edit else "Nơi lưu",
             font=("Segoe UI", 9, "bold"),
         ).grid(
-            row=5, column=0, sticky="w", padx=(0, 14), pady=7
+            row=6, column=0, sticky="w", padx=(0, 14), pady=7
         )
         output_row = ttk.Frame(card)
-        output_row.grid(row=5, column=1, sticky="ew", pady=7)
+        output_row.grid(row=6, column=1, sticky="ew", pady=7)
         output_row.grid_columnconfigure(0, weight=1)
         ttk.Entry(
             output_row,
@@ -837,7 +891,7 @@ class MultiJobView(ttk.Frame):
             state="normal" if editable else "disabled",
         ).grid(row=0, column=1)
 
-        ttk.Separator(card).grid(row=6, column=0, columnspan=2, sticky="ew", pady=(12, 10))
+        ttk.Separator(card).grid(row=7, column=0, columnspan=2, sticky="ew", pady=(12, 10))
 
         def save_settings() -> None:
             brand = pen_brand.get().strip()
@@ -888,6 +942,9 @@ class MultiJobView(ttk.Frame):
                     cli_path=settings.cli_path.strip() or job.cli_path,
                     selected_profile_id=option[0],
                 ).save()
+            VideoPreferences(aspect_ratio=aspect_ratio.get(), pen_brand=brand).save()
+            self.app.aspect_ratio.set(aspect_ratio.get())
+            self.app.pen_brand.set(brand)
             stop_audio()
             dialog.destroy()
             self.checked_job_ids.update(changed_ids)
@@ -901,7 +958,7 @@ class MultiJobView(ttk.Frame):
             )
 
         actions = ttk.Frame(card)
-        actions.grid(row=7, column=0, columnspan=2, sticky="e")
+        actions.grid(row=8, column=0, columnspan=2, sticky="e")
         ttk.Button(actions, text="Hủy", command=dialog.destroy).pack(side="left", padx=(0, 7))
         if editable:
             ttk.Button(
@@ -917,7 +974,7 @@ class MultiJobView(ttk.Frame):
 
         dialog.update_idletasks()
         width = max(700, dialog.winfo_reqwidth())
-        height = max(440, dialog.winfo_reqheight())
+        height = max(610, dialog.winfo_reqheight())
         x = self.app.winfo_rootx() + max(0, (self.app.winfo_width() - width) // 2)
         y = self.app.winfo_rooty() + max(0, (self.app.winfo_height() - height) // 2)
         dialog.geometry(f"{width}x{height}+{x}+{y}")
@@ -928,6 +985,7 @@ class MultiJobView(ttk.Frame):
         dialog.protocol("WM_DELETE_WINDOW", close_dialog)
         dialog.grab_set()
         dialog.focus_set()
+        dialog.after_idle(render_settings_preview)
 
     def _show_job_logs(self, job_id: str) -> None:
         self.job_log.configure(state="normal")

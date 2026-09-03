@@ -22,6 +22,7 @@ from .renderer import (
 from .timeline import TimelineError, TimelineResult, compile_timeline
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
 from .multi_job_ui import MultiJobView
+from .preferences import VideoPreferences
 from .preview import preview_frame_size
 from .voice import (
     OmniVoiceError,
@@ -139,8 +140,9 @@ class WhiteboardApp(tk.Tk):
         self._seeking_video = False
         self.video_player: TkVideoPlayer | None = None
 
-        self.aspect_ratio = tk.StringVar(value="16:9")
-        self.pen_brand = tk.StringVar(value="Ăn dặm mẹ Dâu")
+        video_preferences = VideoPreferences.load()
+        self.aspect_ratio = tk.StringVar(value=video_preferences.aspect_ratio)
+        self.pen_brand = tk.StringVar(value=video_preferences.pen_brand)
         self.project_title_text = tk.StringVar(value="Chưa có dự án")
         self.project_meta_text = tk.StringVar(value="0 cảnh  •  chưa có thời lượng")
         self.project_source_text = tk.StringVar(value="GPT sẽ gửi ảnh và kịch bản vào gói dự án")
@@ -410,7 +412,7 @@ class WhiteboardApp(tk.Tk):
             ratio.grid_columnconfigure(column, weight=1)
             ttk.Radiobutton(
                 ratio, text=f"{key}  {spec.width}×{spec.height}", value=key,
-                variable=self.aspect_ratio, command=self._schedule_preview,
+                variable=self.aspect_ratio, command=self._aspect_ratio_selected,
             ).grid(row=0, column=column, sticky="w", padx=(0, 8))
 
         ttk.Label(video_settings, text="Chữ trên bút", style="Subtitle.TLabel").grid(
@@ -711,6 +713,13 @@ class WhiteboardApp(tk.Tk):
             self.after_cancel(self._preview_after)
         self._preview_after = self.after(80, self._render_preview)
 
+    def _aspect_ratio_selected(self) -> None:
+        VideoPreferences(
+            aspect_ratio=self.aspect_ratio.get(),
+            pen_brand=self.pen_brand.get().strip(),
+        ).save()
+        self._schedule_preview()
+
     def _render_preview(self) -> None:
         self._preview_after = None
         width = max(1, self.preview_canvas.winfo_width())
@@ -967,6 +976,10 @@ class WhiteboardApp(tk.Tk):
 
     def _on_close(self) -> None:
         self.cancel_event.set()
+        VideoPreferences(
+            aspect_ratio=self.aspect_ratio.get(),
+            pen_brand=self.pen_brand.get().strip(),
+        ).save()
         if hasattr(self, "multi_view"):
             self.multi_view.close()
         if self.video_player:

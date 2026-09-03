@@ -35,7 +35,7 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 
 ## Trạng thái kiểm tra
 
-- Unit test local: 58 test pass.
+- Unit test local: 60 test pass.
 - `py_compile`: pass cho app.
 - UI import smoke check: pass.
 - Nghiệm thu UI lần 1: app mở được trên Windows; đã sửa lỗi đóng hộp chọn file làm hộp chọn thư mục bật tiếp.
@@ -68,6 +68,8 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Checkbox tiêu đề bảng có trạng thái chưa chọn/một phần/tất cả và chọn toàn bộ job đang hiển thị, trừ job đang chạy. Nút Chạy N job nhận cả job lỗi/đã hủy để đưa về chờ rồi retry.
 - Nút Thiết lập N job đã được đưa lên thanh công cụ cạnh Chạy N job. Đường dẫn OmniVoice nhập tay/duyệt file tự lưu khi bấm Lưu, xử lý giọng hoặc đóng popup; profile vừa dùng được ghi nhớ.
 - Preview ảnh nay crop và đổi hình dạng đúng theo tỷ lệ `16:9`, `9:16`, `1:1`; Multi Job luôn đọc tỷ lệ snapshot đã lưu của job đang xem.
+- Popup thiết lập có preview trực tiếp theo radio tỷ lệ. Tỷ lệ/chữ trên bút gần nhất được lưu bền vững mà không ghi đè cấu hình OmniVoice.
+- Khi mở app, job còn `QUEUED` từ phiên trước được trả về `WAITING`; worker không tự chạy nếu phiên hiện tại chưa bấm Chạy/Bắt đầu.
 - Đã thêm `examples/multi-job-5-pack/`: năm job nội dung thật, mỗi job có ảnh riêng, bốn cue/region và ZIP đặt cùng một thư mục để nạp đồng thời.
 - Job snapshot giọng, tỷ lệ, nhãn bút và output khi được thêm; job lỗi không chặn job sau. Cache voice cue và render song song vẫn ở backlog.
 

@@ -5,6 +5,7 @@ import wave
 from array import array
 from pathlib import Path
 
+from whiteboard_app.preferences import VideoPreferences
 from whiteboard_app.voice import (
     VoiceLibrary,
     VoiceProfile,
@@ -60,6 +61,19 @@ class OmniVoiceTests(unittest.TestCase):
             VoiceSettings(cli_path=r"E:\\Dự án AI\\omnivoice-infer.exe").save(target)
             loaded = VoiceSettings.load(target)
             self.assertEqual(loaded.cli_path, r"E:\\Dự án AI\\omnivoice-infer.exe")
+
+    def test_video_choices_and_voice_settings_preserve_each_other(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "settings.json"
+            VideoPreferences(aspect_ratio="9:16", pen_brand="Mẹ Dâu").save(target)
+            VoiceSettings(cli_path="omnivoice.exe", selected_profile_id="voice-1").save(target)
+
+            video = VideoPreferences.load(target)
+            voice = VoiceSettings.load(target)
+            self.assertEqual(video.aspect_ratio, "9:16")
+            self.assertEqual(video.pen_brand, "Mẹ Dâu")
+            self.assertEqual(voice.cli_path, "omnivoice.exe")
+            self.assertEqual(voice.selected_profile_id, "voice-1")
             data = json.loads(target.read_text(encoding="utf-8"))
             self.assertIn("omnivoiceCli", data)
 

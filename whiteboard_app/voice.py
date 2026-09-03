@@ -114,6 +114,26 @@ def voice_assets_dir() -> Path:
     return settings_path().parent / "voices"
 
 
+def load_settings_data(path: Path | None = None) -> dict[str, object]:
+    target = path or settings_path()
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, UnicodeError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_settings_data(data: dict[str, object], path: Path | None = None) -> None:
+    target = path or settings_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(target.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(target)
+
+
 @dataclass(frozen=True)
 class VoiceSettings:
     cli_path: str = ""
@@ -122,11 +142,10 @@ class VoiceSettings:
     @classmethod
     def load(cls, path: Path | None = None) -> "VoiceSettings":
         target = path or settings_path()
-        try:
-            data = json.loads(target.read_text(encoding="utf-8"))
-        except (FileNotFoundError, OSError, UnicodeError, json.JSONDecodeError):
+        data = load_settings_data(target)
+        if not data:
             return cls(cli_path=shutil.which("omnivoice-infer") or "")
-        value = data.get("omnivoiceCli", "") if isinstance(data, dict) else ""
+        value = data.get("omnivoiceCli", shutil.which("omnivoice-infer") or "")
         selected = data.get("selectedVoiceProfile", "") if isinstance(data, dict) else ""
         return cls(
             cli_path=value if isinstance(value, str) else "",
@@ -135,21 +154,14 @@ class VoiceSettings:
 
     def save(self, path: Path | None = None) -> None:
         target = path or settings_path()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        temporary = target.with_suffix(target.suffix + ".tmp")
-        temporary.write_text(
-            json.dumps(
-                {
-                    "omnivoiceCli": self.cli_path,
-                    "selectedVoiceProfile": self.selected_profile_id,
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
+        data = load_settings_data(target)
+        data.update(
+            {
+                "omnivoiceCli": self.cli_path,
+                "selectedVoiceProfile": self.selected_profile_id,
+            }
         )
-        temporary.replace(target)
+        save_settings_data(data, target)
 
 
 @dataclass(frozen=True)

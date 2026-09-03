@@ -106,6 +106,8 @@ File đang tạo có hậu tố `.partial`; chỉ đổi tên nguyên tử thàn
 - Nút **Thiết lập N job** nằm cạnh **Chạy N job**; checkbox quyết định số snapshot nhận thay đổi.
 - Thao tác: thêm nhiều dự án, đổi thứ tự job đang chờ, hủy, thử lại, mở thư mục kết quả.
 - Chọn một dòng cập nhật đồng thời kịch bản, preview, tiến độ và log; checkbox xác định phạm vi áp dụng của popup thiết lập.
+- Popup thiết lập có preview live theo tỷ lệ trước khi lưu; tỷ lệ và nhãn bút gần nhất trở thành mặc định cho job thêm sau.
+- Job `QUEUED` còn lại sau khi đóng app được phục hồi về `WAITING`; mỗi phiên chỉ chạy khi người dùng bấm Chạy/Bắt đầu.
 - Job đang chạy vẫn tiếp tục khi người dùng xem job khác.
 
 ## Lộ trình triển khai

@@ -380,12 +380,17 @@ class JobStore:
     def recover_interrupted(self) -> int:
         message = "App đã đóng khi job đang chạy. Hãy bấm Chạy lại để tiếp tục."
         with self._connect() as connection:
-            cursor = connection.execute(
+            running = connection.execute(
                 "UPDATE jobs SET status = ?, phase = 'Bị gián đoạn', error = ?, updated_at = ? "
                 "WHERE status = ?",
                 (FAILED, message, now_iso(), RUNNING),
             )
-        return cursor.rowcount
+            queued = connection.execute(
+                "UPDATE jobs SET status = ?, phase = '', error = '', updated_at = ? "
+                "WHERE status = ?",
+                (WAITING, now_iso(), QUEUED),
+            )
+        return running.rowcount + queued.rowcount
 
     def delete(self, job_ids: Iterable[str]) -> int:
         values = tuple(dict.fromkeys(job_ids))
