@@ -15,6 +15,7 @@ from whiteboard_app.multi_job_ui import (
     settings_button_label,
     settings_target_ids,
 )
+from whiteboard_app.preview import preview_frame_size
 
 
 class MultiJobUiTests(unittest.TestCase):
@@ -84,3 +85,11 @@ class MultiJobUiTests(unittest.TestCase):
         self.assertEqual(multi_job_layout(1280), "three")
         self.assertEqual(multi_job_layout(1000), "two")
         self.assertEqual(multi_job_layout(760), "stack")
+
+    def test_preview_frame_uses_selected_output_ratio(self) -> None:
+        self.assertEqual(preview_frame_size(1600, 900, "16:9"), (1600, 900))
+        self.assertEqual(preview_frame_size(1600, 900, "9:16"), (506, 900))
+        self.assertEqual(preview_frame_size(1600, 900, "1:1"), (900, 900))
+
+    def test_preview_frame_falls_back_to_widescreen_for_old_jobs(self) -> None:
+        self.assertEqual(preview_frame_size(1600, 900, "unknown"), (1600, 900))

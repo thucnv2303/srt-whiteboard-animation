@@ -24,6 +24,7 @@ from .jobs import (
     VideoJob,
 )
 from .project import ProjectError, load_project
+from .preview import preview_frame_size
 from .renderer import ASPECT_RATIOS
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
 from .voice import OmniVoiceError, VoiceLibrary, VoiceSettings, play_audio, stop_audio
@@ -125,6 +126,7 @@ class MultiJobView(ttk.Frame):
         self.checked_job_ids: set[str] = set()
         self.active_filter = "total"
         self.detail_job_id: str | None = None
+        self.detail_aspect_ratio = "16:9"
         self.settings_dialog: tk.Toplevel | None = None
         self.queue_paused = False
         self._detail_image = None
@@ -586,6 +588,7 @@ class MultiJobView(ttk.Frame):
         if not job:
             return
         self.detail_job_id = job_id
+        self.detail_aspect_ratio = job.aspect_ratio
         self.video_player.close()
         self.detail_play_button.configure(state="disabled", text="▶")
         self.detail_video_time.set("00:00 / 00:00")
@@ -630,6 +633,7 @@ class MultiJobView(ttk.Frame):
         self.detail_meta.set("")
         self.detail_phase.set("Hàng đợi chưa có dự án")
         self.detail_progress.set(0)
+        self.detail_aspect_ratio = "16:9"
         self._detail_image = None
         self.detail_canvas.delete("all")
         self.detail_canvas.create_text(250, 100, text="Thêm dự án để bắt đầu", fill="#9ca3af")
@@ -649,7 +653,12 @@ class MultiJobView(ttk.Frame):
             return
         try:
             from PIL import ImageOps, ImageTk
-            preview = ImageOps.contain(self._detail_image, (max(1, width - 16), max(1, height - 16)))
+            target_size = preview_frame_size(
+                max(1, width - 16),
+                max(1, height - 16),
+                self.detail_aspect_ratio,
+            )
+            preview = ImageOps.fit(self._detail_image, target_size)
             self._detail_photo = ImageTk.PhotoImage(preview)
             self.detail_canvas.create_image(width // 2, height // 2, image=self._detail_photo, anchor="center")
         except Exception:

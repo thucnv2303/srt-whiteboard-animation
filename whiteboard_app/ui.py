@@ -22,6 +22,7 @@ from .renderer import (
 from .timeline import TimelineError, TimelineResult, compile_timeline
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
 from .multi_job_ui import MultiJobView
+from .preview import preview_frame_size
 from .voice import (
     OmniVoiceError,
     VoiceLibrary,
@@ -731,14 +732,12 @@ class WhiteboardApp(tk.Tk):
             return
         try:
             from PIL import ImageOps, ImageTk
-            canvas_width, canvas_height = max(80, width - 28), max(80, height - 28)
-            spec = ASPECT_RATIOS[self.aspect_ratio.get()]
-            target_width = min(canvas_width, int(canvas_height * spec.width / spec.height))
-            target_height = int(target_width * spec.height / spec.width)
-            if target_height > canvas_height:
-                target_height = canvas_height
-                target_width = int(target_height * spec.width / spec.height)
-            preview = ImageOps.fit(self._preview_image, (max(1, target_width), max(1, target_height)))
+            target_size = preview_frame_size(
+                max(80, width - 28),
+                max(80, height - 28),
+                self.aspect_ratio.get(),
+            )
+            preview = ImageOps.fit(self._preview_image, target_size)
             self._preview_photo = ImageTk.PhotoImage(preview)
             self.preview_canvas.delete("all")
             self.preview_canvas.create_image(width // 2, height // 2, image=self._preview_photo, anchor="center")

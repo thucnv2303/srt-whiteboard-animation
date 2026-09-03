@@ -72,6 +72,7 @@ App từ chối đường dẫn tuyệt đối, đường dẫn đi ra ngoài th
 - Danh sách bên trái hiển thị từng narration cue như một phân cảnh nội dung; dù nhiều cue dùng chung một ảnh tổng, app vẫn liệt kê và phóng đúng vùng ảnh của từng cue.
 - Sau khi hoàn tất, cột trái tự chuyển sang trình phát video tích hợp: phát/tạm dừng, dừng, tua timeline, đồng hồ thời gian và âm thanh ngay trong app. Nút ↗ mở trình phát Windows chỉ là phương án dự phòng.
 - Chọn tỷ lệ `16:9` (1280×720), `9:16` (1080×1920) hoặc `1:1` (1080×1080).
+- Khung preview đổi ngay theo tỷ lệ đã chọn; trong Multi Job, preview đọc tỷ lệ đã lưu riêng của job sau khi bấm lưu thiết lập.
 - Đọc và hiển thị tên, số cảnh, thời lượng và kịch bản từ gói GPT ở cột phải.
 - Card **Thiết lập video** mặc định thu gọn; bấm tiêu đề để mở giọng đọc, nghe thử, cài đặt giọng, tỷ lệ đầu ra, chữ trên thân bút và nơi lưu kết quả.
 - Vùng kịch bản chiếm phần không gian còn lại của cột phải, dùng cỡ chữ lớn hơn và có thanh cuộn cho nội dung dài.
@@ -169,7 +170,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 56 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, chọn tất cả, thiết lập hàng loạt và lưu cấu hình giọng.
+Hiện có 58 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, tỷ lệ khung preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, chọn tất cả, thiết lập hàng loạt và lưu cấu hình giọng.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. Preview được giới hạn tối đa 30 FPS, resize bằng libswscale và chỉ cập nhật thanh thời gian 5 lần/giây để video 60 FPS không làm nghẽn UI; file MP4 đầu ra không bị hạ FPS. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 
