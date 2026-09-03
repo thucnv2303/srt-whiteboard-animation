@@ -108,6 +108,8 @@ Tỷ lệ và chữ trên bút được nhớ trong `%APPDATA%\NetChuyenDong\set
 
 Voice được chọn trong popup trở thành voice mặc định trên máy. Khi mở lại thiết lập, app ưu tiên voice đã lưu của chính job; nếu job chưa có voice thì tự chọn voice mặc định, không bắt người dùng chọn lại. Trong lúc chạy, nút **Chạy N job** đổi thành **Đang chạy N job • hh:mm:ss** và trở lại trạng thái chọn job khi hàng đợi kết thúc.
 
+Bảng hàng đợi có cột **Voice** và **Khung hình** để kiểm tra snapshot của từng job trước khi chạy. Job cũ lưu voice bằng mã tạm được ghép lại với thư viện theo `profile_id`, đường dẫn hoặc tên voice; combobox luôn hiển thị rõ lựa chọn đã khôi phục.
+
 Checkbox ở tiêu đề bảng chọn/bỏ chọn toàn bộ job đang hiển thị, trừ job đang chạy. Biểu tượng `☐ / ▣ / ☑` lần lượt thể hiện chưa chọn, chọn một phần và chọn tất cả. Nút **Chạy N job** đếm job đang chờ cùng job lỗi/đã hủy có thể đưa về chờ để chạy lại.
 
 Worker xử lý tuần tự một job tại một thời điểm. **Tạm dừng hàng đợi** chỉ ngăn lấy job tiếp theo; công đoạn đang chạy vẫn hoàn tất an toàn. **Hủy job** dừng job đang chọn. Đánh dấu job lỗi rồi bấm **Chạy N job** để chạy lại; các job sau vẫn tiếp tục.
@@ -176,7 +178,7 @@ python -m unittest discover -s tests -v
 python -m py_compile whiteboard_app\*.py run_app.py
 ```
 
-Hiện có 62 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, tỷ lệ khung preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, chống tự chạy job cũ, bộ đếm thời gian, voice mặc định, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, chọn tất cả, thiết lập hàng loạt và lưu cấu hình giọng/video.
+Hiện có 63 unit test cho import dự án, narration cue, danh sách phân cảnh nội dung, timeline theo WAV, bảo vệ âm đầu, annotation runtime, poster/audio preview, tỷ lệ khung preview, phép tua PCM, bảo toàn sample rate, render, UI responsive, SQLite job store, worker tuần tự, chống tự chạy job cũ, bộ đếm thời gian, khôi phục voice mặc định/job cũ, hủy job, job lỗi tiếp tục hàng đợi, KPI/filter, chọn tất cả, thiết lập hàng loạt và lưu cấu hình giọng/video.
 
 Trình phát tích hợp dùng PyAV để giải mã video và pygame để phát WAV. PCM nguồn luôn được bọc lại bằng WAV header trước khi đưa vào mixer 48 kHz để SDL resample đúng tốc độ trên Windows; canvas tự bỏ frame đã trễ để hình bám theo audio clock. Preview được giới hạn tối đa 30 FPS, resize bằng libswscale và chỉ cập nhật thanh thời gian 5 lần/giây để video 60 FPS không làm nghẽn UI; file MP4 đầu ra không bị hạ FPS. `run_app.bat` kiểm tra dependency ở mỗi lần mở app nên máy đã có `.venv` cũng sẽ tự bổ sung pygame một lần, không cần xóa hay tạo lại môi trường.
 

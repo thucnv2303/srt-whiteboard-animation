@@ -11,6 +11,7 @@ from whiteboard_app.multi_job_ui import (
     job_settings_editable,
     job_settings_rows,
     job_status_label,
+    matching_voice_profile,
     multi_job_layout,
     preferred_voice_index,
     run_button_label,
@@ -19,6 +20,7 @@ from whiteboard_app.multi_job_ui import (
     settings_target_ids,
 )
 from whiteboard_app.preview import preview_frame_size
+from whiteboard_app.voice import VoiceProfile
 
 
 class MultiJobUiTests(unittest.TestCase):
@@ -43,6 +45,25 @@ class MultiJobUiTests(unittest.TestCase):
         ]
         self.assertEqual(preferred_voice_index(options, "", "", "voice-2"), 1)
         self.assertEqual(preferred_voice_index(options, "voice-1", "", "voice-2"), 0)
+        self.assertEqual(preferred_voice_index(options, "legacy", "Giọng một", "voice-2"), 0)
+
+    def test_legacy_job_voice_is_mapped_to_library_profile(self) -> None:
+        profile = VoiceProfile(
+            "voice-1",
+            "Xuân Dung",
+            Path("voice.wav"),
+            Path("source.wav"),
+            5.0,
+            90,
+            25.0,
+        )
+        matched = matching_voice_profile(
+            [profile],
+            "legacy-job-voice",
+            "Xuân Dung",
+            Path("other.wav"),
+        )
+        self.assertIs(matched, profile)
 
     def test_settings_button_counts_checked_jobs(self) -> None:
         self.assertEqual(settings_button_label(1, False), "⚙ Thiết lập job")

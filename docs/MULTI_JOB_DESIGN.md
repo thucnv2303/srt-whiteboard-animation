@@ -108,6 +108,7 @@ File đang tạo có hậu tố `.partial`; chỉ đổi tên nguyên tử thàn
 - Chọn một dòng cập nhật đồng thời kịch bản, preview, tiến độ và log; checkbox xác định phạm vi áp dụng của popup thiết lập.
 - Popup thiết lập có preview live theo tỷ lệ trước khi lưu; tỷ lệ và nhãn bút gần nhất trở thành mặc định cho job thêm sau.
 - Preview có viền/nhãn tỷ lệ; voice job được ưu tiên và voice mặc định là fallback. Nút chạy giữ số job của batch và cập nhật đồng hồ thời gian thực.
+- Bảng queue có cột Voice/Khung hình và thanh cuộn ngang ở màn hình hẹp; voice legacy được đối chiếu với thư viện theo ID, đường dẫn rồi tên.
 - Job `QUEUED` còn lại sau khi đóng app được phục hồi về `WAITING`; mỗi phiên chỉ chạy khi người dùng bấm Chạy/Bắt đầu.
 - Job đang chạy vẫn tiếp tục khi người dùng xem job khác.
 

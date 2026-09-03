@@ -29,7 +29,7 @@ from .preferences import VideoPreferences
 from .preview import preview_frame_size
 from .renderer import ASPECT_RATIOS
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
-from .voice import OmniVoiceError, VoiceLibrary, VoiceSettings, play_audio, stop_audio
+from .voice import OmniVoiceError, VoiceLibrary, VoiceProfile, VoiceSettings, play_audio, stop_audio
 
 if TYPE_CHECKING:
     from .ui import WhiteboardApp
@@ -77,14 +77,13 @@ def preferred_voice_index(
     default_profile_id: str,
 ) -> int:
     """Ưu tiên voice của job, sau đó voice mặc định đã lưu trên máy."""
-    for profile_id in (job_profile_id, default_profile_id):
-        if profile_id:
-            match = next(
-                (index for index, option in enumerate(options) if option[0] == profile_id),
-                None,
-            )
-            if match is not None:
-                return match
+    if job_profile_id:
+        match = next(
+            (index for index, option in enumerate(options) if option[0] == job_profile_id),
+            None,
+        )
+        if match is not None:
+            return match
     if job_voice_name:
         match = next(
             (index for index, option in enumerate(options) if option[1] == job_voice_name),
@@ -92,7 +91,42 @@ def preferred_voice_index(
         )
         if match is not None:
             return match
+    if default_profile_id:
+        match = next(
+            (index for index, option in enumerate(options) if option[0] == default_profile_id),
+            None,
+        )
+        if match is not None:
+            return match
     return 0 if options else -1
+
+
+def matching_voice_profile(
+    profiles: list[VoiceProfile],
+    profile_id: str,
+    voice_name: str,
+    audio_path: Path | None,
+) -> VoiceProfile | None:
+    """Ghép snapshot voice cũ về profile thư viện ổn định."""
+    if profile_id:
+        match = next((profile for profile in profiles if profile.profile_id == profile_id), None)
+        if match:
+            return match
+    if audio_path:
+        audio_key = str(audio_path.resolve()).casefold()
+        match = next(
+            (
+                profile
+                for profile in profiles
+                if str(profile.audio_path.resolve()).casefold() == audio_key
+            ),
+            None,
+        )
+        if match:
+            return match
+    if voice_name:
+        return next((profile for profile in profiles if profile.name == voice_name), None)
+    return None
 
 
 def settings_button_label(count: int, has_checked_jobs: bool) -> str:
@@ -315,14 +349,16 @@ class MultiJobView(ttk.Frame):
         table.grid(row=1, column=0, sticky="nsew")
         table.grid_columnconfigure(0, weight=1)
         table.grid_rowconfigure(0, weight=1)
-        columns = ("check", "number", "title", "status", "progress")
+        columns = ("check", "number", "title", "voice", "aspect", "status", "progress")
         self.job_table = ttk.Treeview(table, columns=columns, show="headings", selectmode="browse")
-        headings = ("☐", "#", "Dự án", "Trạng thái", "Tiến trình")
+        headings = ("☐", "#", "Dự án", "Voice", "Khung hình", "Trạng thái", "Tiến trình")
         for column, heading in zip(columns, headings):
             self.job_table.heading(column, text=heading)
         self.job_table.column("check", width=38, minwidth=38, stretch=False, anchor="center")
         self.job_table.column("number", width=36, minwidth=36, stretch=False, anchor="center")
-        self.job_table.column("title", width=155, minwidth=115, stretch=True)
+        self.job_table.column("title", width=150, minwidth=110, stretch=True)
+        self.job_table.column("voice", width=95, minwidth=75, stretch=False)
+        self.job_table.column("aspect", width=72, minwidth=65, stretch=False, anchor="center")
         self.job_table.column("status", width=82, minwidth=75, stretch=False)
         self.job_table.column("progress", width=115, minwidth=95, stretch=False)
         self.job_table.grid(row=0, column=0, sticky="nsew")
@@ -333,7 +369,12 @@ class MultiJobView(ttk.Frame):
         self.job_table.bind("<Button-1>", self._table_clicked, add="+")
         scroll = ttk.Scrollbar(table, orient="vertical", command=self.job_table.yview)
         scroll.grid(row=0, column=1, sticky="ns")
-        self.job_table.configure(yscrollcommand=scroll.set)
+        horizontal_scroll = ttk.Scrollbar(table, orient="horizontal", command=self.job_table.xview)
+        horizontal_scroll.grid(row=1, column=0, sticky="ew")
+        self.job_table.configure(
+            yscrollcommand=scroll.set,
+            xscrollcommand=horizontal_scroll.set,
+        )
 
     def _build_script_card(self) -> None:
         self.script_card.grid_columnconfigure(0, weight=1)
@@ -510,6 +551,8 @@ class MultiJobView(ttk.Frame):
                     "☑" if job.job_id in self.checked_job_ids else "☐",
                     f"{job.position:02d}",
                     job.title,
+                    job.voice_name or "Chưa chọn",
+                    job.aspect_ratio,
                     job_status_label(job.status),
                     progress,
                 ),
@@ -789,18 +832,39 @@ class MultiJobView(ttk.Frame):
         pen_brand = tk.StringVar(value=job.pen_brand)
         output_dir = tk.StringVar(value=str(job.output_dir.parent if bulk_edit else job.output_dir))
         voice_library = VoiceLibrary.load()
+        library_profiles = [
+            profile for profile in voice_library.profiles if profile.audio_path.is_file()
+        ]
         voice_options: list[tuple[str, str, Path]] = []
         seen_voice_ids: set[str] = set()
+        canonical_voice_ids: dict[str, str] = {}
         for target in target_jobs:
             if target.voice_audio_path and target.voice_audio_path.is_file():
-                current_voice_id = target.voice_profile_id or f"job:{target.job_id}"
+                matched_profile = matching_voice_profile(
+                    library_profiles,
+                    target.voice_profile_id,
+                    target.voice_name,
+                    target.voice_audio_path,
+                )
+                current_voice_id = (
+                    matched_profile.profile_id
+                    if matched_profile
+                    else target.voice_profile_id or f"job:{target.job_id}"
+                )
+                current_voice_name = (
+                    matched_profile.name if matched_profile else target.voice_name or "Giọng hiện tại"
+                )
+                current_voice_path = (
+                    matched_profile.audio_path if matched_profile else target.voice_audio_path
+                )
+                canonical_voice_ids[target.job_id] = current_voice_id
                 if current_voice_id not in seen_voice_ids:
                     voice_options.append(
-                        (current_voice_id, target.voice_name or "Giọng hiện tại", target.voice_audio_path)
+                        (current_voice_id, current_voice_name, current_voice_path)
                     )
                     seen_voice_ids.add(current_voice_id)
-        for profile in voice_library.profiles:
-            if profile.profile_id not in seen_voice_ids and profile.audio_path.is_file():
+        for profile in library_profiles:
+            if profile.profile_id not in seen_voice_ids:
                 voice_options.append((profile.profile_id, profile.name, profile.audio_path))
                 seen_voice_ids.add(profile.profile_id)
         voice_values = [name for _profile_id, name, _audio_path in voice_options]
@@ -912,11 +976,13 @@ class MultiJobView(ttk.Frame):
         if voice_values:
             selected_index = preferred_voice_index(
                 voice_options,
-                job.voice_profile_id,
+                canonical_voice_ids.get(job.job_id, job.voice_profile_id),
                 job.voice_name,
                 saved_voice_settings.selected_profile_id,
             )
             voice_combo.current(selected_index)
+            voice_combo.set(voice_values[selected_index])
+            voice_name.set(voice_values[selected_index])
 
         def selected_voice() -> tuple[str, str, Path] | None:
             index = voice_combo.current()
