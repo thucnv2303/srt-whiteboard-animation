@@ -56,6 +56,10 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Gói bò phiên bản 6 có 5 cue ánh xạ trực tiếp tới 5 món; số thứ tự dùng cụm đầy đủ “Món thứ…” để tránh đặt âm số ngay biên sinh voice.
 - UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
 - Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
+- ID: `TASK-036` — Cơ chế Tự động Ép Biên An Toàn (Safe Margin Inward Clamping) & Auto-fit Card Cảnh 3 cho Toàn bộ 330 Slot:
+  + Phát hiện nguyên nhân cốt lõi khiến mép phải khung card Cảnh 3 bị xén mất góc ở các slot: `draw_step_pill_badge` nhận tọa độ `x=750` kết hợp `card_width=620` làm mép phải vọt lên $1438px$, vượt quá độ phân giải màn hình $1080px$.
+  + Triển khai thuật toán Inward Clamping trong `whiteboard_app/art_shapes.py`: nếu $x_1 > 1040px$, tự động lùi $x$ sang trái theo $\Delta x$ để giữ $x_1 \le 1040px$, đồng thời vẽ huy hiệu số tròn sau khi $x$ đã căn chỉnh để toàn bộ cụm thẻ + huy hiệu luôn đồng bộ và nằm trọn vẹn 100% trong khung hình.
+  + Đã xuất ảnh kiểm thử tĩnh cho Cảnh 3 Slot 03 mà không cần render video theo đúng chỉ thị. Đạt chuẩn TECHNICALLY_VERIFIED (70/70 pytest pass).
 - ID: `TASK-023` — Cập nhật Typography thẻ chữ to rõ ràng, loại bỏ âm thanh Whoosh, nâng cấp hiệu ứng chuyển trang (slideleft) và nguyên tắc vẽ từ trên xuống dưới (top-to-bottom).
 - ID: `TASK-024` — Sửa triệt để lỗi chữ đứt nét, kịch bản voice y khoa cặn kẽ chi tiết và điều chỉnh nhịp xem thư thái (84.6s, gaze 1000ms):
   + Sửa lỗi chữ đứt nét/hổng từ: Phân tách rạch ròi hình minh họa và thẻ chữ thành các element độc lập trong `annotation.json`. Tinh chỉnh `classify_stroke_groups` nhận diện dải mật độ chữ Latin (0.04 - 0.65) và `_chain_region_paths` phạt nặng bước nhảy ngược dòng (`dr < -2`), đảm bảo thứ tự đọc viết tự nhiên từ trên xuống dưới, trái qua phải mà không bỏ sót từ giữa chừng.

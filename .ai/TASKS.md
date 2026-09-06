@@ -49,6 +49,10 @@
   + Render hoàn tất video 2K (1440x2560 30FPS, 122.53 MB, 84.8s) xuất thẳng sang `G:\My Drive\Đăng video\Day_01_Slot_02_Gạo_Tẻ_Nấu_Cháo_Rây_Bé_Mấy_Tháng_Ăn_Được_2K.mp4` và gửi webhook đồng bộ Google Sheets thành công.
 - `TASK-032` — Khắc phục triệt để lỗi chữ tràn khung & Nâng cấp Hệ thống Hình khối Nghệ thuật Vẽ tay Sinh động.
 - `TASK-034` — Khắc phục triệt để lỗi ảnh Cảnh 3 bị che mất góc & Cơ chế tự động tính chiều cao khung card ăn khớp theo câu chữ: Tái cấu trúc phân vùng Scene 3 theo dải cao toàn màn hình $[0, 1080]$, xóa bỏ triệt để hiện tượng cắt góc ảnh; nâng cấp `draw_step_pill_badge` tự động tính chiều cao theo số dòng text và truyền trực tiếp bounding box thực tế vào `annotation.json`; re-render và kiểm chứng thành công trên Day 1 Slot 03 (53.9s 2K).
+- ID: `TASK-036` — Cơ chế Tự động Ép Biên An Toàn (Safe Margin Inward Clamping) & Auto-fit Card Cảnh 3 cho Toàn bộ 330 Slot:
+  + Phát hiện nguyên nhân cốt lõi khiến mép phải khung card Cảnh 3 bị xén mất góc ở các slot: `draw_step_pill_badge` nhận tọa độ `x=750` kết hợp `card_width=620` làm mép phải vọt lên $1438px$, vượt quá độ phân giải màn hình $1080px$.
+  + Triển khai thuật toán Inward Clamping trong `whiteboard_app/art_shapes.py`: nếu $x_1 > 1040px$, tự động lùi $x$ sang trái theo $\Delta x$ để giữ $x_1 \le 1040px$, đồng thời vẽ huy hiệu số tròn sau khi $x$ đã căn chỉnh để toàn bộ cụm thẻ + huy hiệu luôn đồng bộ và nằm trọn vẹn 100% trong khung hình.
+  + Đã xuất ảnh kiểm thử tĩnh cho Cảnh 3 Slot 03 mà không cần render video theo đúng chỉ thị.
 - `TASK-035` — Khắc phục triệt để lỗi chữ dính dòng / thẻ pill méo Cảnh 1 & Xóa bỏ hardcode phụ đề Cảnh 4 bằng Universal Advice Cards:
   + Tách dòng bullet theo `\n` trong `draw_auto_card_text`: xóa bỏ lỗi dính 2 gạch đầu dòng trên 1 hàng.
   + Thẻ cảnh báo dạng viên nang tự co giãn `draw_warning_pill`: ôm sát chiều rộng text + icon, xóa bỏ hiện tượng thẻ dài ngoằng và chữ bị dồn ép.

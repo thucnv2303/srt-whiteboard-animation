@@ -237,18 +237,25 @@ def draw_washi_memo_card(draw, bbox, fill=(255, 255, 255, 248), outline=GREEN_CO
 def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_color=THEME_COLOR, card_width=None, is_compact=False, inner_pad=18):
     """Huy hiệu bước thực hành bo góc cao cấp: tự tính toán auto-fit theo từng câu chữ, không bao giờ tràn viền."""
     circle_r = 28 if is_compact else 34
-    cx = x + circle_r
-    cy = y + circle_r
-    draw.ellipse((cx - circle_r, cy - circle_r, cx + circle_r, cy + circle_r), fill=theme_color, outline=(255, 255, 255), width=3)
-    f_num = get_font(FONT_BOLD, 36 if is_compact else 42)
-    draw.text((cx, cy - 2), str(step_num), font=f_num, fill=(255, 255, 255), anchor="mm")
-
     card_x0 = x + circle_r * 2 + 12
     card_y0 = y
     if card_width is not None:
         card_x1 = card_x0 + card_width
     else:
         card_x1 = x + 980
+
+    # BẢO VỆ BIÊN AN TOÀN (Safe Margin Constraint): Mép phải không bao giờ vượt quá 1040px
+    if card_x1 > 1040:
+        overflow_dx = card_x1 - 1040
+        x = max(30, x - overflow_dx)
+        card_x0 = x + circle_r * 2 + 12
+        card_x1 = 1040
+
+    cx = x + circle_r
+    cy = y + circle_r
+    draw.ellipse((cx - circle_r, cy - circle_r, cx + circle_r, cy + circle_r), fill=theme_color, outline=(255, 255, 255), width=3)
+    f_num = get_font(FONT_BOLD, 36 if is_compact else 42)
+    draw.text((cx, cy - 2), str(step_num), font=f_num, fill=(255, 255, 255), anchor="mm")
     
     # Nội dung mô tả (desc): Tự động tính toán số dòng và co giãn linh hoạt
     if isinstance(desc, list):
@@ -738,7 +745,9 @@ def draw_auto_card_text(
     
     # 1. Tách title thành các dòng cân đối
     title_lines = []
-    if (" — " in title or " : " in title) and len(title) > 22:
+    if "\n" in title:
+        title_lines = [p.strip() for p in title.split("\n") if p.strip()]
+    elif (" — " in title or " : " in title) and len(title) > 22:
         delim = " — " if " — " in title else " : "
         parts = title.split(delim, 1)
         title_lines = [parts[0].strip(), parts[1].strip()]
