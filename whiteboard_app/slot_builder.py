@@ -276,10 +276,13 @@ class GoldenSlotBuilder:
                 draw.rectangle((0, 0, 1080, 150), fill=PAPER_BG)
                 draw_ribbon_banner(draw, (110, 40, 970, 155), fill=THEME_COLOR, text=cfg.get("title", "3 BƯỚC NẤU CHÁO RÂY 1:10 CHUẨN Y KHOA"), max_font_size=38)
 
-                # Vẽ 3 thẻ chỉ dẫn nghệ thuật Washi Memo đa màu (Cam - Xanh lá - Xanh dương)
-                b1_box = draw_step_pill_badge(draw, 750, 440, "1", cfg.get("step1_title", "BƯỚC 1: GẠO TẺ NGUYÊN CÁM"), cfg.get("step1_desc", ["Vo nhẹ 1 lần với nước sạch", "Giữ trọn vitamin nhóm B"]), tag_text=cfg.get("step1_tag", "GẠO NGUYÊN CÁM"), theme_color=THEME_COLOR, card_width=620)
-                b2_box = draw_step_pill_badge(draw, 330, 990, "2", cfg.get("step2_title", "BƯỚC 2: TỶ LỆ VÀNG 1:10"), cfg.get("step2_desc", ["10g gạo nấu cùng 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=cfg.get("step2_tag", "TỶ LỆ VÀNG 1:10"), theme_color=GREEN_COLOR, card_width=620)
-                b3_box = draw_step_pill_badge(draw, 750, 1570, "3", cfg.get("step3_title", "BƯỚC 3: RÂY MỊN ĐỒNG NHẤT"), cfg.get("step3_desc", ["Đổ qua rây 0.5mm khi còn ấm", "Miết nhẹ lưng thìa 2 lần"]), tag_text=cfg.get("step3_tag", "RÂY MỊN 0.5MM"), theme_color=BLUE_COLOR, card_width=620)
+                # Vẽ 3 thẻ chỉ dẫn nghệ thuật Washi Memo so le Zigzag chuẩn vùng trống (Negative Space)
+                # Bước 1 (Hình bên trái x in [0, 520]): Thẻ đặt bên phải tại x=555 (x0=635..x1=1040, y=270)
+                b1_box = draw_step_pill_badge(draw, 555, 270, "1", cfg.get("step1_title", "BƯỚC 1: GẠO TẺ NGUYÊN CÁM"), cfg.get("step1_desc", ["Vo nhẹ 1 lần với nước sạch", "Giữ trọn vitamin nhóm B"]), tag_text=cfg.get("step1_tag", "GẠO NGUYÊN CÁM"), theme_color=THEME_COLOR, card_width=405)
+                # Bước 2 (Hình bên phải x in [560, 1080]): Thẻ đặt bên trái tại x=40 (x0=120..x1=540, y=870)
+                b2_box = draw_step_pill_badge(draw, 40, 870, "2", cfg.get("step2_title", "BƯỚC 2: TỶ LỆ VÀNG 1:10"), cfg.get("step2_desc", ["10g gạo nấu cùng 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=cfg.get("step2_tag", "TỶ LỆ VÀNG 1:10"), theme_color=GREEN_COLOR, card_width=420)
+                # Bước 3 (Hình bên trái x in [0, 580]): Thẻ đặt bên phải tại x=595 (x0=675..x1=1040, y=1440)
+                b3_box = draw_step_pill_badge(draw, 595, 1440, "3", cfg.get("step3_title", "BƯỚC 3: RÂY MỊN ĐỒNG NHẤT"), cfg.get("step3_desc", ["Đổ qua rây 0.5mm khi còn ấm", "Miết nhẹ lưng thìa 2 lần"]), tag_text=cfg.get("step3_tag", "RÂY MỊN 0.5MM"), theme_color=BLUE_COLOR, card_width=365)
 
                 elements = [
                     {"id": "s3_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 135}, "reveal": {"startMs": 100, "durationMs": 1800}},
