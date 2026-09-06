@@ -48,8 +48,13 @@
   + Nét vẽ tay lượn theo đường cong ruy băng và bong bóng sống động tự nhiên, không bị giật hay nhảy nét.
   + Render hoàn tất video 2K (1440x2560 30FPS, 122.53 MB, 84.8s) xuất thẳng sang `G:\My Drive\Đăng video\Day_01_Slot_02_Gạo_Tẻ_Nấu_Cháo_Rây_Bé_Mấy_Tháng_Ăn_Được_2K.mp4` và gửi webhook đồng bộ Google Sheets thành công.
 - `TASK-032` — Khắc phục triệt để lỗi chữ tràn khung & Nâng cấp Hệ thống Hình khối Nghệ thuật Vẽ tay Sinh động.
-- `TASK-033` — Phát triển Chrome Extension "ChatGPT Auto Bot & Sheet Sync" (v1.2.1): Quét trực tiếp Google Sheet/CSV, tự động gửi hàng loạt lên ChatGPT, linh hoạt chọn kết quả trả về là Ảnh DALL-E (.jpg) hoặc Văn bản (.txt + .csv).
 - `TASK-034` — Khắc phục triệt để lỗi ảnh Cảnh 3 bị che mất góc & Cơ chế tự động tính chiều cao khung card ăn khớp theo câu chữ: Tái cấu trúc phân vùng Scene 3 theo dải cao toàn màn hình $[0, 1080]$, xóa bỏ triệt để hiện tượng cắt góc ảnh; nâng cấp `draw_step_pill_badge` tự động tính chiều cao theo số dòng text và truyền trực tiếp bounding box thực tế vào `annotation.json`; re-render và kiểm chứng thành công trên Day 1 Slot 03 (53.9s 2K).
+- `TASK-035` — Khắc phục triệt để lỗi chữ dính dòng / thẻ pill méo Cảnh 1 & Xóa bỏ hardcode phụ đề Cảnh 4 bằng Universal Advice Cards:
+  + Tách dòng bullet theo `\n` trong `draw_auto_card_text`: xóa bỏ lỗi dính 2 gạch đầu dòng trên 1 hàng.
+  + Thẻ cảnh báo dạng viên nang tự co giãn `draw_warning_pill`: ôm sát chiều rộng text + icon, xóa bỏ hiện tượng thẻ dài ngoằng và chữ bị dồn ép.
+  + Thẻ lời khuyên vạn năng `draw_advice_card`: thay thế các huy hiệu cố định thìa/mặt trời/lịch bằng thẻ số tròn ❶ ❷ ❸ đa sắc màu mang bóng đổ 3D, tự động hiển thị tiêu đề và phụ đề từ kịch bản của mọi slot.
+  + Căn chỉnh sớ cuộn kết luận đáy Cảnh 1 ($y \in [1725, 1875]$): không còn lem nét vẽ minh họa bên trên.
+  + Re-render hoàn tất video 2K Day 1 Slot 03 (53.4s, 78.24 MB) xuất tự động sang Google Drive `G:\My Drive\Đăng video\Day_01_Slot_03_Mẹo_Tăng_Độ_Thô_Không_Nôn_Trớ_Ngày_1_2K.mp4` và đồng bộ Sheets webhook thành công.
 The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
 - `TASK-028` — Khắc phục dứt điểm va chạm Title & Tag, giải phóng toàn bộ tranh minh họa doodle đáy và Chuẩn hóa Quy chuẩn Negative Space Architecture + Prompt GPT cho toàn bộ 330 Slot:
   + Sửa triệt để va chạm chữ trong thẻ bước compact: Trong `draw_step_pill_badge` (`whiteboard_app/art_shapes.py`), chuẩn hóa kích thước tag pill (`f_tag=18`, `tag_h=28`) và tính toán `gap_to_tag` an toàn, co giãn font tiêu đề bước tự động (`f_title=24` -> `16`), mở rộng thẻ card lên 430-440px trong `whiteboard_app/slot_builder.py`. Cảnh 3 hiển thị thông thoáng 100%, không còn bất kỳ ký tự nào đè lên nhau.

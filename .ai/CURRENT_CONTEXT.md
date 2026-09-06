@@ -245,9 +245,21 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
     * Đã xuất bản thành công video 2K `G:\My Drive\Đăng video\Day_01_Slot_03_Mẹo_Tăng_Độ_Thô_Không_Nôn_Trớ_Ngày_1_2K.mp4` (80.49 MB, 53.9s) và đồng bộ Google Sheets webhook `status: success`.
     * Đã trích xuất và đối chiếu trực quan các frame (4.0s, 6.0s, 8.5s, 14.0s, 15.5s): xác nhận cốc đong nước, rau củ, nồi ninh và bát ăn dặm hiển thị đầy đủ 100%, không còn vết cắt hay góc bị che.
 
+- ID: `TASK-035` — Khắc phục triệt để lỗi chữ dính dòng / thẻ pill méo Cảnh 1 & Xóa bỏ hardcode phụ đề Cảnh 4 bằng Universal Advice Cards:
+  + **Sửa lỗi dính dòng trong Bong bóng thoại Cảnh 1**: Cập nhật `draw_auto_card_text` (`whiteboard_app/art_shapes.py`) phân tách đoạn văn bản bằng dấu ngắt dòng `\n` trước khi chia từ (`raw_paras = [p.strip() for p in desc.split("\n") if p.strip()]`), bảo đảm từng bullet point hoặc đoạn văn bản luôn ngắt dòng sạch sẽ, không bao giờ bị dính liền vào nhau.
+  + **Thẻ cảnh báo Pill Badge tự ôm sát text (`draw_warning_pill`)**: Thay thế logic đo tĩnh bằng hàm vạn năng `draw_warning_pill(draw, cx, cy, text, icon="prohibit")` tự động tính `pill_w = min(max_w, txt_w + 90)` ôm vừa khít câu chữ trên 1 dòng duy nhất, căn giữa tại `(cx, cy)`, xóa bỏ 100% hiện tượng thẻ bị kéo dài và chữ bị co nhỏ về 1 bên.
+  + **Xóa bỏ hardcode Cảnh 4 bằng Thẻ Lời Khuyên Vạn Năng (`draw_advice_card`)**:
+    * Loại bỏ hoàn toàn các hàm cứng định dạng Slot 2 (`draw_spoon_dosage`, `draw_sun_time_badge`, `draw_calendar_allergy_badge` vốn chứa mặc định thìa 5ml, mặt trời 9h-10h, lịch dị ứng 3 ngày).
+    * Thay bằng `draw_advice_card(draw, cx, cy, num_str, title, subtitle, theme_color)` có số thứ tự tròn 3D ❶ ❷ ❸ với bảng màu chủ đề (Cam - Xanh lá - Xanh dương), bóng đổ 3D, tự động hiển thị tiêu đề in đậm sắc nét và phụ đề tương ứng từ kịch bản của mọi slot.
+  + **Căn chỉnh hoàn hảo sớ cuộn kết luận đáy trang Cảnh 1**: Điều chỉnh vùng nền `PAPER_BG` xóa trắng dải $y \in [1710, 1920]$ và đặt `bot_bbox = (60, 1725, 1020, 1875)`, element region `(50, 1715, 980, 170)`, giải quyết 100% hiện tượng nét vẽ minh họa lấn đè lên viền sớ cuộn.
+  + **Kiểm chứng kỹ thuật thực tế trên Slot 3 (Day 1 Slot 03)**:
+    * Chạy pipeline hoàn chỉnh: `python scripts/generate_lively_slot.py --day 1 --slot 3 --aspect-ratio "9:16 2K"`.
+    * Đã xuất bản thành công video 2K `G:\My Drive\Đăng video\Day_01_Slot_03_Mẹo_Tăng_Độ_Thô_Không_Nôn_Trớ_Ngày_1_2K.mp4` (78.24 MB, 53.4s) và đồng bộ Google Sheets webhook `status: success`.
+    * Trích xuất frame kiểm tra thực tế: Cảnh 1 (bong bóng phân dòng bullet rõ ràng, pill badge cân đối vừa khít chữ, sớ cuộn đáy không lem); Cảnh 4 (3 thẻ lời khuyên ❶ ❷ ❸ hiển thị đúng 100% nội dung tăng thô: "Bình tĩnh không la mắng", "Khen ngợi khi con nuốt", "Kiên trì giới thiệu món mới").
+
 ## Trạng thái kiểm tra
 - 70 unit test: PASS.
-- Trích xuất frame video thực tế Slot 3: Xác nhận 100% không còn lỗi cắt ảnh và không còn tràn chữ.
+- Trích xuất frame video thực tế Slot 3: Xác nhận 100% không còn lỗi cắt ảnh, không còn tràn chữ, không còn hardcode nội dung.
 - Trạng thái kỹ thuật: TECHNICALLY_VERIFIED.
 
 ## Task an toàn tiếp theo

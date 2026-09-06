@@ -765,30 +765,34 @@ def draw_auto_card_text(
         else:
             break
 
-    # 2. Xử lý desc nếu có
+    # 2. Xử lý desc nếu có (hỗ trợ phân tách đoạn / bullet bằng dấu \n)
     desc_lines = []
     f_desc_size = max_desc_font
     f_desc = get_font(FONT_REGULAR, f_desc_size)
     if desc:
+        raw_paras = [p.strip() for p in desc.split("\n") if p.strip()]
         while f_desc_size >= min_desc_font:
             desc_lines = []
-            words = desc.split()
-            cur = []
             too_wide = False
-            for w in words:
-                test = " ".join(cur + [w])
-                bb = draw.textbbox((0, 0), test, font=f_desc)
-                if (bb[2] - bb[0]) <= avail_w:
-                    cur.append(w)
-                else:
-                    if cur:
-                        desc_lines.append(" ".join(cur))
-                        cur = [w]
+            for para in raw_paras:
+                words = para.split()
+                cur = []
+                for w in words:
+                    test = " ".join(cur + [w])
+                    bb = draw.textbbox((0, 0), test, font=f_desc)
+                    if (bb[2] - bb[0]) <= avail_w:
+                        cur.append(w)
                     else:
-                        too_wide = True
-                        break
-            if cur:
-                desc_lines.append(" ".join(cur))
+                        if cur:
+                            desc_lines.append(" ".join(cur))
+                            cur = [w]
+                        else:
+                            too_wide = True
+                            break
+                if cur:
+                    desc_lines.append(" ".join(cur))
+                if too_wide:
+                    break
             if too_wide and f_desc_size > min_desc_font:
                 f_desc_size -= 1
                 f_desc = get_font(FONT_REGULAR, f_desc_size)
@@ -826,5 +830,111 @@ def draw_auto_card_text(
         for line in desc_lines:
             draw.text((anchor_x, cur_y), line, font=f_desc, fill=desc_color, anchor=txt_anchor)
             cur_y += line_h_desc
+
+
+def draw_warning_pill(
+    draw,
+    cx: float,
+    cy: float,
+    text: str,
+    icon: str = "prohibit",
+    theme_color: tuple = RED_COLOR,
+    bg_color: tuple = (255, 245, 245),
+    border_color: tuple = RED_COLOR,
+    max_w: int = 960,
+    pill_h: int = 56
+) -> tuple[int, int, int, int]:
+    """
+    Vẽ thẻ cảnh báo dạng viên nang (pill badge) tự co giãn vừa khít độ dài text:
+    - Chiều rộng pill ôm sát nội dung (text + icon + padding), không bị kéo dài vô nghĩa.
+    - Căn giữa tại tọa độ cx, cy.
+    - Trả về bounding box (x0, y0, x1, y1) để thuận tiện cho việc lưu annotation region.
+    """
+    f_warn = get_font(FONT_BOLD, 22)
+    bb = draw.textbbox((0, 0), text, font=f_warn)
+    txt_w = bb[2] - bb[0]
+    
+    # Nếu text quá dài, tự hạ font nhẹ
+    if txt_w + 90 > max_w:
+        f_warn = get_font(FONT_BOLD, 20)
+        bb = draw.textbbox((0, 0), text, font=f_warn)
+        txt_w = bb[2] - bb[0]
+
+    pill_w = min(max_w, txt_w + 90)
+    x0 = int(cx - pill_w // 2)
+    x1 = int(cx + pill_w // 2)
+    y0 = int(cy - pill_h // 2)
+    y1 = int(cy + pill_h // 2)
+
+    # Nền và viền viên nang
+    draw.rounded_rectangle((x0, y0, x1, y1), radius=pill_h // 2, fill=bg_color, outline=border_color, width=2)
+
+    # Icon cảnh báo bên trái
+    icon_cx = x0 + 26
+    icon_cy = cy
+    if icon == "prohibit":
+        draw_prohibition_badge(draw, icon_cx, icon_cy, radius=15)
+
+    # Text căn giữa phần còn lại
+    text_cx = (x0 + 52 + x1 - 10) // 2
+    draw.text((text_cx, cy), text, font=f_warn, fill=theme_color, anchor="mm")
+
+    return (x0, y0, x1, y1)
+
+
+def draw_advice_card(
+    draw,
+    cx: float,
+    cy: float,
+    num_str: str,
+    title: str,
+    subtitle: str = None,
+    theme_color: tuple = THEME_COLOR,
+    card_w: int = 920,
+    card_h: int = 92
+) -> tuple[int, int, int, int]:
+    """
+    Thẻ lời khuyên vạn năng (Universal Advice Card) có số thứ tự hình tròn (1, 2, 3),
+    tiêu đề in đậm sắc nét và phụ đề hướng dẫn chi tiết bên dưới.
+    Được dùng thay thế triệt để các thẻ cố định một chủ đề như thìa/mặt trời/lịch.
+    Trả về bounding box (x0, y0, x1, y1).
+    """
+    x0 = int(cx - card_w // 2)
+    x1 = int(cx + card_w // 2)
+    y0 = int(cy - card_h // 2)
+    y1 = int(cy + card_h // 2)
+    bbox = (x0, y0, x1, y1)
+
+    # Bóng đổ nhẹ tạo độ nổi 3D
+    draw.rounded_rectangle((x0 + 4, y0 + 4, x1 + 4, y1 + 4), radius=20, fill=(225, 218, 202, 130))
+    # Thẻ chính nền trắng kem dịu mắt
+    draw.rounded_rectangle(bbox, radius=20, fill=(255, 255, 255, 250), outline=theme_color, width=2)
+
+    # Huy hiệu số thứ tự tròn 3D bên trái
+    badge_cx = x0 + 50
+    badge_cy = cy
+    badge_r = 25
+    draw.ellipse((badge_cx - badge_r, badge_cy - badge_r, badge_cx + badge_r, badge_cy + badge_r), fill=theme_color)
+    f_num = get_font(FONT_BOLD, 22)
+    draw.text((badge_cx, badge_cy), str(num_str), font=f_num, fill=(255, 255, 255), anchor="mm")
+
+    # Nội dung text bên phải huy hiệu
+    draw_auto_card_text(
+        draw,
+        bbox,
+        title=title,
+        desc=subtitle,
+        theme_color=theme_color,
+        desc_color=(60, 60, 60),
+        max_title_font=24,
+        min_title_font=16,
+        max_desc_font=18,
+        min_desc_font=13,
+        icon_left_pad=95,
+        align="left"
+    )
+
+    return bbox
+
 
 

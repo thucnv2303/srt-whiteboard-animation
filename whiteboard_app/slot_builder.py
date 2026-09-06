@@ -51,6 +51,8 @@ from .art_shapes import (
     draw_seamless_rosette,
     draw_speech_balloon,
     draw_auto_card_text,
+    draw_warning_pill,
+    draw_advice_card,
     get_font,
     FONT_BOLD,
     FONT_REGULAR,
@@ -170,7 +172,7 @@ class GoldenSlotBuilder:
             if i == 0:
                 # Cảnh 1: Cảnh báo sai lầm & Hook
                 draw.rectangle((0, 0, 1080, 175), fill=PAPER_BG)
-                draw.rectangle((0, 1740, 1080, 1920), fill=PAPER_BG)
+                draw.rectangle((0, 1710, 1080, 1920), fill=PAPER_BG)
                 draw_ribbon_banner(draw, (110, 35, 970, 155), fill=THEME_COLOR, text=cfg.get("title", self.slot.title), max_font_size=38)
                 
                 # Bong bóng đối thoại truyện tranh sinh động có đuôi chỉ thẳng vào nhân vật em bé
@@ -192,20 +194,12 @@ class GoldenSlotBuilder:
                     align="center"
                 )
 
-                # Huy hiệu cảnh báo dạng thẻ pill nằm ngang thoáng đãng (y=435..490)
+                # Huy hiệu cảnh báo dạng viên nang (pill badge) tự ôm sát text, căn giữa chuẩn mực (y=435..495)
                 warn_text = cfg.get("warn_label", "CẢNH BÁO Y KHOA: CẤM NẾP & HẠT SEN")
-                f_warn = get_font(FONT_BOLD, 22)
-                bb_w = draw.textbbox((0, 0), warn_text, font=f_warn)
-                txt_w = bb_w[2] - bb_w[0]
-                pill_w = min(960, txt_w + 80)
-                pill_x0 = 540 - pill_w // 2
-                pill_x1 = 540 + pill_w // 2
-                draw.rounded_rectangle((pill_x0, 435, pill_x1, 490), radius=16, fill=(255, 245, 245), outline=RED_COLOR, width=2)
-                draw_prohibition_badge(draw, pill_x0 + 26, 462, radius=16)
-                draw_auto_card_text(draw, (pill_x0 + 52, 435, pill_x1 - 10, 490), warn_text, theme_color=RED_COLOR, max_title_font=22, min_title_font=14, align="left")
+                pill_box = draw_warning_pill(draw, 540, 465, warn_text, icon="prohibit", theme_color=RED_COLOR, border_color=RED_COLOR)
 
-                # Thẻ kết luận đáy trang: Cuộn sớ thư pháp sang trọng (y=1750..1885)
-                bot_bbox = (60, 1750, 1020, 1885)
+                # Thẻ kết luận đáy trang: Cuộn sớ thư pháp sang trọng (y=1725..1875)
+                bot_bbox = (60, 1725, 1020, 1875)
                 draw_seamless_parchment(draw, bot_bbox, fill=(255, 250, 238), outline=THEME_COLOR, width=3)
                 draw_auto_card_text(
                     draw, bot_bbox,
@@ -225,9 +219,9 @@ class GoldenSlotBuilder:
                 elements = [
                     {"id": "s1_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 140}, "reveal": {"startMs": 100, "durationMs": 1800}},
                     {"id": "s1_alert_box", "label": "Bong Bóng Thoại", "region": {"x": 50, "y": 165, "width": 980, "height": 260}, "reveal": {"startMs": 2000, "durationMs": 3500}},
-                    {"id": "s1_prohibit_icon", "label": "Huy Hiệu Cấm", "region": {"x": 150, "y": 425, "width": 780, "height": 70}, "reveal": {"startMs": 5600, "durationMs": 1500}},
-                    {"id": "s1_baby_visual", "label": "Hình Minh Họa", "region": {"x": 0, "y": 500, "width": 1080, "height": 1240}, "reveal": {"startMs": 7200, "durationMs": 5500}},
-                    {"id": "s1_summary_card", "label": "Thẻ Kết Luận Đáy", "region": {"x": 50, "y": 1740, "width": 980, "height": 150}, "reveal": {"startMs": 12800, "durationMs": 2500}}
+                    {"id": "s1_prohibit_icon", "label": "Huy Hiệu Cấm", "region": {"x": max(0, pill_box[0] - 5), "y": max(0, pill_box[1] - 5), "width": (pill_box[2] - pill_box[0]) + 10, "height": (pill_box[3] - pill_box[1]) + 10}, "reveal": {"startMs": 5600, "durationMs": 1500}},
+                    {"id": "s1_baby_visual", "label": "Hình Minh Họa", "region": {"x": 0, "y": 500, "width": 1080, "height": 1210}, "reveal": {"startMs": 7200, "durationMs": 5500}},
+                    {"id": "s1_summary_card", "label": "Thẻ Kết Luận Đáy", "region": {"x": 50, "y": 1715, "width": 980, "height": 170}, "reveal": {"startMs": 12800, "durationMs": 2500}}
                 ]
 
             elif i == 1:
@@ -253,15 +247,15 @@ class GoldenSlotBuilder:
                     align="center"
                 )
 
-                # Thẻ đỏ (Dạ dày quá tải): THẺ GIẤY XÉ TAY CÓ GHIM BẤM ĐỎ 3D (Torn Paper Memo)
-                torn_bbox = (50, 1680, 1030, 1855)
+                # Thẻ đỏ (Cảnh báo quá tải): TORN PAPER SCRAPBOOK VỚI GHIM BẤM 3D
+                torn_bbox = (50, 1675, 1030, 1915)
                 draw_torn_paper_card(draw, torn_bbox, fill=(255, 255, 255, 250), outline=RED_COLOR, pin_color=RED_COLOR)
                 draw_auto_card_text(
                     draw, torn_bbox,
-                    title=cfg.get("bad_title", "GẠO NẾP & HẠT SEN — GÂY QUÁ TẢI TIÊU HÓA!"),
-                    desc=cfg.get("bad_desc", "Thiếu men amylase phân giải, thức ăn ứ đọng sinh đầy hơi"),
+                    title=cfg.get("bad_title", "GẠO NẾP & HẠT SEN — QUÁ TẢI TIÊU HÓA"),
+                    desc=cfg.get("bad_desc", "Đầy bụng, khó tiêu, lên men đường ruột khiến con quấy khóc"),
                     theme_color=RED_COLOR,
-                    desc_color=(185, 28, 28),
+                    desc_color=(50, 50, 50),
                     max_title_font=30,
                     min_title_font=18,
                     max_desc_font=22,
@@ -270,32 +264,22 @@ class GoldenSlotBuilder:
                 )
 
                 elements = [
-                    {"id": "s2_banner", "label": "Ruy Băng Cơ Chế", "region": {"x": 40, "y": 25, "width": 1000, "height": 140}, "reveal": {"startMs": 100, "durationMs": 1800}},
-                    {"id": "s2_happy_visual", "label": "Hình Dạ Dày Êm Dịu", "region": {"x": 0, "y": 170, "width": 1080, "height": 710}, "reveal": {"startMs": 2000, "durationMs": 4000}},
-                    {"id": "s2_happy_card", "label": "Thẻ Xanh Dễ Tiêu", "region": {"x": 40, "y": 880, "width": 1000, "height": 180}, "reveal": {"startMs": 6100, "durationMs": 2500}},
-                    {"id": "s2_stressed_visual", "label": "Hình Dạ Dày Quá Tải", "region": {"x": 0, "y": 1060, "width": 1080, "height": 615}, "reveal": {"startMs": 8700, "durationMs": 4000}},
-                    {"id": "s2_stressed_card", "label": "Thẻ Đỏ Quá Tải", "region": {"x": 40, "y": 1675, "width": 1000, "height": 185}, "reveal": {"startMs": 12800, "durationMs": 2500}}
+                    {"id": "s2_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 140}, "reveal": {"startMs": 100, "durationMs": 1800}},
+                    {"id": "s2_stomach_visual", "label": "Dạ Dày Quả Trứng", "region": {"x": 0, "y": 160, "width": 1080, "height": 720}, "reveal": {"startMs": 2000, "durationMs": 4000}},
+                    {"id": "s2_cloud_card", "label": "Đám Mây Tiêu Hóa", "region": {"x": 40, "y": 875, "width": 1000, "height": 190}, "reveal": {"startMs": 6100, "durationMs": 2500}},
+                    {"id": "s2_grain_visual", "label": "Hạt Nếp & Hạt Sen", "region": {"x": 0, "y": 1070, "width": 1080, "height": 600}, "reveal": {"startMs": 8700, "durationMs": 4000}},
+                    {"id": "s2_torn_card", "label": "Thẻ Cảnh Báo Mép Rách", "region": {"x": 40, "y": 1665, "width": 1000, "height": 245}, "reveal": {"startMs": 12800, "durationMs": 2500}}
                 ]
 
             elif i == 2:
-                # Cảnh 3: 3 Bước Thực Hành So Le Zigzag
-                draw.rectangle((0, 0, 1080, 145), fill=PAPER_BG)
-                # Tiêu đề đỉnh trang: Cuộn sớ thư pháp cổ tích cuộn 2 đầu
-                scroll_bbox = (80, 32, 1000, 150)
-                draw_seamless_parchment(draw, scroll_bbox, fill=(255, 252, 242), outline=THEME_COLOR, width=3)
-                draw_auto_card_text(draw, scroll_bbox, title=cfg.get("title", "CÔNG THỨC CHÁO RÂY 1:10 CHUẨN Y KHOA"), theme_color=THEME_COLOR, max_title_font=32, min_title_font=18, icon_left_pad=25, icon_right_pad=25, align="center")
+                # Cảnh 3: 3 Bước thực hành Tiêu chuẩn vàng
+                draw.rectangle((0, 0, 1080, 150), fill=PAPER_BG)
+                draw_ribbon_banner(draw, (110, 40, 970, 155), fill=THEME_COLOR, text=cfg.get("title", "3 BƯỚC NẤU CHÁO RÂY 1:10 CHUẨN Y KHOA"), max_font_size=38)
 
-                # BƯỚC 1: Đặt so le bên phải, né visual bên trái
-                tag1 = cfg.get("step1_tag", "VITAMIN B1")
-                b1_box = draw_step_pill_badge(draw, 505, 195, "1", cfg.get("step1_title", "GẠO NGUYÊN CÁM"), cfg.get("step1_desc", ["Chọn gạo thơm mới", "Vo nhẹ 1 lần giữ vitamin B1"]), tag_text=tag1, theme_color=THEME_COLOR, card_width=440)
-
-                # BƯỚC 2: Đặt so le bên trái, né visual bên phải
-                tag2 = cfg.get("step2_tag", "NINH 45 PHÚT")
-                b2_box = draw_step_pill_badge(draw, 45, 780, "2", cfg.get("step2_title", "TỶ LỆ VÀNG 1 : 10"), cfg.get("step2_desc", ["10g gạo + 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=tag2, theme_color=THEME_COLOR, card_width=440)
-
-                # BƯỚC 3: Đặt so le bên phải, né visual bên trái
-                tag3 = cfg.get("step3_tag", "LƯỚI 0.5MM")
-                b3_box = draw_step_pill_badge(draw, 505, 1410, "3", cfg.get("step3_title", "RÂY MỊN KHI ẤM"), cfg.get("step3_desc", ["Rây qua lưới 0.5mm", "Miết lưng thìa lấy cháo sánh"]), tag_text=tag3, theme_color=THEME_COLOR, card_width=440)
+                # Vẽ 3 thẻ chỉ dẫn nghệ thuật Washi Memo đa màu (Cam - Xanh lá - Xanh dương)
+                b1_box = draw_step_pill_badge(draw, 750, 440, "1", cfg.get("step1_title", "BƯỚC 1: GẠO TẺ NGUYÊN CÁM"), cfg.get("step1_desc", ["Vo nhẹ 1 lần với nước sạch", "Giữ trọn vitamin nhóm B"]), tag_text=cfg.get("step1_tag", "GẠO NGUYÊN CÁM"), theme_color=THEME_COLOR, card_width=620)
+                b2_box = draw_step_pill_badge(draw, 330, 990, "2", cfg.get("step2_title", "BƯỚC 2: TỶ LỆ VÀNG 1:10"), cfg.get("step2_desc", ["10g gạo nấu cùng 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=cfg.get("step2_tag", "TỶ LỆ VÀNG 1:10"), theme_color=GREEN_COLOR, card_width=620)
+                b3_box = draw_step_pill_badge(draw, 750, 1570, "3", cfg.get("step3_title", "BƯỚC 3: RÂY MỊN ĐỒNG NHẤT"), cfg.get("step3_desc", ["Đổ qua rây 0.5mm khi còn ấm", "Miết nhẹ lưng thìa 2 lần"]), tag_text=cfg.get("step3_tag", "RÂY MỊN 0.5MM"), theme_color=BLUE_COLOR, card_width=620)
 
                 elements = [
                     {"id": "s3_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 135}, "reveal": {"startMs": 100, "durationMs": 1800}},
@@ -312,10 +296,25 @@ class GoldenSlotBuilder:
                 draw.rectangle((0, 0, 1080, 150), fill=PAPER_BG)
                 draw_ribbon_banner(draw, (110, 40, 970, 155), fill=THEME_COLOR, text=cfg.get("title", "NGUYÊN TẮC VÀNG BỮA ĐẦU TIÊN"), max_font_size=38)
 
-                # 3 Huy hiệu xếp tầng gọn gàng ở khoảng trống (y=1100..1440)
-                draw_spoon_dosage(draw, 540, 1130, label=cfg.get("badge1_label", "1 - 2 THÌA CÀ PHÊ NHỎ (5ML)"))
-                draw_sun_time_badge(draw, 540, 1250, label=cfg.get("badge2_label", "ĂN CỮ SÁNG: 9H - 10H VUI VẺ"))
-                draw_calendar_allergy_badge(draw, 540, 1370, label=cfg.get("badge3_label", "THEO DÕI PHÂN & DA 3 NGÀY"))
+                # 3 Thẻ Lời khuyên Vạn năng (Universal Advice Cards) với số thứ tự tròn 1, 2, 3 và màu sắc chủ đề
+                ac1_box = draw_advice_card(
+                    draw, 540, 1130, "1",
+                    title=cfg.get("badge1_label", "1 - 2 THÌA CÀ PHÊ NHỎ (5ML)"),
+                    subtitle=cfg.get("badge1_desc", None),
+                    theme_color=THEME_COLOR, card_w=920, card_h=92
+                )
+                ac2_box = draw_advice_card(
+                    draw, 540, 1250, "2",
+                    title=cfg.get("badge2_label", "ĂN CỮ SÁNG: 9H - 10H VUI VẺ"),
+                    subtitle=cfg.get("badge2_desc", None),
+                    theme_color=GREEN_COLOR, card_w=920, card_h=92
+                )
+                ac3_box = draw_advice_card(
+                    draw, 540, 1370, "3",
+                    title=cfg.get("badge3_label", "THEO DÕI PHÂN & DA 3 NGÀY"),
+                    subtitle=cfg.get("badge3_desc", None),
+                    theme_color=BLUE_COLOR, card_w=920, card_h=92
+                )
 
                 # CTA Capsule đặt ở khoảng y=1490..1640 (giải phóng hoàn toàn doodle trái tim & dâu tây ở y=1700..1820)
                 cta_bbox = (60, 1500, 1020, 1650)
@@ -324,7 +323,7 @@ class GoldenSlotBuilder:
                 elements = [
                     {"id": "s4_banner", "label": "Ruy Băng Nguyên Tắc", "region": {"x": 40, "y": 25, "width": 1000, "height": 140}, "reveal": {"startMs": 100, "durationMs": 1800}},
                     {"id": "s4_mom_feeding", "label": "Hình Mẹ Đút Bé", "region": {"x": 0, "y": 160, "width": 1080, "height": 950}, "reveal": {"startMs": 2000, "durationMs": 5000}},
-                    {"id": "s4_icon_badges", "label": "3 Huy Hiệu Hướng Dẫn", "region": {"x": 60, "y": 1080, "width": 960, "height": 380}, "reveal": {"startMs": 7100, "durationMs": 3500}},
+                    {"id": "s4_icon_badges", "label": "3 Huy Hiệu Hướng Dẫn", "region": {"x": 50, "y": 1070, "width": 980, "height": 390}, "reveal": {"startMs": 7100, "durationMs": 3500}},
                     {"id": "s4_heart_cta", "label": "Khối Viên Nang Follow", "region": {"x": 50, "y": 1490, "width": 980, "height": 170}, "reveal": {"startMs": 10700, "durationMs": 2500}},
                     {"id": "s4_doodle_visual", "label": "Doodle Trái Tim & Dâu Tây", "region": {"x": 350, "y": 1680, "width": 400, "height": 170}, "reveal": {"startMs": 13300, "durationMs": 2000}}
                 ]
@@ -353,7 +352,7 @@ class GoldenSlotBuilder:
         ]
         elements_map = [
             ["s1_banner", "s1_alert_box", "s1_prohibit_icon", "s1_baby_visual", "s1_summary_card"],
-            ["s2_banner", "s2_happy_visual", "s2_happy_card", "s2_stressed_visual", "s2_stressed_card"],
+            ["s2_banner", "s2_stomach_visual", "s2_cloud_card", "s2_grain_visual", "s2_torn_card"],
             ["s3_banner", "s3_step1_visual", "s3_step1_card", "s3_step2_visual", "s3_step2_card", "s3_step3_visual", "s3_step3_card"],
             ["s4_banner", "s4_mom_feeding", "s4_icon_badges", "s4_heart_cta", "s4_doodle_visual"]
         ]
