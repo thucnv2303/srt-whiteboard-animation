@@ -52,10 +52,16 @@ def main():
     std_f1_png = raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_01.png"
 
     if input_pic_dir.is_dir() and input_f1.is_file() and input_f1.stat().st_size > 0:
-        base_images = [
-            input_pic_dir / f"day_{d_str}_slot_{s_str}_scene_{c:02d}.jpg"
-            for c in range(1, 5)
-        ]
+        base_images = []
+        for c in range(1, 5):
+            f_jpg = input_pic_dir / f"day_{d_str}_slot_{s_str}_scene_{c:02d}.jpg"
+            f_png = input_pic_dir / f"day_{d_str}_slot_{s_str}_scene_{c:02d}.png"
+            if f_jpg.is_file() and f_jpg.stat().st_size > 0:
+                base_images.append(f_jpg)
+            elif f_png.is_file() and f_png.stat().st_size > 0:
+                base_images.append(f_png)
+            else:
+                base_images.append(f_jpg)
         print(f"  Đang sử dụng bộ ảnh vẽ tay nghệ thuật GPT từ: {input_pic_dir}")
     elif raw_gpt_dir.is_dir() and (std_f1.is_file() or std_f1_png.is_file()):
         ext = ".jpg" if std_f1.is_file() else ".png"
@@ -87,56 +93,16 @@ def main():
         aspect_ratio=args.aspect_ratio
     )
 
-    # Cấu hình kịch bản và đồ họa 4 cảnh
-    if args.day == 1 and args.slot == 2:
-        script_scenes_cfg = [
-            {
-                "title": "BỮA ĂN DẶM ĐẦU TIÊN CỦA BÉ 6 THÁNG",
-                "alert_title": "TUYỆT ĐỐI KHÔNG TRỘN NẾP & HẠT SEN!",
-                "alert_bullet1": "• Bé 6 tháng chưa có men tiêu hóa tinh bột dẻo",
-                "alert_bullet2": "• Gây trướng bụng, đầy hơi, nôn trớ & sợ ăn dặm",
-                "warn_label": "CẢNH BÁO Y KHOA: CẤM NẾP & HẠT SEN",
-                "gas_label": "KHÍ TRƯỚNG Ứ ĐỌNG"
-            },
-            {
-                "title": "TẠI SAO BÉ CHƯA THỂ ĂN GẠO NẾP?",
-                "good_title": "CHÁO GẠO TẺ RÂY 1:10 — DỄ TIÊU HÓA",
-                "good_desc": "Dạ dày 6 tháng chỉ bằng quả trứng, hấp thu êm dịu",
-                "bad_title": "GẠO NẾP & HẠT SEN — QUÁ TẢI TIÊU HÓA!",
-                "bad_desc": "Thiếu men amylase, gây ứ đọng, trướng bụng & nôn trớ",
-                "bot_title": "LỰA CHỌN DUY NHẤT: GẠO TẺ TRẮNG NGUYÊN CÁM",
-                "bot_desc": "Bảo vệ tối đa niêm mạc ruột và hệ vi sinh của con"
-            },
-            {
-                "title": "CÔNG THỨC CHÁO RÂY 1:10 CHUẨN Y KHOA",
-                "step1_title": "BƯỚC 1: GẠO TẺ NGUYÊN CÁM",
-                "step1_desc": "Chọn gạo thơm mới, vo nhẹ 1 lần giữ vitamin B1",
-                "step1_tag": "VITAMIN B1",
-                "step2_title": "BƯỚC 2: TỶ LỆ VÀNG 1 : 10",
-                "step2_desc": "Đong 10g gạo với 100ml nước, ninh nhỏ lửa 45 phút",
-                "step2_tag": "NINH 45 PHÚT",
-                "step3_title": "BƯỚC 3: RÂY MỊN KHI ẤM NÓNG",
-                "step3_desc": "Rây qua lưới 0.5mm, miết lưng thìa lấy cháo sánh",
-                "step3_tag": "LƯỚI 0.5MM"
-            },
-            {
-                "title": "NGUYÊN TẮC VÀNG BỮA ĐẦU TIÊN",
-                "badge1_label": "1 - 2 THÌA CÀ PHÊ NHỎ (5ML)",
-                "badge2_label": "ĂN CỮ SÁNG: 9H - 10H VUI VẺ",
-                "badge3_label": "THEO DÕI PHÂN & DA 3 NGÀY",
-                "nosalt_text": "TUYỆT ĐỐI KHÔNG NÊM MẮM, MUỐI, DẦU ĂN",
-                "cta_title": "BẤM FOLLOW ĂN DẶM MẸ DÂU NGAY!",
-                "cta_sub": "Đồng hành chăm con khỏe mạnh chuẩn y khoa"
-            }
-        ]
-        scripts_text = [
-            "Rất nhiều mẹ hỏi Mẹ Dâu: Bé tròn sáu tháng bắt đầu ăn dặm, có nên trộn thêm gạo nếp, hạt sen hay đậu xanh vào nấu cháo cho con nhanh tăng cân không? Câu trả lời dứt khoát là tuyệt đối không mẹ nhé! Đây là sai lầm kinh điển khiến hệ tiêu hóa non nớt của con bị quá tải ngay từ bữa đầu tiên.",
-            "Mẹ biết không, dạ dày bé sáu tháng chỉ nhỏ bằng một quả trứng gà. Tuyến tụy của con mới chỉ tiết một lượng rất ít men amylase để phân giải tinh bột thuần từ gạo tẻ. Tinh bột amylopectin trong gạo nếp lại cực kỳ khó cắt đứt liên kết, còn hạt sen lại chứa hàm lượng chất đạm thực vật phức tạp. Trộn vào lúc này sẽ khiến đường ruột con bị lên men ứ đọng, gây chướng bụng, quấy khóc cả đêm và nôn trớ sợ ăn.",
-            "Để con có bữa ăn đầu đời hoàn hảo, mẹ làm đúng ba bước sau: Bước một: Chọn gạo tẻ thơm nguyên cám giàu vitamin nhóm B, chỉ vo nhẹ tay một lần với nước sạch để giữ trọn dưỡng chất. Bước hai: Đong chuẩn mười gam gạo với một trăm mililít nước theo đúng tỷ lệ vàng một mười kiểu Nhật. Ninh lửa nhỏ liu riu trong bốn mươi lăm phút cho hạt gạo nở bung mềm nhừ. Bước ba: Khi cháo còn ấm nóng, mẹ đổ qua rây mắt nhỏ không phẩy năm milimét, dùng lưng thìa miết nhẹ hai lần. Phần cháo thu được sẽ sánh mịn đồng nhất như sữa mẹ, giúp con nuốt êm ái mà không sợ nghẹn hóc.",
-            "Bữa đầu tiên, mẹ chỉ cho con nếm thử một đến hai thìa cà phê nhỏ vào cữ sáng khi con tỉnh táo. Tuyệt đối không nêm bất kỳ giọt mắm, muối hay dầu ăn nào vì thận của con chưa lọc được mẹ nhé. Sau ăn, mẹ quan sát phân và da con trong ba ngày liên tiếp. Mẹ hãy bấm lưu video và Follow Ăn dặm mẹ Dâu để cùng mẹ đồng hành chăm con chuẩn y khoa nhé!"
-        ]
+    from whiteboard_app.day_01_configs import DAY_01_CONFIGS
+
+    # Cấu hình kịch bản và đồ họa 4 cảnh chuyên sâu chuẩn Tiêu Chuẩn Vàng
+    if args.day == 1 and args.slot in DAY_01_CONFIGS:
+        slot_cfg = DAY_01_CONFIGS[args.slot]
+        script_scenes_cfg = slot_cfg["scenes_cfg"]
+        scripts_text = slot_cfg["scripts_text"]
+        print(f"  ✨ Đã nạp Kịch bản Y Khoa Chuyên Sâu & Đồ Họa Riêng Biệt cho Slot {args.slot:02d}!")
     else:
-        # Tự động sinh cấu trúc chuẩn cho các slot khác dựa vào Hook - Body - CTA
+        # Fallback tự động sinh cấu trúc chuẩn cho các ngày khác dựa vào Hook - Body - CTA
         script_scenes_cfg = [
             {
                 "title": slot_data.title.upper(),
@@ -144,27 +110,26 @@ def main():
                 "alert_bullet1": "• Không tự ý làm theo kinh nghiệm truyền miệng",
                 "alert_bullet2": "• Bảo vệ đường ruột và thận non nớt của con",
                 "warn_label": "KHUYẾN CÁO Y KHOA CHUẨN WHO",
-                "gas_label": "CẨN TRỌNG TIÊU HÓA"
+                "bot_title": "NGUYÊN TẮC: TỪ ÍT ĐẾN NHIỀU, TỪ LOÃNG ĐẾN ĐẶC",
+                "bot_desc": "Luôn lắng nghe tín hiệu no đói tự nhiên của con"
             },
             {
                 "title": "CƠ CHẾ SINH LÝ HỆ TIÊU HÓA BÉ",
                 "good_title": "PHƯƠNG PHÁP ĐÚNG — HẤP THU ÊM DỊU",
                 "good_desc": "Hệ tiêu hóa khỏe mạnh giúp bé tăng cân tự nhiên",
                 "bad_title": "SAI PHƯƠNG PHÁP — GÁNH NẶNG NỘI TẠNG!",
-                "bad_desc": "Dễ gây rối loạn tiêu hóa và biếng ăn tâm lý",
-                "bot_title": "NGUYÊN TẮC: TỪ ÍT ĐẾN NHIỀU, TỪ LOÃNG ĐẾN ĐẶC",
-                "bot_desc": "Luôn lắng nghe tín hiệu no đói tự nhiên của con"
+                "bad_desc": "Dễ gây rối loạn tiêu hóa và biếng ăn tâm lý"
             },
             {
                 "title": "HƯỚNG DẪN 3 BƯỚC THỰC HÀNH CHUẨN",
-                "step1_title": "BƯỚC 1: CHỌN VÀ SƠ CHẾ NGUYÊN LIỆU",
-                "step1_desc": "Nguyên liệu tươi mới, giữ trọn vi chất tự nhiên",
+                "step1_title": "BƯỚC 1: SƠ CHẾ NGUYÊN LIỆU",
+                "step1_desc": ["Nguyên liệu tươi mới", "Giữ trọn vi chất tự nhiên"],
                 "step1_tag": "CHUẨN VI CHẤT",
-                "step2_title": "BƯỚC 2: CHẾ BIẾN THEO ĐỘ THÔ PHÙ HỢP",
-                "step2_desc": "Không xay nhuyễn quá lâu, tăng thô đúng tháng tuổi",
+                "step2_title": "BƯỚC 2: CHẾ BIẾN ĐỘ THÔ PHÙ HỢP",
+                "step2_desc": ["Không xay nhuyễn quá lâu", "Tăng thô đúng tháng tuổi"],
                 "step2_tag": "TĂNG ĐỘ THÔ",
-                "step3_title": "BƯỚC 3: KIỂM TRA ĐỘ MỊN VÀ NHIỆT ĐỘ",
-                "step3_desc": "Thử nhiệt độ ấm vừa phải trước khi đút cho con",
+                "step3_title": "BƯỚC 3: KIỂM TRA ĐỘ ẤM",
+                "step3_desc": ["Thử nhiệt độ ấm vừa phải", "Để con nuốt êm ái tự nhiên"],
                 "step3_tag": "NHIỆT ĐỘ ẤM"
             },
             {
@@ -172,7 +137,6 @@ def main():
                 "badge1_label": "ĐỊNH LƯỢNG VỪA SỨC BÉ",
                 "badge2_label": "KHÔNG ÉP ĂN TẠO ÁP LỰC",
                 "badge3_label": "THEO DÕI PHẢN ỨNG CỦA CON",
-                "nosalt_text": "TUYỆT ĐỐI KHÔNG NÊM GIA VỊ DƯỚI 1 TUỔI",
                 "cta_title": "BẤM FOLLOW ĂN DẶM MẸ DÂU NGAY!",
                 "cta_sub": "Đồng hành chăm con khỏe mạnh chuẩn y khoa"
             }

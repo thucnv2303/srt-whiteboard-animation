@@ -26,6 +26,7 @@ from typing import Callable, Optional
 from PIL import Image, ImageDraw, ImageFont
 
 from .art_shapes import (
+    draw_fitted_text,
     draw_ribbon_banner,
     draw_speech_bubble,
     draw_washi_memo_card,
@@ -44,6 +45,12 @@ from .art_shapes import (
     draw_vector_sun,
     draw_vector_spoon,
     draw_vector_calendar,
+    draw_seamless_cloud,
+    draw_torn_paper_card,
+    draw_seamless_parchment,
+    draw_seamless_rosette,
+    draw_speech_balloon,
+    draw_auto_card_text,
     get_font,
     FONT_BOLD,
     FONT_REGULAR,
@@ -163,93 +170,141 @@ class GoldenSlotBuilder:
             if i == 0:
                 # Cảnh 1: Cảnh báo sai lầm & Hook
                 draw.rectangle((0, 0, 1080, 175), fill=PAPER_BG)
-                draw.rectangle((0, 1750, 1080, 1920), fill=PAPER_BG)
+                draw.rectangle((0, 1740, 1080, 1920), fill=PAPER_BG)
                 draw_ribbon_banner(draw, (110, 35, 970, 155), fill=THEME_COLOR, text=cfg.get("title", self.slot.title), max_font_size=38)
                 
-                # Comic Bubble gọn gàng trong khoảng y=175..410, không có đuôi chọc vào chữ
-                draw.rounded_rectangle((70, 175, 1010, 410), radius=24, fill=(255, 255, 255, 248), outline=RED_COLOR, width=3)
-                f_alert_head = get_font(FONT_BOLD, 33)
-                f_alert_body = get_font(FONT_BOLD, 26)
-                draw.text((540, 220), cfg.get("alert_title", "TUYỆT ĐỐI KHÔNG TRỘN NẾP & HẠT SEN!"), font=f_alert_head, fill=RED_COLOR, anchor="mm")
-                draw.text((540, 280), cfg.get("alert_bullet1", "• Bé 6 tháng chưa có men tiêu hóa tinh bột dẻo"), font=f_alert_body, fill=(40, 40, 40), anchor="mm")
-                draw.text((540, 340), cfg.get("alert_bullet2", "• Gây trướng bụng, đầy hơi, nôn trớ & sợ ăn dặm"), font=f_alert_body, fill=(185, 28, 28), anchor="mm")
+                # Bong bóng đối thoại truyện tranh sinh động có đuôi chỉ thẳng vào nhân vật em bé
+                balloon_bbox = (60, 175, 1020, 415)
+                draw_speech_balloon(draw, balloon_bbox, fill=(255, 255, 255, 250), outline=RED_COLOR, width=3, tail_x=240, tail_y=465)
+                
+                alert_title = cfg.get("alert_title", "TUYỆT ĐỐI KHÔNG TRỘN NẾP & HẠT SEN!")
+                alert_desc = f"{cfg.get('alert_bullet1', '')}\n{cfg.get('alert_bullet2', '')}".strip()
+                draw_auto_card_text(
+                    draw, balloon_bbox,
+                    title=alert_title,
+                    desc=alert_desc,
+                    theme_color=RED_COLOR,
+                    desc_color=(40, 40, 40),
+                    max_title_font=30,
+                    min_title_font=18,
+                    max_desc_font=22,
+                    min_desc_font=15,
+                    align="center"
+                )
 
-                # Huy hiệu cảnh báo dạng thẻ pill nằm ngang thoáng đãng (y=430..485) - nằm trên đỉnh đầu bé an toàn
+                # Huy hiệu cảnh báo dạng thẻ pill nằm ngang thoáng đãng (y=435..490)
                 warn_text = cfg.get("warn_label", "CẢNH BÁO Y KHOA: CẤM NẾP & HẠT SEN")
                 f_warn = get_font(FONT_BOLD, 22)
                 bb_w = draw.textbbox((0, 0), warn_text, font=f_warn)
                 txt_w = bb_w[2] - bb_w[0]
-                pill_w = txt_w + 80
+                pill_w = min(960, txt_w + 80)
                 pill_x0 = 540 - pill_w // 2
                 pill_x1 = 540 + pill_w // 2
-                draw.rounded_rectangle((pill_x0, 430, pill_x1, 485), radius=16, fill=(255, 245, 245), outline=RED_COLOR, width=2)
-                draw_prohibition_badge(draw, pill_x0 + 26, 457, radius=16)
-                draw.text((pill_x0 + 52, 457), warn_text, font=f_warn, fill=RED_COLOR, anchor="lm")
+                draw.rounded_rectangle((pill_x0, 435, pill_x1, 490), radius=16, fill=(255, 245, 245), outline=RED_COLOR, width=2)
+                draw_prohibition_badge(draw, pill_x0 + 26, 462, radius=16)
+                draw_auto_card_text(draw, (pill_x0 + 52, 435, pill_x1 - 10, 490), warn_text, theme_color=RED_COLOR, max_title_font=22, min_title_font=14, align="left")
 
-                # Thẻ kết luận đáy trang (y=1760..1880) - giải phóng hoàn toàn khoảng giữa
-                draw.rounded_rectangle((60, 1760, 1020, 1880), radius=20, fill=(255, 243, 224), outline=THEME_COLOR, width=2)
-                f_bot1 = get_font(FONT_BOLD, 30)
-                f_bot2 = get_font(FONT_BOLD, 24)
-                draw.text((540, 1800), cfg.get("bot_title", "DẠ DÀY NON NỚT CỦA BÉ CHỈ CẦN GẠO TẺ NGUYÊN CÁM"), font=f_bot1, fill=THEME_COLOR, anchor="mm")
-                draw.text((540, 1845), cfg.get("bot_desc", "Bảo vệ đường ruột và hệ tiêu hóa khỏe mạnh ngay từ ngày đầu"), font=f_bot2, fill=(60, 60, 60), anchor="mm")
+                # Thẻ kết luận đáy trang: Cuộn sớ thư pháp sang trọng (y=1750..1885)
+                bot_bbox = (60, 1750, 1020, 1885)
+                draw_seamless_parchment(draw, bot_bbox, fill=(255, 250, 238), outline=THEME_COLOR, width=3)
+                draw_auto_card_text(
+                    draw, bot_bbox,
+                    title=cfg.get("bot_title", "DẠ DÀY NON NỚT CỦA BÉ CHỈ CẦN GẠO TẺ NGUYÊN CÁM"),
+                    desc=cfg.get("bot_desc", "Bảo vệ đường ruột và hệ tiêu hóa khỏe mạnh ngay từ ngày đầu"),
+                    theme_color=THEME_COLOR,
+                    desc_color=(70, 70, 70),
+                    max_title_font=28,
+                    min_title_font=16,
+                    max_desc_font=20,
+                    min_desc_font=14,
+                    icon_left_pad=30,
+                    icon_right_pad=30,
+                    align="center"
+                )
 
                 elements = [
                     {"id": "s1_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 140}, "reveal": {"startMs": 100, "durationMs": 1800}},
-                    {"id": "s1_alert_box", "label": "Bong Bóng Thoại", "region": {"x": 50, "y": 165, "width": 980, "height": 255}, "reveal": {"startMs": 2000, "durationMs": 3500}},
+                    {"id": "s1_alert_box", "label": "Bong Bóng Thoại", "region": {"x": 50, "y": 165, "width": 980, "height": 260}, "reveal": {"startMs": 2000, "durationMs": 3500}},
                     {"id": "s1_prohibit_icon", "label": "Huy Hiệu Cấm", "region": {"x": 150, "y": 425, "width": 780, "height": 70}, "reveal": {"startMs": 5600, "durationMs": 1500}},
-                    {"id": "s1_baby_visual", "label": "Hình Minh Họa", "region": {"x": 0, "y": 500, "width": 1080, "height": 1250}, "reveal": {"startMs": 7200, "durationMs": 5500}},
-                    {"id": "s1_summary_card", "label": "Thẻ Kết Luận Đáy", "region": {"x": 50, "y": 1750, "width": 980, "height": 140}, "reveal": {"startMs": 12800, "durationMs": 2500}}
+                    {"id": "s1_baby_visual", "label": "Hình Minh Họa", "region": {"x": 0, "y": 500, "width": 1080, "height": 1240}, "reveal": {"startMs": 7200, "durationMs": 5500}},
+                    {"id": "s1_summary_card", "label": "Thẻ Kết Luận Đáy", "region": {"x": 50, "y": 1740, "width": 980, "height": 150}, "reveal": {"startMs": 12800, "durationMs": 2500}}
                 ]
 
             elif i == 1:
                 # Cảnh 2: Cơ chế y khoa
                 draw.rectangle((0, 0, 1080, 150), fill=PAPER_BG)
-                draw.rectangle((0, 890, 1080, 1060), fill=PAPER_BG)
-                draw.rectangle((0, 1680, 1080, 1920), fill=PAPER_BG)
+                draw.rectangle((0, 880, 1080, 1060), fill=PAPER_BG)
+                draw.rectangle((0, 1670, 1080, 1920), fill=PAPER_BG)
                 draw_ribbon_banner(draw, (110, 40, 970, 155), fill=THEME_COLOR, text=cfg.get("title", "TẠI SAO BÉ CHƯA THỂ ĂN GẠO NẾP?"), max_font_size=38)
                 
-                # Thẻ Washi xanh ở khoảng giữa thoáng đãng (y=900..1035)
-                draw_washi_memo_card(draw, (60, 900, 1020, 1035), fill=(255, 255, 255, 248), outline=GREEN_COLOR, tape_color=(120, 220, 160))
-                f_label = get_font(FONT_BOLD, 34)
-                f_sub = get_font(FONT_BOLD, 26)
-                draw.text((540, 942), cfg.get("good_title", "CHÁO GẠO TẺ RÂY 1:10 — HẤP THU ÊM DỊU"), font=f_label, fill=(39, 174, 96), anchor="mm")
-                draw.text((540, 990), cfg.get("good_desc", "Dạ dày 6 tháng chỉ bằng quả trứng, tiêu hóa nhẹ nhàng"), font=f_sub, fill=(50, 50, 50), anchor="mm")
+                # Thẻ xanh (Dạ dày êm dịu): ĐÁM MÂY BỒNG BỀNH LIỀN KHỐI (Seamless Cloud)
+                cloud_bbox = (50, 885, 1030, 1055)
+                draw_seamless_cloud(draw, cloud_bbox, fill=(255, 255, 255, 252), outline=GREEN_COLOR, width=3)
+                draw_auto_card_text(
+                    draw, cloud_bbox,
+                    title=cfg.get("good_title", "CHÁO GẠO TẺ RÂY 1:10 — HẤP THU ÊM DỊU"),
+                    desc=cfg.get("good_desc", "Dạ dày 6 tháng chỉ bằng quả trứng, tiêu hóa nhẹ nhàng"),
+                    theme_color=(39, 174, 96),
+                    desc_color=(50, 50, 50),
+                    max_title_font=30,
+                    min_title_font=18,
+                    max_desc_font=22,
+                    min_desc_font=15,
+                    align="center"
+                )
 
-                # Thẻ Washi đỏ ở khoảng đáy thoáng đãng (y=1690..1845)
-                draw_washi_memo_card(draw, (60, 1690, 1020, 1845), fill=(255, 255, 255, 248), outline=RED_COLOR, tape_color=(250, 160, 150))
-                draw.text((540, 1735), cfg.get("bad_title", "GẠO NẾP & HẠT SEN — GÂY QUÁ TẢI TIÊU HÓA!"), font=f_label, fill=RED_COLOR, anchor="mm")
-                draw.text((540, 1788), cfg.get("bad_desc", "Thiếu men amylase phân giải, thức ăn ứ đọng sinh đầy hơi"), font=f_sub, fill=(185, 28, 28), anchor="mm")
+                # Thẻ đỏ (Dạ dày quá tải): THẺ GIẤY XÉ TAY CÓ GHIM BẤM ĐỎ 3D (Torn Paper Memo)
+                torn_bbox = (50, 1680, 1030, 1855)
+                draw_torn_paper_card(draw, torn_bbox, fill=(255, 255, 255, 250), outline=RED_COLOR, pin_color=RED_COLOR)
+                draw_auto_card_text(
+                    draw, torn_bbox,
+                    title=cfg.get("bad_title", "GẠO NẾP & HẠT SEN — GÂY QUÁ TẢI TIÊU HÓA!"),
+                    desc=cfg.get("bad_desc", "Thiếu men amylase phân giải, thức ăn ứ đọng sinh đầy hơi"),
+                    theme_color=RED_COLOR,
+                    desc_color=(185, 28, 28),
+                    max_title_font=30,
+                    min_title_font=18,
+                    max_desc_font=22,
+                    min_desc_font=15,
+                    align="center"
+                )
 
                 elements = [
                     {"id": "s2_banner", "label": "Ruy Băng Cơ Chế", "region": {"x": 40, "y": 25, "width": 1000, "height": 140}, "reveal": {"startMs": 100, "durationMs": 1800}},
-                    {"id": "s2_happy_visual", "label": "Hình Dạ Dày Êm Dịu", "region": {"x": 0, "y": 170, "width": 1080, "height": 720}, "reveal": {"startMs": 2000, "durationMs": 4000}},
-                    {"id": "s2_happy_card", "label": "Thẻ Xanh Dễ Tiêu", "region": {"x": 50, "y": 890, "width": 980, "height": 160}, "reveal": {"startMs": 6100, "durationMs": 2500}},
-                    {"id": "s2_stressed_visual", "label": "Hình Dạ Dày Quá Tải", "region": {"x": 0, "y": 1060, "width": 1080, "height": 620}, "reveal": {"startMs": 8700, "durationMs": 4000}},
-                    {"id": "s2_stressed_card", "label": "Thẻ Đỏ Quá Tải", "region": {"x": 50, "y": 1680, "width": 980, "height": 180}, "reveal": {"startMs": 12800, "durationMs": 2500}}
+                    {"id": "s2_happy_visual", "label": "Hình Dạ Dày Êm Dịu", "region": {"x": 0, "y": 170, "width": 1080, "height": 710}, "reveal": {"startMs": 2000, "durationMs": 4000}},
+                    {"id": "s2_happy_card", "label": "Thẻ Xanh Dễ Tiêu", "region": {"x": 40, "y": 880, "width": 1000, "height": 180}, "reveal": {"startMs": 6100, "durationMs": 2500}},
+                    {"id": "s2_stressed_visual", "label": "Hình Dạ Dày Quá Tải", "region": {"x": 0, "y": 1060, "width": 1080, "height": 615}, "reveal": {"startMs": 8700, "durationMs": 4000}},
+                    {"id": "s2_stressed_card", "label": "Thẻ Đỏ Quá Tải", "region": {"x": 40, "y": 1675, "width": 1000, "height": 185}, "reveal": {"startMs": 12800, "durationMs": 2500}}
                 ]
 
             elif i == 2:
                 # Cảnh 3: 3 Bước Thực Hành So Le Zigzag
                 draw.rectangle((0, 0, 1080, 145), fill=PAPER_BG)
-                draw_ribbon_banner(draw, (110, 35, 970, 150), fill=THEME_COLOR, text=cfg.get("title", "CÔNG THỨC CHÁO RÂY 1:10 CHUẨN Y KHOA"), max_font_size=38)
+                # Tiêu đề đỉnh trang: Cuộn sớ thư pháp cổ tích cuộn 2 đầu
+                scroll_bbox = (80, 32, 1000, 150)
+                draw_seamless_parchment(draw, scroll_bbox, fill=(255, 252, 242), outline=THEME_COLOR, width=3)
+                draw_auto_card_text(draw, scroll_bbox, title=cfg.get("title", "CÔNG THỨC CHÁO RÂY 1:10 CHUẨN Y KHOA"), theme_color=THEME_COLOR, max_title_font=32, min_title_font=18, icon_left_pad=25, icon_right_pad=25, align="center")
 
-                # BƯỚC 1: Đặt so le bên phải (x=500..1020, y=220..395), né bao gạo bên trái
-                draw_step_pill_badge(draw, 490, 220, "1", cfg.get("step1_title", "GẠO NGUYÊN CÁM"), cfg.get("step1_desc", ["Chọn gạo thơm mới", "Vo nhẹ 1 lần giữ vitamin B1"]), tag_text="VITAMIN B1", theme_color=THEME_COLOR, card_width=440)
+                # BƯỚC 1: Đặt so le bên phải, né visual bên trái
+                tag1 = cfg.get("step1_tag", "VITAMIN B1")
+                b1_box = draw_step_pill_badge(draw, 505, 195, "1", cfg.get("step1_title", "GẠO NGUYÊN CÁM"), cfg.get("step1_desc", ["Chọn gạo thơm mới", "Vo nhẹ 1 lần giữ vitamin B1"]), tag_text=tag1, theme_color=THEME_COLOR, card_width=440)
 
-                # BƯỚC 2: Đặt so le bên trái (x=50..580, y=780..955), né nồi cháo bên phải
-                draw_step_pill_badge(draw, 50, 780, "2", cfg.get("step2_title", "TỶ LỆ VÀNG 1 : 10"), cfg.get("step2_desc", ["10g gạo + 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text="NINH 45 PHÚT", theme_color=THEME_COLOR, card_width=440)
+                # BƯỚC 2: Đặt so le bên trái, né visual bên phải
+                tag2 = cfg.get("step2_tag", "NINH 45 PHÚT")
+                b2_box = draw_step_pill_badge(draw, 45, 780, "2", cfg.get("step2_title", "TỶ LỆ VÀNG 1 : 10"), cfg.get("step2_desc", ["10g gạo + 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=tag2, theme_color=THEME_COLOR, card_width=440)
 
-                # BƯỚC 3: Đặt so le bên phải (x=510..1030, y=1420..1595), né rây cháo bên trái (max_x=470)
-                draw_step_pill_badge(draw, 510, 1420, "3", cfg.get("step3_title", "RÂY MỊN KHI ẤM"), cfg.get("step3_desc", ["Rây qua lưới 0.5mm", "Miết lưng thìa lấy cháo sánh"]), tag_text="LƯỚI 0.5MM", theme_color=THEME_COLOR, card_width=430)
+                # BƯỚC 3: Đặt so le bên phải, né visual bên trái
+                tag3 = cfg.get("step3_tag", "LƯỚI 0.5MM")
+                b3_box = draw_step_pill_badge(draw, 505, 1410, "3", cfg.get("step3_title", "RÂY MỊN KHI ẤM"), cfg.get("step3_desc", ["Rây qua lưới 0.5mm", "Miết lưng thìa lấy cháo sánh"]), tag_text=tag3, theme_color=THEME_COLOR, card_width=440)
 
                 elements = [
                     {"id": "s3_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 135}, "reveal": {"startMs": 100, "durationMs": 1800}},
-                    {"id": "s3_step1_visual", "label": "Hình Bao Gạo", "region": {"x": 50, "y": 170, "width": 440, "height": 550}, "reveal": {"startMs": 2000, "durationMs": 3000}},
-                    {"id": "s3_step1_card", "label": "Thẻ Bước 1 Phải", "region": {"x": 490, "y": 210, "width": 540, "height": 200}, "reveal": {"startMs": 5100, "durationMs": 2500}},
-                    {"id": "s3_step2_visual", "label": "Hình Nồi Ninh", "region": {"x": 520, "y": 720, "width": 520, "height": 550}, "reveal": {"startMs": 7700, "durationMs": 3000}},
-                    {"id": "s3_step2_card", "label": "Thẻ Bước 2 Trái", "region": {"x": 40, "y": 770, "width": 480, "height": 200}, "reveal": {"startMs": 10800, "durationMs": 2500}},
-                    {"id": "s3_step3_visual", "label": "Hình Rây Cháo", "region": {"x": 50, "y": 1300, "width": 480, "height": 580}, "reveal": {"startMs": 13400, "durationMs": 3000}},
-                    {"id": "s3_step3_card", "label": "Thẻ Bước 3 Phải", "region": {"x": 530, "y": 1410, "width": 500, "height": 200}, "reveal": {"startMs": 16500, "durationMs": 2500}}
+                    {"id": "s3_step1_visual", "label": "Hình Minh Họa Bước 1", "region": {"x": 0, "y": 150, "width": 1080, "height": 570}, "reveal": {"startMs": 2000, "durationMs": 3000}},
+                    {"id": "s3_step1_card", "label": "Thẻ Bước 1 Phải", "region": {"x": max(0, b1_box[0] - 4), "y": max(0, b1_box[1] - 4), "width": (b1_box[2] - b1_box[0]) + 8, "height": (b1_box[3] - b1_box[1]) + 8}, "reveal": {"startMs": 5100, "durationMs": 2500}},
+                    {"id": "s3_step2_visual", "label": "Hình Minh Họa Bước 2", "region": {"x": 0, "y": 720, "width": 1080, "height": 580}, "reveal": {"startMs": 7700, "durationMs": 3000}},
+                    {"id": "s3_step2_card", "label": "Thẻ Bước 2 Trái", "region": {"x": max(0, b2_box[0] - 4), "y": max(0, b2_box[1] - 4), "width": (b2_box[2] - b2_box[0]) + 8, "height": (b2_box[3] - b2_box[1]) + 8}, "reveal": {"startMs": 10800, "durationMs": 2500}},
+                    {"id": "s3_step3_visual", "label": "Hình Minh Họa Bước 3", "region": {"x": 0, "y": 1300, "width": 1080, "height": 620}, "reveal": {"startMs": 13400, "durationMs": 3000}},
+                    {"id": "s3_step3_card", "label": "Thẻ Bước 3 Phải", "region": {"x": max(0, b3_box[0] - 4), "y": max(0, b3_box[1] - 4), "width": (b3_box[2] - b3_box[0]) + 8, "height": (b3_box[3] - b3_box[1]) + 8}, "reveal": {"startMs": 16500, "durationMs": 2500}}
                 ]
 
             else:

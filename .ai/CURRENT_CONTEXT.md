@@ -200,19 +200,59 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
     * Slot 11: `Day_01_Slot_11_Bát_Cháo_Đầu_Tiên_Và_Giọt_Nước_Mắt_Của_Mẹ_2K.mp4` (61.91 MB, 46.1s)
   + Tự động gọi Webhook Google Sheets cập nhật đường dẫn Google Drive và trạng thái `READY_TO_PUBLISH (2K 1440x2560)` cho cả 11 dòng của Ngày 1.
 
-- ID: `TASK-030` — Đồng bộ toàn bộ 1.320 Prompt tạo ảnh của 330 Slot lên Google Sheets:
-  + Đã gửi thành công toàn bộ 330 video (30 ngày x 11 video/ngày) với đầy đủ cấu trúc 22 cột (bao gồm 8 cột `file_name_scene_1..4` và `prompt_scene_1..4`) qua Google Sheets Webhook Gateway.
-  + Đã kiểm tra và đối chiếu live export từ Google Sheets: 331 dòng (1 header + 330 video) hiển thị đầy đủ 22 cột, giữ nguyên link Google Drive và trạng thái xuất bản cho Ngày 1.
-  + Trạng thái kỹ thuật: TECHNICALLY_VERIFIED.
+- ID: `TASK-031` — Sản xuất hàng loạt bằng GPU (CUDA + h264_mf) toàn bộ Video Ngày 1 từ kho ảnh nghệ thuật `Input pic/`:
+  + Tiếp nhận kho ảnh 44 file vẽ tay phong cách tranh sáp dầu kem `#F5EBD7` do GPT sinh.
+  + Sửa lỗi Windows File Lock (`.onset.tmp.wav`) trong `whiteboard_app/voice.py` với retry loop và copy fallback.
+  + Thiết lập `scripts/batch_run_day.py` chạy tuần tự qua subprocess độc lập, tối ưu 100% GPU NVIDIA RTX 5060 Ti:
+    * OmniVoice trên CUDA (fp16) tạo giọng đọc Xuân Dung mượt mà, không hụt âm đầu.
+    * FFmpeg sử dụng Hardware MFT `h264_mf` render 2K (1440x2560 30FPS) siêu tốc (~70 - 90s mỗi video).
+  + Đã render và xuất bản thành công TOÀN BỘ 11/11 Video 2K Ngày 1 sang Google Drive `G:\My Drive\Đăng video` kèm sync Webhook Google Sheets:
+    * Slot 01: `Day_01_Slot_01_3_Ngày_Vàng_Khởi_Động_Cho_Bé_6_Tháng_2K.mp4` (76.10 MB, 48.9s)
+    * Slot 02: `Day_01_Slot_02_Gạo_Tẻ_Nấu_Cháo_Rây_Bé_Mấy_Tháng_Ăn_Được_2K.mp4` (119.74 MB, 83.9s)
+    * Slot 03: `Day_01_Slot_03_Mẹo_Tăng_Độ_Thô_Không_Nôn_Trớ_Ngày_1_2K.mp4` (39.04 MB, 25.1s)
+    * Slot 04: `Day_01_Slot_04_Giải_Mã_Lầm_Tưởng_Y_Khoa_#1_2K.mp4` (33.85 MB, 21.2s)
+    * Slot 05: `Day_01_Slot_05_Món_Bánh_Ăn_Dặm_Chiều_Ngày_1_2K.mp4` (35.79 MB, 22.8s)
+    * Slot 06: `Day_01_Slot_06_Cấp_Cứu_Tiêu_Hóa_Cho_Bé_#1_2K.mp4` (37.74 MB, 24.2s)
+    * Slot 07: `Day_01_Slot_07_Món_Cháo_Tối_Ấm_Bụng_Ngày_1_2K.mp4` (32.39 MB, 20.3s)
+    * Slot 08: `Day_01_Slot_08_Bổ_Sung_Vi_Chất_Đúng_Liều_#1_2K.mp4` (36.32 MB, 23.3s)
+    * Slot 09: `Day_01_Slot_09_Mẹo_Trữ_Đông_Thực_Phẩm_Chuẩn_An_Toàn_Ngày_1_2K.mp4` (38.83 MB, 24.9s)
+    * Slot 10: `Day_01_Slot_10_Nuôi_Con_Không_Phải_Cuộc_Chiến_#1_2K.mp4` (34.62 MB, 21.8s)
+    * Slot 11: `Day_01_Slot_11_Bát_Cháo_Đầu_Tiên_Và_Giọt_Nước_Mắt_Của_Mẹ_2K.mp4` (53.24 MB, 33.6s)
+
+- ID: `TASK-032` — Khắc phục triệt để lỗi chữ tràn khung & Nâng cấp Hệ thống Hình khối Nghệ thuật Vẽ tay Sinh động:
+  + Giải quyết dứt điểm lỗi chữ tràn viền / không nằm trong khung:
+    * Phát triển động cơ bố cục thông minh phổ quát `draw_auto_card_text` trong `whiteboard_app/art_shapes.py`: Tự động ngắt dòng cân đối khi tiêu đề có dấu phân cách (` — `, ` : `) hoặc dài > 25 ký tự; tự động co giãn font 2 chiều độc lập (chiều ngang `avail_w` và chiều dọc `avail_h`); trừ lùi khoảng đệm an toàn của icon vector (`icon_left_pad`).
+    * Nâng cấp `draw_step_pill_badge`: Tự động loại bỏ tiền tố thừa (`BƯỚC 1:`, `BƯỚC 2:`) khi đã có huy hiệu tròn bên cạnh; hạ chặn font tối thiểu xuống 13px; đảm bảo khoảng đệm an toàn `gap_to_tag >= 20px` chống va chạm với nhãn pill bên phải.
+  + Đổi mới hình ảnh sinh động, xóa bỏ định dạng hình chữ nhật đơn điệu:
+    * Đám mây bồng bềnh liền khối (`draw_seamless_cloud`): Ứng dụng kỹ thuật Mask Silhouette Union, không nét vẽ đè bên trong, hoàn hảo cho chủ đề dạ dày bé êm dịu, tiêu hóa lành mạnh.
+    * Thẻ giấy xé tay kèm ghim bấm nhựa tròn 3D (`draw_torn_paper_card`): Đường xé mép rách ziczac tự nhiên kèm ghim đỏ có bóng đổ và highlight, sinh động cho cảnh báo sai lầm, quá tải tiêu hóa.
+    * Cuộn sớ thư pháp cổ tích (`draw_seamless_parchment`): Cuộn tròn 2 đầu trái phải 3D sang trọng cho tiêu đề 3 bước công thức và thẻ kết luận đáy.
+    * Bong bóng đối thoại truyện tranh (`draw_speech_balloon`): Đuôi nhọn uốn cong chỉ thẳng vào nhân vật em bé, tạo điểm nhấn hội thoại tự nhiên.
+    * Con dấu dập nổi hoa mai 16 cánh tròn (`draw_seamless_rosette`): Chuẩn phong cách kiểm định y khoa.
+  + Kiểm chứng trực quan 100% bằng hình ảnh thực tế: Đã trích xuất và kiểm tra trực quan các cảnh (`slot_05_composed_scene_01.png` .. `04.png`), khẳng định bố cục thông thoáng, thẩm mỹ cao, chữ nằm gọn 100% trong khung.
+  + Đã render thử nghiệm thành công video 2K Slot 05 trên GPU NVIDIA RTX 5060 Ti (`Day_01_Slot_05_Món_Bánh_Ăn_Dặm_Chiều_Ngày_1_2K.mp4`, 73.83 MB, 50.0s) xuất sang `G:\My Drive\Đăng video\` và đồng bộ Webhook Google Sheets. Đang tiến hành batch render cập nhật các slot còn lại.
+
+- ID: `TASK-034` — Khắc phục triệt để lỗi ảnh Cảnh 3 bị che mất góc & Cơ chế tự động tính chiều cao khung card ăn khớp theo câu chữ:
+  + **Sửa lỗi ảnh đầu Cảnh 3 bị che/cắt góc (Illustration Corner Cutout Fix)**:
+    * Nguyên nhân: Trước đây `s3_step1_visual` bị gán cứng `width: 440` ($x \in [50, 490]$), trong khi ảnh thực tế (thớt, rau củ, cốc đong nước) vươn sang $x = 584$. Thẻ card đặt bên phải có vùng mask `x: 490..1030` cắt phéng một nhát đứng qua giữa cốc đong nước, và khoảng trống $y \in [410, 720]$ không thuộc phần tử nào nên biến thành lỗ hổng màu kem che khuất hoàn toàn góc phải dưới của tranh.
+    * Giải pháp: Tái cấu trúc phân vùng Scene 3 theo 3 dải độ cao toàn chiều rộng ($x \in [0, 1080]$): Section 1 ($y \in [150, 720]$), Section 2 ($y \in [720, 1300]$), Section 3 ($y \in [1300, 1920]$). Vùng hiển thị của visual mỗi bước tự động bao phủ trọn vẹn toàn bộ dải, thuật toán `_allowed_mask` chỉ loại trừ duy nhất hình hộp bounding box thực tế của card bước tương ứng. Hình vẽ cốc đong nước, rau củ, nồi cháo và bát ăn dặm được vẽ trọn vẹn 100%, không bị cắt hay mất bất kỳ góc nào.
+  + **Cơ chế tính toán linh hoạt chiều cao khung card theo câu chữ (Dynamic Card Auto-Fit)**:
+    * Nâng cấp `draw_step_pill_badge` trong `whiteboard_app/art_shapes.py`: Đo chính xác số dòng mô tả sau khi bẻ dòng (`wrap_text`), tự động tính `needed_card_h` và trả về bounding box thực tế `(card_x0, card_y0, card_x1, card_y1)`.
+    * Cập nhật `slot_builder.py`: Liên kết trực tiếp bounding box thực tế của từng thẻ bước vào `annotation.json` (thay vì gán cố định `height: 200`). Chữ và khung ăn khớp hoàn hảo 100%, không bao giờ bị tràn đáy hay thừa khoảng trống.
+    * Tự động lọc sạch các tiền tố trùng lặp ("BƯỚC 1:", "NGUYÊN TẮC 1:", "NGÀY 1:", v.v.) khi đã có huy hiệu số tròn bên cạnh, co giãn kích thước tiêu đề chống va chạm với tag viên thuốc bên phải.
+  + **Kiểm chứng kỹ thuật thực tế trên Slot 3 (Day 1 Slot 03)**:
+    * Chạy pipeline hoàn chỉnh: `python scripts/generate_lively_slot.py --day 1 --slot 3 --aspect-ratio "9:16 2K"`.
+    * Đã xuất bản thành công video 2K `G:\My Drive\Đăng video\Day_01_Slot_03_Mẹo_Tăng_Độ_Thô_Không_Nôn_Trớ_Ngày_1_2K.mp4` (80.49 MB, 53.9s) và đồng bộ Google Sheets webhook `status: success`.
+    * Đã trích xuất và đối chiếu trực quan các frame (4.0s, 6.0s, 8.5s, 14.0s, 15.5s): xác nhận cốc đong nước, rau củ, nồi ninh và bát ăn dặm hiển thị đầy đủ 100%, không còn vết cắt hay góc bị che.
 
 ## Trạng thái kiểm tra
-- 70 unit test: PASS (toàn bộ test suite chạy đạt 100%).
-- `py_compile`: PASS.
-- Whisper Audio Verification: 100% các câu thoại trong toàn bộ 11 video bắt đầu đúng từ khóa kịch bản, giọng Xuân Dung chuẩn truyền cảm, không tạp âm.
-- Google Sheets Live Sync: Toàn bộ 330 dòng trên Google Sheets đã cập nhật đầy đủ cấu trúc 22 cột cùng 1.320 prompt ảnh chi tiết và tên file chuẩn `day_{DD}_slot_{SS}_scene_{CC}.jpg`.
-- Google Drive File Export: 11/11 file video chuẩn 2K (1440x2560, thời lượng 38.8s - 47.3s) đã có mặt đầy đủ trong `G:\My Drive\Đăng video`.
+- 70 unit test: PASS.
+- Trích xuất frame video thực tế Slot 3: Xác nhận 100% không còn lỗi cắt ảnh và không còn tràn chữ.
 - Trạng thái kỹ thuật: TECHNICALLY_VERIFIED.
 
 ## Task an toàn tiếp theo
 
-Người dùng mở Google Sheets kiểm tra toàn bộ 22 cột và 1.320 prompt tạo ảnh, và kiểm tra thư mục Google Drive `G:\My Drive\Đăng video` để nghiệm thu video Ngày 1.
+Chờ người dùng kiểm tra video Slot 3 vừa tạo và nghiệm thu kết quả thực tế.
+
+
+

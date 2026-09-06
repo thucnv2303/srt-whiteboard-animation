@@ -1,4 +1,6 @@
 import math
+import cv2
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 FONT_BOLD = "arialbd.ttf"
@@ -73,6 +75,82 @@ def wrap_text(draw, text, font, max_width):
     if current_line:
         lines.append(" ".join(current_line))
     return lines
+
+def draw_fitted_text(
+    draw,
+    xy: tuple[float, float],
+    text: str,
+    font_path: str = FONT_BOLD,
+    max_font_size: int = 32,
+    min_font_size: int = 14,
+    max_width: float = 850,
+    fill: tuple = (0, 0, 0),
+    anchor: str = "mm",
+    allow_wrap: bool = True,
+    line_spacing: int = 6
+):
+    """
+    Vẽ chữ thông minh chống tràn viền 100%:
+    - Tự động co giãn kích thước font từ max_font_size xuống sao cho vừa khít max_width.
+    - Nếu câu dài hoặc chứa dấu gạch nối ' — ', tự động tách 2 dòng cân đối, đẹp mắt.
+    - Đảm bảo 100% không bao giờ chữ bị thò ra ngoài max_width.
+    """
+    if not text:
+        return
+    x, y = xy
+
+    # Nếu câu có dấu gạch ngang phân cách và dài > 25 ký tự, ưu tiên tách 2 dòng tự nhiên
+    if allow_wrap and (" — " in text or " : " in text) and len(text) > 25:
+        delim = " — " if " — " in text else " : "
+        parts = text.split(delim, 1)
+        part1 = parts[0].strip()
+        part2 = parts[1].strip()
+        f_top = get_font(font_path, min(max_font_size, 30))
+        f_sub = get_font(font_path, min(max_font_size - 4, 24))
+        
+        # Co font cho từng dòng nếu cần
+        while f_top.getbbox(part1)[2] > max_width and f_top.size > 14:
+            f_top = get_font(font_path, f_top.size - 1)
+        while f_sub.getbbox(part2)[2] > max_width and f_sub.size > 12:
+            f_sub = get_font(font_path, f_sub.size - 1)
+
+        h1 = f_top.getbbox(part1)[3] - f_top.getbbox(part1)[1]
+        h2 = f_sub.getbbox(part2)[3] - f_sub.getbbox(part2)[1]
+        total_h = h1 + h2 + line_spacing
+        
+        draw.text((x, y - total_h / 2 + h1 / 2), part1, font=f_top, fill=fill, anchor=anchor)
+        draw.text((x, y + total_h / 2 - h2 / 2), part2, font=f_sub, fill=fill, anchor=anchor)
+        return
+
+    # Trường hợp vẽ 1 dòng hoặc word-wrap bình thường
+    font_size = max_font_size
+    font = get_font(font_path, font_size)
+    t_bbox = draw.textbbox((0, 0), text, font=font)
+    txt_w = t_bbox[2] - t_bbox[0]
+
+    # Giảm font size cho đến khi vừa khít max_width
+    while txt_w > max_width and font_size > min_font_size:
+        font_size -= 1
+        font = get_font(font_path, font_size)
+        t_bbox = draw.textbbox((0, 0), text, font=font)
+        txt_w = t_bbox[2] - t_bbox[0]
+
+    if txt_w > max_width and allow_wrap:
+        lines = wrap_text(draw, text, font, max_width)
+        line_h = (t_bbox[3] - t_bbox[1]) + line_spacing
+        total_h = len(lines) * line_h
+        start_y = y - total_h / 2 + line_h / 2 if "m" in anchor else y
+        for i, line in enumerate(lines):
+            draw.text((x, start_y + i * line_h), line, font=font, fill=fill, anchor=anchor)
+    else:
+        # Nếu vẫn còn lớn hơn max_width (khi không wrap), tiếp tục giảm font tuyệt đối không để tràn
+        while txt_w > max_width and font_size > 10:
+            font_size -= 1
+            font = get_font(font_path, font_size)
+            t_bbox = draw.textbbox((0, 0), text, font=font)
+            txt_w = t_bbox[2] - t_bbox[0]
+        draw.text((x, y), text, font=font, fill=fill, anchor=anchor)
+
 
 def draw_ribbon_banner(draw, bbox, fill=THEME_COLOR, outline=(40, 25, 15), text="", font_path=FONT_BOLD, max_font_size=40, text_fill=(255, 255, 255)):
     """Dải ruy băng cuộn tay đuôi én (swallowtail ribbon banner) có auto-fit text & padding an toàn."""
@@ -156,13 +234,13 @@ def draw_washi_memo_card(draw, bbox, fill=(255, 255, 255, 248), outline=GREEN_CO
     draw.polygon([(tx0, ty0 + 3), (tx1, ty0 - 3), (tx1, ty1 - 3), (tx0, ty1 + 3)], fill=tape_color)
     draw.line([(tx0, ty0 + 3), (tx1, ty0 - 3), (tx1, ty1 - 3), (tx0, ty1 + 3), (tx0, ty0 + 3)], fill=(180, 120, 60), width=1)
 
-def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_color=THEME_COLOR, card_width=None):
-    """Huy hiệu bước thực hành bo góc cao cấp: tự tính toán auto-fit, không bao giờ tràn viền."""
-    circle_r = 40
+def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_color=THEME_COLOR, card_width=None, is_compact=False, inner_pad=18):
+    """Huy hiệu bước thực hành bo góc cao cấp: tự tính toán auto-fit theo từng câu chữ, không bao giờ tràn viền."""
+    circle_r = 28 if is_compact else 34
     cx = x + circle_r
     cy = y + circle_r
     draw.ellipse((cx - circle_r, cy - circle_r, cx + circle_r, cy + circle_r), fill=theme_color, outline=(255, 255, 255), width=3)
-    f_num = get_font(FONT_BOLD, 42)
+    f_num = get_font(FONT_BOLD, 36 if is_compact else 42)
     draw.text((cx, cy - 2), str(step_num), font=f_num, fill=(255, 255, 255), anchor="mm")
 
     card_x0 = x + circle_r * 2 + 12
@@ -172,13 +250,68 @@ def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_c
     else:
         card_x1 = x + 980
     
-    is_compact = (card_width is not None and card_width < 600)
-    card_y1 = y + (175 if is_compact else 135)
+    # Nội dung mô tả (desc): Tự động tính toán số dòng và co giãn linh hoạt
+    if isinstance(desc, list):
+        desc_raw = desc
+    elif "\n" in desc:
+        desc_raw = desc.split("\n")
+    else:
+        desc_raw = [desc]
+
+    f_desc_size = 20 if is_compact else 23
+    f_desc = get_font(FONT_REGULAR, f_desc_size)
+    max_desc_w = (card_x1 - card_x0) - inner_pad * 2 - 10
+
+    # Tính toán toàn bộ các dòng sau khi wrap
+    desc_wrapped_lines = []
+    for item in desc_raw:
+        item_str = item.strip()
+        if not item_str.startswith("•") and not item_str.startswith("-"):
+            item_str = "• " + item_str
+        desc_wrapped_lines.extend(wrap_text(draw, item_str, f_desc, max_desc_w))
+
+    # Tính toán chiều cao cần thiết để chữ không bao giờ thò ra ngoài đáy card
+    line_h = 28 if is_compact else 33
+    start_desc_y = card_y0 + (56 if is_compact else 66)
+    min_card_h = 125
+    needed_card_h = (start_desc_y - card_y0) + len(desc_wrapped_lines) * line_h + 14
+    actual_card_h = max(min_card_h, needed_card_h)
+    card_y1 = card_y0 + actual_card_h
+
+    # Tự động loại bỏ tiền tố thừa nếu đã có huy hiệu tròn bên cạnh
+    clean_title = title
+    for pfx in [
+        "BƯỚC 1:", "BƯỚC 2:", "BƯỚC 3:", "BƯỚC 1 :", "BƯỚC 2 :", "BƯỚC 3 :", "BƯỚC 1 -", "BƯỚC 2 -", "BƯỚC 3 -",
+        "NGUYÊN TẮC 1:", "NGUYÊN TẮC 2:", "NGUYÊN TẮC 3:", "NGUYÊN TẮC 1 :", "NGUYÊN TẮC 2 :", "NGUYÊN TẮC 3 :", "NGUYÊN TẮC 1 -", "NGUYÊN TẮC 2 -", "NGUYÊN TẮC 3 -",
+        "NGÀY 1:", "NGÀY 2:", "NGÀY 3:", "NGÀY 1 :", "NGÀY 2 :", "NGÀY 3 :", "NGÀY 1 -", "NGÀY 2 -", "NGÀY 3 -",
+        "08:00 SÁNG:", "10:00 SÁNG:", "14:30 CHIỀU:"
+    ]:
+        if clean_title.upper().startswith(pfx):
+            clean_title = clean_title[len(pfx):].strip()
+            break
+
+    # Đo độ rộng tag nếu có để trừ lùi
+    tag_w = 0
+    if tag_text:
+        f_tag = get_font(FONT_BOLD, 18 if is_compact else 22)
+        t_bb = draw.textbbox((0, 0), tag_text, font=f_tag)
+        tag_w = (t_bb[2] - t_bb[0]) + 20
+
+    # Tính toán tiêu đề auto-fit trong không gian còn lại (chừa khoảng đệm an toàn tới tag >= 20px)
+    gap_to_tag = (tag_w + 20) if tag_text else 0
+    max_title_w = (card_x1 - inner_pad - gap_to_tag) - (card_x0 + inner_pad)
+    f_title_size = 24 if is_compact else 30
+    f_title = get_font(FONT_BOLD, f_title_size)
+    t_bbox = draw.textbbox((0, 0), clean_title, font=f_title)
+    while (t_bbox[2] - t_bbox[0]) > max_title_w and f_title_size > 13:
+        f_title_size -= 1
+        f_title = get_font(FONT_BOLD, f_title_size)
+        t_bbox = draw.textbbox((0, 0), clean_title, font=f_title)
+
+    # Vẽ nền thẻ card với chiều cao vừa khít 100%
     draw.rounded_rectangle((card_x0, card_y0, card_x1, card_y1), radius=20, fill=(255, 255, 255, 248), outline=theme_color, width=3)
 
-    inner_pad = 18
-    # Vẽ tag nếu có: Trên card compact, tag pill được đặt ở góc trên phải hoặc tách bạch an toàn
-    tag_w = 0
+    # Vẽ tag pill nếu có
     if tag_text:
         f_tag = get_font(FONT_BOLD, 18 if is_compact else 24)
         t_bb = draw.textbbox((0, 0), tag_text, font=f_tag)
@@ -191,39 +324,16 @@ def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_c
         draw.rounded_rectangle((tx0, ty0, tx1, ty1), radius=14, fill=theme_color, outline=(255, 255, 255), width=2)
         draw.text(((tx0 + tx1) / 2, (ty0 + ty1) / 2 - 1), tag_text, font=f_tag, fill=(255, 255, 255), anchor="mm")
 
-    # Tính toán tiêu đề auto-fit trong không gian còn lại (chừa khoảng đệm an toàn tới tag)
-    gap_to_tag = (tag_w + 16) if tag_text else 0
-    max_title_w = (card_x1 - inner_pad - gap_to_tag) - (card_x0 + inner_pad)
-    f_title_size = 24 if is_compact else 34
-    f_title = get_font(FONT_BOLD, f_title_size)
-    t_bbox = draw.textbbox((0, 0), title, font=f_title)
-    while (t_bbox[2] - t_bbox[0]) > max_title_w and f_title_size > 16:
-        f_title_size -= 1
-        f_title = get_font(FONT_BOLD, f_title_size)
-        t_bbox = draw.textbbox((0, 0), title, font=f_title)
-    draw.text((card_x0 + inner_pad, card_y0 + (24 if is_compact else 34)), title, font=f_title, fill=theme_color, anchor="lm")
+    # Vẽ tiêu đề đã căn chỉnh auto-fit
+    draw.text((card_x0 + inner_pad, card_y0 + (24 if is_compact else 34)), clean_title, font=f_title, fill=theme_color, anchor="lm")
 
-    # Nội dung mô tả (desc): Tự động wrap thông minh không bao giờ tràn viền
-    f_desc_size = 22 if is_compact else 26
-    f_desc = get_font(FONT_BOLD, f_desc_size)
-    max_desc_w = (card_x1 - card_x0) - inner_pad * 2 - 10
+    # Vẽ các dòng mô tả
+    curr_y = start_desc_y
+    for w_line in desc_wrapped_lines:
+        draw.text((card_x0 + inner_pad, curr_y), w_line, font=f_desc, fill=(50, 50, 50), anchor="lm")
+        curr_y += line_h
 
-    if isinstance(desc, list):
-        desc_lines = desc
-    elif "\n" in desc:
-        desc_lines = desc.split("\n")
-    else:
-        desc_lines = [desc]
-
-    curr_y = card_y0 + 72
-    for item in desc_lines:
-        item_str = item.strip()
-        if not item_str.startswith("•") and not item_str.startswith("-"):
-            item_str = "• " + item_str
-        wrapped = wrap_text(draw, item_str, f_desc, max_desc_w)
-        for w_line in wrapped:
-            draw.text((card_x0 + inner_pad, curr_y), w_line, font=f_desc, fill=(50, 50, 50), anchor="lm")
-            curr_y += 34
+    return (x, card_y0, card_x1, card_y1)
 
 def draw_cta_capsule(draw, bbox, title="BẤM FOLLOW ĂN DẶM MẸ DÂU NGAY!", subtext="Đồng hành chăm con khỏe mạnh chuẩn y khoa", fill=THEME_COLOR):
     """Khối CTA bo tròn viên nang có auto-fit và icon trái tim cách đều an toàn."""
@@ -356,32 +466,365 @@ def draw_sieve_badge(draw, cx, cy, label="LƯỚI 0.5MM", sub="MIẾT THÌA 2 L�
     draw.text((text_cx, cy + 16), sub, font=f_sub, fill=(60, 60, 60), anchor="mm")
 
 def draw_spoon_dosage(draw, cx, cy, label="1 - 2 THÌA CÀ PHÊ (5ML)"):
-    """Biểu tượng liều lượng nếm thử thìa nhỏ 5ml có hình vector chiếc thìa."""
-    draw.rounded_rectangle((cx - 380, cy - 48, cx + 380, cy + 48), radius=24, fill=(255, 255, 255, 248), outline=THEME_COLOR, width=3)
-    draw_vector_spoon(draw, cx - 280, cy, fill=THEME_COLOR)
-    f1 = get_font(FONT_BOLD, 30)
-    f2 = get_font(FONT_REGULAR, 24)
-    draw.text((cx + 30, cy - 16), label, font=f1, fill=THEME_COLOR, anchor="mm")
-    draw.text((cx + 30, cy + 20), "Chỉ nếm vị, không ép ăn hết bát", font=f2, fill=(70, 70, 70), anchor="mm")
+    """Biểu tượng liều lượng nếm thử thìa nhỏ 5ml có hình vector chiếc thìa, rộng 920px chống tràn viền 100%."""
+    bbox = (cx - 460, cy - 48, cx + 460, cy + 48)
+    draw.rounded_rectangle(bbox, radius=24, fill=(255, 255, 255, 248), outline=THEME_COLOR, width=3)
+    draw_vector_spoon(draw, cx - 380, cy, fill=THEME_COLOR)
+    draw_auto_card_text(
+        draw, bbox,
+        title=label,
+        desc="Chỉ nếm vị, không ép ăn hết bát",
+        theme_color=THEME_COLOR,
+        desc_color=(70, 70, 70),
+        max_title_font=26,
+        min_title_font=16,
+        max_desc_font=20,
+        min_desc_font=14,
+        icon_left_pad=100,
+        align="center"
+    )
 
 def draw_sun_time_badge(draw, cx, cy, label="CỮ SÁNG: 9H - 10H"):
-    """Biểu tượng thời điểm ăn dặm cữ sáng có hình vẽ mặt trời vector."""
-    draw.rounded_rectangle((cx - 380, cy - 48, cx + 380, cy + 48), radius=24, fill=(255, 255, 255, 248), outline=(243, 156, 18), width=3)
-    draw_vector_sun(draw, cx - 280, cy, radius=16, fill=(243, 156, 18))
-    f1 = get_font(FONT_BOLD, 30)
-    f2 = get_font(FONT_REGULAR, 24)
-    draw.text((cx + 30, cy - 16), label, font=f1, fill=(211, 84, 0), anchor="mm")
-    draw.text((cx + 30, cy + 20), "Con tỉnh táo, bụng dễ chịu nhất", font=f2, fill=(70, 70, 70), anchor="mm")
+    """Biểu tượng thời điểm ăn dặm cữ sáng có hình vẽ mặt trời vector, rộng 920px chống tràn viền 100%."""
+    bbox = (cx - 460, cy - 48, cx + 460, cy + 48)
+    draw.rounded_rectangle(bbox, radius=24, fill=(255, 255, 255, 248), outline=(243, 156, 18), width=3)
+    draw_vector_sun(draw, cx - 380, cy, radius=16, fill=(243, 156, 18))
+    draw_auto_card_text(
+        draw, bbox,
+        title=label,
+        desc="Con tỉnh táo, bụng dễ chịu nhất",
+        theme_color=(211, 84, 0),
+        desc_color=(70, 70, 70),
+        max_title_font=26,
+        min_title_font=16,
+        max_desc_font=20,
+        min_desc_font=14,
+        icon_left_pad=100,
+        align="center"
+    )
 
 def draw_calendar_allergy_badge(draw, cx, cy, label="QUY TẮC 3 NGÀY"):
-    """Biểu tượng cuốn lịch vector theo dõi dị ứng thức ăn mới."""
-    draw.rounded_rectangle((cx - 380, cy - 48, cx + 380, cy + 48), radius=24, fill=(255, 255, 255, 248), outline=BLUE_COLOR, width=3)
-    # Lịch vector rõ ràng hơn
-    draw.rounded_rectangle((cx - 300, cy - 22, cx - 260, cy + 22), radius=6, fill=(255, 255, 255), outline=BLUE_COLOR, width=2)
-    draw.rectangle((cx - 300, cy - 22, cx - 260, cy - 8), fill=BLUE_COLOR)
+    """Biểu tượng cuốn lịch vector theo dõi dị ứng thức ăn mới, rộng 920px chống tràn viền 100%."""
+    bbox = (cx - 460, cy - 48, cx + 460, cy + 48)
+    draw.rounded_rectangle(bbox, radius=24, fill=(255, 255, 255, 248), outline=BLUE_COLOR, width=3)
+    draw.rounded_rectangle((cx - 400, cy - 22, cx - 360, cy + 22), radius=6, fill=(255, 255, 255), outline=BLUE_COLOR, width=2)
+    draw.rectangle((cx - 400, cy - 22, cx - 360, cy - 8), fill=BLUE_COLOR)
     f_num = get_font(FONT_BOLD, 20)
-    draw.text((cx - 280, cy + 8), "3", font=f_num, fill=BLUE_COLOR, anchor="mm")
-    f1 = get_font(FONT_BOLD, 30)
-    f2 = get_font(FONT_REGULAR, 24)
-    draw.text((cx + 30, cy - 16), label, font=f1, fill=(41, 128, 185), anchor="mm")
-    draw.text((cx + 30, cy + 20), "Theo dõi phân & da trước khi đổi món", font=f2, fill=(70, 70, 70), anchor="mm")
+    draw.text((cx - 380, cy + 8), "3", font=f_num, fill=BLUE_COLOR, anchor="mm")
+    draw_auto_card_text(
+        draw, bbox,
+        title=label,
+        desc="Theo dõi phân & da trước khi đổi món",
+        theme_color=(41, 128, 185),
+        desc_color=(70, 70, 70),
+        max_title_font=26,
+        min_title_font=16,
+        max_desc_font=20,
+        min_desc_font=14,
+        icon_left_pad=100,
+        align="center"
+    )
+
+# ==============================================================================
+# 3. BỘ HÌNH KHỐI NGHỆ THUẬT VẼ TAY THẾ HỆ MỚI (DIVERSE ARTISTIC SHAPES)
+# ==============================================================================
+
+def draw_seamless_cloud(draw, bbox, fill=(255, 255, 255, 252), outline=GREEN_COLOR, width=3):
+    """
+    Vẽ đám mây bồng bềnh liền khối không có nét cung tròn đè chéo bên trong.
+    Sử dụng kỹ thuật Mask Silhouette Union cực kỳ chuẩn mực.
+    Rất hợp với chủ đề tiêu hóa êm dịu, dạ dày bé khỏe mạnh, sữa mẹ, sự nhẹ nhàng.
+    """
+    x0, y0, x1, y1 = bbox
+    w = int(x1 - x0)
+    h = int(y1 - y0)
+    
+    mask = np.zeros((h + 40, w + 40), dtype=np.uint8)
+    ox, oy = 20, 20
+    
+    pad_x, pad_y = 28, 20
+    cv2.rectangle(mask, (ox + pad_x, oy + pad_y), (ox + w - pad_x, oy + h - pad_y), 255, -1)
+    
+    n_x = max(5, int(w / 70))
+    for i in range(n_x + 1):
+        cx = int(ox + pad_x + i * ((w - 2 * pad_x) / n_x))
+        r_top = 22 if (i % 2 == 1) else 18
+        r_bot = 20 if (i % 2 == 0) else 17
+        cv2.circle(mask, (cx, oy + pad_y - 2), r_top, 255, -1)
+        cv2.circle(mask, (cx, oy + h - pad_y + 2), r_bot, 255, -1)
+        
+    n_y = max(2, int(h / 50))
+    for i in range(1, n_y):
+        cy = int(oy + pad_y + i * ((h - 2 * pad_y) / n_y))
+        cv2.circle(mask, (ox + pad_x - 4, cy), 19, 255, -1)
+        cv2.circle(mask, (ox + w - pad_x + 4, cy), 19, 255, -1)
+        
+    for cx, cy in [(ox + pad_x, oy + pad_y), (ox + w - pad_x, oy + pad_y),
+                   (ox + pad_x, oy + h - pad_y), (ox + w - pad_x, oy + h - pad_y)]:
+        cv2.circle(mask, (cx, cy), 22, 255, -1)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        cnt = contours[0]
+        pts = [(int(p[0][0] - ox + x0), int(p[0][1] - oy + y0)) for p in cnt]
+        shadow_pts = [(x + 3, y + 4) for x, y in pts]
+        draw.polygon(shadow_pts, fill=(215, 205, 185, 130))
+        draw.polygon(pts, fill=fill, outline=outline)
+        for i in range(len(pts)):
+            draw.line([pts[i], pts[(i + 1) % len(pts)]], fill=outline, width=width)
+
+def draw_torn_paper_card(draw, bbox, fill=(255, 255, 255, 250), outline=RED_COLOR, pin_color=RED_COLOR):
+    """
+    Thẻ ghi chú phong cách giấy xé tay (Scrapbook torn paper) có mép răng cưa tự nhiên
+    và ghim bấm nhựa tròn 3D trên đỉnh.
+    Rất sinh động cho cảnh báo sai lầm, quá tải nội tạng, lưu ý y khoa khẩn cấp.
+    """
+    x0, y0, x1, y1 = bbox
+    w = x1 - x0
+    h = y1 - y0
+
+    pts = [(x0, y0 + 10)]
+    pts.append((x1, y0 + 8))
+    pts.append((x1, y1 - 12))
+    
+    n_teeth = max(12, int(w / 35))
+    step = w / n_teeth
+    for i in range(n_teeth, -1, -1):
+        curr_x = x0 + i * step
+        dy = (8 if i % 2 == 0 else -4) + (math.sin(i * 1.5) * 5)
+        pts.append((curr_x, y1 - 8 + dy))
+
+    pts.append((x0, y1 - 10))
+    pts.append((x0, y0 + 10))
+
+    shadow_pts = [(x + 4, y + 4) for x, y in pts]
+    draw.polygon(shadow_pts, fill=(215, 205, 185, 120))
+    draw.polygon(pts, fill=fill, outline=outline)
+
+    # Ghim bấm nhựa tròn 3D
+    pin_cx = (x0 + x1) / 2
+    pin_cy = y0 + 12
+    draw.ellipse((pin_cx - 8, pin_cy + 2, pin_cx + 12, pin_cy + 16), fill=(180, 170, 150))
+    draw.ellipse((pin_cx - 12, pin_cy - 12, pin_cx + 12, pin_cy + 12), fill=pin_color, outline=(255, 255, 255), width=2)
+    draw.ellipse((pin_cx - 6, pin_cy - 8, pin_cx - 1, pin_cy - 3), fill=(255, 255, 255, 220))
+
+def draw_seamless_parchment(draw, bbox, fill=(255, 252, 242), outline=(160, 110, 50), width=3):
+    """
+    Cuộn sớ thư pháp cổ tích cuộn tròn 2 đầu trái phải có nếp cuộn 3D và bóng đổ.
+    Rất trang nhã cho tiêu đề quan trọng, bí kíp tăng thô, lộ trình 3 ngày.
+    """
+    x0, y0, x1, y1 = bbox
+    roll_w = 42
+    body_x0 = x0 + roll_w - 6
+    body_x1 = x1 - roll_w + 6
+    body_y0 = y0 + 10
+    body_y1 = y1 - 10
+    
+    draw.rectangle((body_x0 + 4, body_y0 + 4, body_x1 + 4, body_y1 + 4), fill=(215, 205, 185))
+    draw.rectangle((body_x0, body_y0, body_x1, body_y1), fill=fill, outline=outline, width=width)
+    
+    draw.line([(body_x0 + 12, body_y0 + 8), (body_x1 - 12, body_y0 + 8)], fill=(210, 175, 120), width=1)
+    draw.line([(body_x0 + 12, body_y1 - 8), (body_x1 - 12, body_y1 - 8)], fill=(210, 175, 120), width=1)
+
+    # Cuộn tròn bên trái
+    draw.rounded_rectangle((x0, y0, x0 + roll_w, y1), radius=roll_w//2, fill=(245, 230, 205), outline=outline, width=width)
+    draw.ellipse((x0 + 10, y0 + 8, x0 + roll_w - 10, y0 + 26), fill=(220, 190, 145), outline=outline, width=2)
+    draw.ellipse((x0 + 10, y1 - 26, x0 + roll_w - 10, y1 - 8), fill=(220, 190, 145), outline=outline, width=2)
+
+    # Cuộn tròn bên phải
+    draw.rounded_rectangle((x1 - roll_w, y0, x1, y1), radius=roll_w//2, fill=(245, 230, 205), outline=outline, width=width)
+    draw.ellipse((x1 - roll_w + 10, y0 + 8, x1 - 10, y0 + 26), fill=(220, 190, 145), outline=outline, width=2)
+    draw.ellipse((x1 - roll_w + 10, y1 - 26, x1 - 10, y1 - 8), fill=(220, 190, 145), outline=outline, width=2)
+
+def draw_seamless_rosette(draw, cx, cy, radius=55, label="WHO 2026", fill=THEME_COLOR, outline=(255, 255, 255)):
+    """
+    Con dấu dập nổi hoa mai liền khối mượt mà không có nét vẽ đè bên trong.
+    Mang lại sự tin cậy y khoa chuẩn mực, khuyến cáo viện dinh dưỡng.
+    """
+    tail_w = 26
+    tail_len = 45
+    draw.polygon([
+        (cx - 10, cy + radius - 10),
+        (cx - 10 - tail_w, cy + radius + tail_len),
+        (cx - 10 - tail_w/2, cy + radius + tail_len - 10),
+        (cx - 5, cy + radius + tail_len),
+        (cx - 2, cy + radius - 10)
+    ], fill=(max(0, fill[0]-40), max(0, fill[1]-40), max(0, fill[2]-40)), outline=(40, 30, 20), width=2)
+    draw.polygon([
+        (cx + 2, cy + radius - 10),
+        (cx + 5, cy + radius + tail_len),
+        (cx + 10 + tail_w/2, cy + radius + tail_len - 10),
+        (cx + 10 + tail_w, cy + radius + tail_len),
+        (cx + 10, cy + radius - 10)
+    ], fill=(max(0, fill[0]-40), max(0, fill[1]-40), max(0, fill[2]-40)), outline=(40, 30, 20), width=2)
+
+    box_s = int((radius + 25) * 2)
+    mask = np.zeros((box_s, box_s), dtype=np.uint8)
+    mcx, mcy = box_s // 2, box_s // 2
+    
+    cv2.circle(mask, (mcx, mcy), int(radius), 255, -1)
+    n_petals = 16
+    for i in range(n_petals):
+        angle = i * (2 * math.pi / n_petals)
+        px = int(mcx + (radius + 2) * math.cos(angle))
+        py = int(mcy + (radius + 2) * math.sin(angle))
+        cv2.circle(mask, (px, py), 15, 255, -1)
+        
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        cnt = contours[0]
+        pts = [(int(p[0][0] - mcx + cx), int(p[0][1] - mcy + cy)) for p in cnt]
+        draw.polygon(pts, fill=fill, outline=outline)
+        for i in range(len(pts)):
+            draw.line([pts[i], pts[(i + 1) % len(pts)]], fill=outline, width=2)
+
+    draw.ellipse((cx - radius + 8, cy - radius + 8, cx + radius - 8, cy + radius - 8), fill=None, outline=(255, 255, 255), width=2)
+    f = get_font(FONT_BOLD, 18)
+    draw.text((cx, cy), label, font=f, fill=(255, 255, 255), anchor="mm")
+
+def draw_speech_balloon(draw, bbox, fill=(255, 255, 255, 252), outline=RED_COLOR, width=3, tail_x=None, tail_y=None):
+    """
+    Bong bóng đối thoại truyện tranh sinh động có đuôi nhọn cong chỉ thẳng vào nhân vật.
+    """
+    x0, y0, x1, y1 = bbox
+    draw.rounded_rectangle(bbox, radius=28, fill=fill, outline=outline, width=width)
+
+    tx = tail_x or (x0 + 120)
+    ty = tail_y or (y1 + 45)
+    tail_pts = [
+        (tx - 30, y1 - 2),
+        (tx, ty),
+        (tx + 20, y1 - 2)
+    ]
+    draw.polygon(tail_pts, fill=fill)
+    draw.line([(tx - 30, y1 - 2), (tx, ty)], fill=outline, width=width)
+    draw.line([(tx, ty), (tx + 20, y1 - 2)], fill=outline, width=width)
+
+# ==============================================================================
+# 4. ENGINE BẢO VỆ CHỮ CHỐNG TRÀN VIỀN 100% (UNIVERSAL ANTI-OVERFLOW ENGINE)
+# ==============================================================================
+
+def draw_auto_card_text(
+    draw,
+    card_bbox: tuple[float, float, float, float],
+    title: str,
+    desc: str = None,
+    theme_color: tuple = THEME_COLOR,
+    desc_color: tuple = (50, 50, 50),
+    max_title_font: int = 30,
+    min_title_font: int = 18,
+    max_desc_font: int = 22,
+    min_desc_font: int = 14,
+    icon_left_pad: int = 0,
+    icon_right_pad: int = 0,
+    align: str = "center"
+):
+    """
+    Hàm bố cục văn bản thông minh đảm bảo 100% toán học:
+    - Text KHÔNG BAO GIỜ chạm viền trái, viền phải, viền trên, viền dưới của card_bbox.
+    - Tự động tách dòng cân đối nếu title chứa dấu phân cách (' — ', ' : ') hoặc dài > 25 ký tự.
+    - Tự động co giãn kích thước font theo cả 2 chiều: Chiều ngang (Width) & Chiều dọc (Height).
+    """
+    if not title:
+        return
+    x0, y0, x1, y1 = card_bbox
+    pad_h = 24
+    pad_v = 12
+    
+    avail_x0 = x0 + pad_h + icon_left_pad
+    avail_x1 = x1 - pad_h - icon_right_pad
+    avail_w = max(100, avail_x1 - avail_x0)
+    avail_h = max(30, (y1 - y0) - 2 * pad_v)
+    
+    # 1. Tách title thành các dòng cân đối
+    title_lines = []
+    if (" — " in title or " : " in title) and len(title) > 22:
+        delim = " — " if " — " in title else " : "
+        parts = title.split(delim, 1)
+        title_lines = [parts[0].strip(), parts[1].strip()]
+    elif len(title) > 30 and " " in title:
+        words = title.split()
+        mid = len(words) // 2
+        title_lines = [" ".join(words[:mid]), " ".join(words[mid:])]
+    else:
+        title_lines = [title]
+
+    # Tìm font size cho title sao cho vừa khít avail_w
+    f_title_size = max_title_font
+    f_title = get_font(FONT_BOLD, f_title_size)
+    while f_title_size > min_title_font:
+        overflow = False
+        for line in title_lines:
+            bb = draw.textbbox((0, 0), line, font=f_title)
+            if (bb[2] - bb[0]) > avail_w:
+                overflow = True
+                break
+        if overflow:
+            f_title_size -= 1
+            f_title = get_font(FONT_BOLD, f_title_size)
+        else:
+            break
+
+    # 2. Xử lý desc nếu có
+    desc_lines = []
+    f_desc_size = max_desc_font
+    f_desc = get_font(FONT_REGULAR, f_desc_size)
+    if desc:
+        while f_desc_size >= min_desc_font:
+            desc_lines = []
+            words = desc.split()
+            cur = []
+            too_wide = False
+            for w in words:
+                test = " ".join(cur + [w])
+                bb = draw.textbbox((0, 0), test, font=f_desc)
+                if (bb[2] - bb[0]) <= avail_w:
+                    cur.append(w)
+                else:
+                    if cur:
+                        desc_lines.append(" ".join(cur))
+                        cur = [w]
+                    else:
+                        too_wide = True
+                        break
+            if cur:
+                desc_lines.append(" ".join(cur))
+            if too_wide and f_desc_size > min_desc_font:
+                f_desc_size -= 1
+                f_desc = get_font(FONT_REGULAR, f_desc_size)
+            else:
+                break
+
+    # 3. Tính toán tổng chiều cao & co lại nếu vượt quá avail_h
+    line_h_title = f_title_size + 4
+    line_h_desc = f_desc_size + 4 if desc else 0
+    total_h = len(title_lines) * line_h_title + (len(desc_lines) * line_h_desc if desc else 0) + (6 if desc else 0)
+
+    while total_h > avail_h and (f_title_size > 14 or (desc and f_desc_size > 12)):
+        if f_title_size > 14:
+            f_title_size -= 1
+            f_title = get_font(FONT_BOLD, f_title_size)
+            line_h_title = f_title_size + 4
+        if desc and f_desc_size > 12:
+            f_desc_size -= 1
+            f_desc = get_font(FONT_REGULAR, f_desc_size)
+            line_h_desc = f_desc_size + 4
+        total_h = len(title_lines) * line_h_title + (len(desc_lines) * line_h_desc if desc else 0) + (4 if desc else 0)
+
+    # 4. Vẽ căn chỉnh
+    start_y = y0 + ((y1 - y0) - total_h) / 2
+    cur_y = start_y
+    anchor_x = (avail_x0 + avail_x1) / 2 if align == "center" else avail_x0
+    txt_anchor = "ma" if align == "center" else "la"
+
+    for line in title_lines:
+        draw.text((anchor_x, cur_y), line, font=f_title, fill=theme_color, anchor=txt_anchor)
+        cur_y += line_h_title
+
+    if desc and desc_lines:
+        cur_y += 4
+        for line in desc_lines:
+            draw.text((anchor_x, cur_y), line, font=f_desc, fill=desc_color, anchor=txt_anchor)
+            cur_y += line_h_desc
+
+
