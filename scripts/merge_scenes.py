@@ -18,6 +18,88 @@ import tempfile
 from pathlib import Path
 
 
+def _get_video_duration(path: Path) -> float:
+    try:
+        import av
+        with av.open(str(path)) as container:
+            if container.streams.video:
+                s = container.streams.video[0]
+                if s.duration and s.time_base:
+                    return float(s.duration * s.time_base)
+            if container.duration:
+                return float(container.duration / 1_000_000)
+    except Exception:
+        pass
+    ffprobe = shutil.which("ffprobe")
+    if ffprobe:
+        res = subprocess.run(
+            [ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            try:
+                return float(res.stdout.strip())
+            except ValueError:
+                pass
+    return 0.0
+
+
+def _ffmpeg_xfade(
+    inputs: list[Path],
+    output: Path,
+    transition: str = "slideleft",
+    duration: float = 0.35,
+) -> bool:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None or len(inputs) < 2 or transition in ("none", "copy"):
+        return False
+
+    durations = [_get_video_duration(p) for p in inputs]
+    if any(d <= duration + 0.1 for d in durations):
+        print("  [warn] Một số cảnh quá ngắn để áp dụng xfade, chuyển sang concat.")
+        return False
+
+    filter_chains = []
+    prev_label = "0:v"
+    cur_offset = 0.0
+    for i in range(1, len(inputs)):
+        cur_offset += durations[i - 1] - duration
+        next_label = f"v{i}"
+        filter_chains.append(
+            f"[{prev_label}][{i}:v]xfade=transition={transition}:duration={duration:.3f}:offset={cur_offset:.3f}[{next_label}]"
+        )
+        prev_label = next_label
+
+    filter_str = ";".join(filter_chains)
+    inputs_args = []
+    for p in inputs:
+        inputs_args.extend(["-i", str(p)])
+
+    encoder_configs = [
+        ("h264_nvenc", ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "18", "-pix_fmt", "yuv420p"]),
+        ("h264_mf",    ["-c:v", "h264_mf", "-b:v", "15M", "-pix_fmt", "yuv420p"]),
+        ("libx264",    ["-c:v", "libx264", "-crf", "18", "-preset", "veryfast", "-pix_fmt", "yuv420p"]),
+    ]
+
+    for enc_name, enc_args in encoder_configs:
+        cmd = [
+            ffmpeg, "-y", "-loglevel", "error",
+            *inputs_args,
+            "-filter_complex", filter_str,
+            "-map", f"[{prev_label}]",
+            *enc_args,
+            str(output),
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode == 0 and output.is_file():
+            hw_tag = "GPU" if enc_name != "libx264" else "CPU"
+            print(f"  ffmpeg xfade chuyển cảnh ({transition} {duration}s) hoàn tất ({enc_name} {hw_tag}): {output}")
+            return True
+
+    print("  [warn] ffmpeg xfade thất bại, chuyển sang concat.")
+    return False
+
+
 def _ffmpeg_concat_copy(inputs: list[Path], output: Path) -> bool:
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
@@ -35,17 +117,25 @@ def _ffmpeg_concat_copy(inputs: list[Path], output: Path) -> bool:
         if res.returncode == 0:
             print(f"  ffmpeg 无损拼接完成: {output}")
             return True
-        print(f"  [warn] ffmpeg -c copy 失败，尝试重编码: {res.stderr.strip()[:200]}")
-        res = subprocess.run(
-            [ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-             "-i", str(list_path), "-c:v", "libx264", "-crf", "20",
-             "-pix_fmt", "yuv420p", "-vf", "scale='trunc(iw/2)*2':'trunc(ih/2)*2'", str(output)],
-            capture_output=True, text=True,
-        )
-        if res.returncode == 0:
-            print(f"  ffmpeg 重编码拼接完成: {output}")
-            return True
-        print(f"  [warn] ffmpeg 重编码也失败: {res.stderr.strip()[:200]}")
+        print(f"  [warn] ffmpeg -c copy 失败，尝试 GPU 重编码: {res.stderr.strip()[:200]}")
+        # Thử GPU encoder trước khi fallback CPU
+        encoder_configs = [
+            ("h264_nvenc", ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "18", "-pix_fmt", "yuv420p"]),
+            ("h264_mf",    ["-c:v", "h264_mf", "-b:v", "15M", "-pix_fmt", "yuv420p"]),
+            ("libx264",    ["-c:v", "libx264", "-crf", "18", "-preset", "veryfast", "-pix_fmt", "yuv420p"]),
+        ]
+        for enc_name, enc_args in encoder_configs:
+            res = subprocess.run(
+                [ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                 "-i", str(list_path), *enc_args,
+                 "-vf", "scale='trunc(iw/2)*2':'trunc(ih/2)*2'", str(output)],
+                capture_output=True, text=True,
+            )
+            if res.returncode == 0:
+                hw_tag = "GPU" if enc_name != "libx264" else "CPU"
+                print(f"  ffmpeg 重编码拼接完成({enc_name} {hw_tag}): {output}")
+                return True
+        print(f"  [warn] ffmpeg 重编码也失败")
         return False
     finally:
         list_path.unlink(missing_ok=True)
@@ -87,6 +177,8 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="按顺序合并多幕白板动画 MP4")
     p.add_argument("--inputs", nargs="+", required=True, help="按播放顺序的 MP4 列表")
     p.add_argument("--output", required=True, help="合并输出路径")
+    p.add_argument("--transition", default="slideleft", help="Hiệu ứng chuyển cảnh (slideleft, wipeleft, fade, copy)")
+    p.add_argument("--transition-duration", type=float, default=0.35, help="Thời lượng hiệu ứng chuyển cảnh (giây)")
     args = p.parse_args(argv)
 
     inputs = [Path(x) for x in args.inputs]
@@ -97,7 +189,11 @@ def main(argv=None) -> int:
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    if _ffmpeg_concat_copy(inputs, output) or _pyav_concat(inputs, output):
+    if (
+        (args.transition not in ("copy", "none") and _ffmpeg_xfade(inputs, output, transition=args.transition, duration=args.transition_duration))
+        or _ffmpeg_concat_copy(inputs, output)
+        or _pyav_concat(inputs, output)
+    ):
         print(f"OUTPUT={output.resolve()}")
         return 0
     print("[err] 合并失败：系统无 ffmpeg 且 PyAV 不可用", file=sys.stderr)

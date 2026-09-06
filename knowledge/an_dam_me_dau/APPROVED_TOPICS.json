@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-09-06T08:35:00+07:00",
+  "description": "Sổ bộ lưu trữ các chủ đề video đã được Product Owner (Người dùng) duyệt thành công. Các chủ đề trong này là tiêu chuẩn vàng, không được phép ghi đè hay làm sai lệch.",
+  "approved_topics": [
+    {
+      "slot_id": "day_01_slot_01",
+      "day": 1,
+      "slot": 1,
+      "title": "3 Ngày Vàng Khởi Động Cho Bé 6 Tháng",
+      "status": "APPROVED",
+      "approval_notes": "Người dùng đã duyệt về tranh minh họa sinh động hoạt hình em bé và 2 quả thận, phân chia 4 cảnh rõ nét.",
+      "file_path": "G:\\\\My Drive\\\\Đăng video\\\\Day_01_Slot_01_3_Ngay_Vang_Khoi_Dong_Cho_Be_6_Thang_2K.mp4",
+      "key_elements": [
+        "Tranh hoạt hình em bé háo hức và 2 quả thận ngộ nghĩnh",
+        "Kịch bản 4 cảnh (Hook -> Cơ chế thận -> 3 ngày vàng thử dị ứng -> Lời khuyên & CTA)",
+        "Giọng đọc OmniVoice Xuân Dung Clean 2K"
+      ]
+    },
+    {
+      "slot_id": "day_01_slot_02",
+      "day": 1,
+      "slot": 2,
+      "title": "Gạo Tẻ Nấu Cháo Rây Bé Mấy Tháng Ăn Được",
+      "status": "APPROVED_GOLDEN_BENCHMARK",
+      "approval_notes": "Tiêu chuẩn vàng hoàn thiện nhất: Giọng đọc Xuân Dung, kịch bản định lượng chi tiết y khoa (10g gạo : 100ml nước, ninh 45p, rây 0.5mm, 1-2 thìa cà phê), nhịp 84s thư thái (gaze 1.0s), 5 hình khối đồ họa nghệ thuật vẽ tay (3D Ribbon, Comic Bubble, Washi Memo, Circular Badges + Pill Tags, Capsule Heart CTA) có thuật toán Auto-Fit padding chống đè chữ/đè icon.",
+      "file_path": "G:\\\\My Drive\\\\Đăng video\\\\Day_01_Slot_02_Gạo_Tẻ_Nấu_Cháo_Rây_Bé_Mấy_Tháng_Ăn_Được_2K.mp4",
+      "duration_seconds": 84.2,
+      "resolution": "1440x2560 (2K 9:16)",
+      "fps": 30,
+      "key_elements": [
+        "3D Swallowtail Ribbon Banner cho toàn bộ tiêu đề (auto-fit padding >= 60px)",
+        "Comic Speech Bubble có đuôi chỉ hướng vào nhân vật em bé",
+        "Thẻ Washi-Tape Memo Card dán băng keo thủ công cho cơ chế tiêu hóa và lời khuyên",
+        "Huy hiệu số tròn dập nổi ❶ ❷ ❸ + Thẻ bo góc + Tag viên thuốc (VITAMIN B1, NINH 45 PHÚT, LƯỚI 0.5MM)",
+        "Thẻ CTA bo tròn dạng viên nang với 2 icon trái tim vector toán học (cách chữ >= 40px)",
+        "Kịch bản định lượng gram/ml/thời gian cặn kẽ chuẩn khoa học",
+        "Hiệu ứng chuyển trang slideleft, thời gian dừng tĩnh 1.0s cuối cảnh"
+      ]
+    }
+  ],
+  "pending_topics": {
+    "day_01": [
+      "day_01_slot_03",
+      "day_01_slot_04",
+      "day_01_slot_05",
+      "day_01_slot_06",
+      "day_01_slot_07",
+      "day_01_slot_08",
+      "day_01_slot_09",
+      "day_01_slot_10",
+      "day_01_slot_11"
+    ],
+    "requirement": "Bắt buộc phải nâng cấp kịch bản chuyên sâu và thiết kế đồ họa vẽ tay đa dạng hình khối theo đúng chuẩn vàng của Slot 01 & 02 trước khi trình người dùng nghiệm thu duyệt."
+  }
+}

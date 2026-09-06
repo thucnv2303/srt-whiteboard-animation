@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "title": "4 thói quen buổi sáng giúp tập trung",
+  "version": 1,
+  "script": "script.txt",
+  "penBrand": "Studio vẽ tay",
+  "narration": [
+    {"id":"cue-water","sceneId":"board","text":"Thói quen đầu tiên là uống một cốc nước sau khi thức dậy để cơ thể bắt đầu ngày mới nhẹ nhàng.","elementIds":["water"],"pauseBeforeMs":350,"pauseAfterMs":300},
+    {"id":"cue-light","sceneId":"board","text":"Tiếp theo, hãy đón ánh sáng buổi sáng và vận động vài phút để tỉnh táo hơn.","elementIds":["morning-light"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-plan","sceneId":"board","text":"Trước khi làm việc, ghi ra ba việc quan trọng nhất để tránh bị phân tán.","elementIds":["daily-plan"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-desk","sceneId":"board","text":"Cuối cùng, dọn bàn gọn gàng và đặt điện thoại ra xa trong khoảng tập trung đầu tiên.","elementIds":["tidy-desk"],"pauseBeforeMs":250,"pauseAfterMs":500}
+  ],
+  "scenes": [
+    {"id":"board","title":"Bốn thói quen buổi sáng","image":"board.webp","annotation":"board.annotation.json"}
+  ]
+}

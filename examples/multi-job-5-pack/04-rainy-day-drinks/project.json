@@ -1,0 +1,10 @@
+{
+  "schemaVersion":1,"title":"4 món nước ấm cho ngày mưa","version":1,"script":"script.txt","penBrand":"Studio vẽ tay",
+  "narration":[
+    {"id":"cue-ginger","sceneId":"board","text":"Món đầu tiên là trà gừng mật ong ấm, thơm dịu và rất hợp với một ngày mưa.","elementIds":["ginger-tea"],"pauseBeforeMs":350,"pauseAfterMs":300},
+    {"id":"cue-cocoa","sceneId":"board","text":"Tiếp theo là ca cao nóng có vị đậm, nên dùng lượng đường vừa phải để không quá ngọt.","elementIds":["hot-cocoa"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-soy","sceneId":"board","text":"Sữa đậu nành ấm là lựa chọn nhẹ nhàng, dễ chuẩn bị cho buổi sáng hoặc buổi tối.","elementIds":["soy-milk"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-apple","sceneId":"board","text":"Cuối cùng, trà táo quế mang hương thơm ấm áp, có thể nhâm nhi chậm khi nghỉ ngơi.","elementIds":["apple-cinnamon"],"pauseBeforeMs":250,"pauseAfterMs":500}
+  ],
+  "scenes":[{"id":"board","title":"Bốn món nước ấm","image":"board.webp","annotation":"board.annotation.json"}]
+}

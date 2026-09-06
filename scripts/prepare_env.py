@@ -30,6 +30,8 @@ DEPS: dict[str, str] = {
     "numpy": "numpy",
     "av": "av",  # PyAV：纯 pip 安装的 H.264 编码，无需系统 ffmpeg
     "PIL": "Pillow",  # render_annotation_preview.py 画区域编号预览图（含中文标签）
+    "edge_tts": "edge-tts",  # Giọng Việt neural, không cần API key
+    "pygame": "pygame",  # Âm thanh cho trình phát video tích hợp trong Tkinter
 }
 
 

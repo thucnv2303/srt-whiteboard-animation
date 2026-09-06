@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "title": "Demo khỉ lấy chuối",
+  "version": 1,
+  "scenes": [
+    {
+      "id": "scene-01",
+      "title": "Khỉ lấy chuối",
+      "image": "scene-01-monkey-mountain-banana.png",
+      "annotation": "scene-01-monkey-mountain-banana.annotation.json"
+    }
+  ]
+}
+

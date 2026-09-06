@@ -1,0 +1,9 @@
+{
+  "sceneId":"board","canvas":{"width":1280,"height":720},"storyBasis":"Bốn thói quen buổi sáng giúp tập trung.","sceneDurationMs":34000,
+  "elements":[
+    {"id":"water","label":"Uống nước","sequence":1,"narrativeRole":"Thói quen đầu tiên","subtitle":"Uống nước sau khi thức dậy.","type":"habit","region":{"x":20,"y":20,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[325,30],"end":[325,330],"easing":"easeInOut"}},
+    {"id":"morning-light","label":"Đón ánh sáng","sequence":2,"narrativeRole":"Thói quen tiếp theo","subtitle":"Đón nắng và vận động nhẹ.","type":"habit","region":{"x":650,"y":20,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":8500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[955,30],"end":[955,330],"easing":"easeInOut"}},
+    {"id":"daily-plan","label":"Lập kế hoạch","sequence":3,"narrativeRole":"Thói quen thứ ba","subtitle":"Ghi ba việc quan trọng.","type":"habit","region":{"x":20,"y":380,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":16500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[325,390],"end":[325,690],"easing":"easeInOut"}},
+    {"id":"tidy-desk","label":"Dọn bàn làm việc","sequence":4,"narrativeRole":"Thói quen cuối cùng","subtitle":"Giữ bàn gọn và cất điện thoại.","type":"habit","region":{"x":650,"y":380,"width":610,"height":320},"reveal":{"direction":"top_to_bottom","startMs":24500,"durationMs":7000,"maskPaddingPx":18,"protectedRegions":[]},"handPath":{"start":[955,390],"end":[955,690],"easing":"easeInOut"}}
+  ]
+}

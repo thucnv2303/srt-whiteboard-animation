@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "title": "Video mẫu kiểm thử 52 giây",
+  "version": 1,
+  "scenes": [
+    {
+      "id": "scene-01",
+      "title": "Cảnh mẫu 1",
+      "image": "scene-01.png",
+      "annotation": "scene-01.annotation.json"
+    },
+    {
+      "id": "scene-02",
+      "title": "Cảnh mẫu 2",
+      "image": "scene-02.png",
+      "annotation": "scene-02.annotation.json"
+    },
+    {
+      "id": "scene-03",
+      "title": "Cảnh mẫu 3",
+      "image": "scene-03.png",
+      "annotation": "scene-03.annotation.json"
+    },
+    {
+      "id": "scene-04",
+      "title": "Cảnh mẫu 4",
+      "image": "scene-04.png",
+      "annotation": "scene-04.annotation.json"
+    },
+    {
+      "id": "scene-05",
+      "title": "Cảnh mẫu 5",
+      "image": "scene-05.png",
+      "annotation": "scene-05.annotation.json"
+    },
+    {
+      "id": "scene-06",
+      "title": "Cảnh mẫu 6",
+      "image": "scene-06.png",
+      "annotation": "scene-06.annotation.json"
+    }
+  ]
+}
+

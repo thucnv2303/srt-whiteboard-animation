@@ -1,0 +1,10 @@
+{
+  "schemaVersion":1,"title":"4 mẹo chăm cây trong căn hộ","version":1,"script":"script.txt","penBrand":"Studio vẽ tay",
+  "narration":[
+    {"id":"cue-light","sceneId":"board","text":"Mẹo đầu tiên là đặt cây ở nơi có ánh sáng gián tiếp, đủ sáng nhưng không bị nắng gắt chiếu lâu.","elementIds":["indirect-light"],"pauseBeforeMs":350,"pauseAfterMs":300},
+    {"id":"cue-soil","sceneId":"board","text":"Trước khi tưới, hãy chạm vào lớp đất mặt để biết cây có thực sự đang khô hay không.","elementIds":["check-soil"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-water","sceneId":"board","text":"Khi cần nước, tưới chậm quanh gốc và dừng khi nước bắt đầu thoát xuống đáy chậu.","elementIds":["gentle-water"],"pauseBeforeMs":250,"pauseAfterMs":300},
+    {"id":"cue-prune","sceneId":"board","text":"Cuối cùng, cắt bỏ lá vàng và vệ sinh kéo để cây thông thoáng, khỏe mạnh hơn.","elementIds":["prune-leaves"],"pauseBeforeMs":250,"pauseAfterMs":500}
+  ],
+  "scenes":[{"id":"board","title":"Bốn mẹo chăm cây trong nhà","image":"board.webp","annotation":"board.annotation.json"}]
+}

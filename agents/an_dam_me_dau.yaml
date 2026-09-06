@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ăn dặm mẹ Dâu Studio"
+  short_description: "Tạo gói kịch bản, ảnh vẽ tay và video ăn dặm chuẩn khoa học cho kênh Ăn dặm mẹ Dâu"
+  default_prompt: "Sử dụng $an-dam-me-dau để tạo kịch bản và gói dự án video vẽ tay 9:16 cho chủ đề này."

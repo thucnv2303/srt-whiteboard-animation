@@ -6,56 +6,66 @@
 - Repo làm việc: `thucnv2303/srt-whiteboard-animation`
 - Repo upstream: `geeklee/srt-whiteboard-animation`
 - Base branch: `main`
-- Loại sản phẩm hiện tại: bộ công cụ Python CLI + trình chỉnh annotation chạy cục bộ trong Chrome/Edge
-- Người dùng chính: người làm video tiếng Việt muốn biến nội dung SRT thành video whiteboard animation
-- Môi trường ưu tiên: Windows desktop
+- Loại sản phẩm: desktop app Windows + bộ renderer Python local
+- Người dùng chính: người làm video tiếng Việt
+
+## Mô hình sản phẩm
+
+ChatGPT Project là studio sáng tạo: nhận ý tưởng ngắn của người dùng rồi chuẩn bị kịch bản, voice, ảnh và metadata cảnh. App desktop là máy dựng: nhận một gói dự án chuẩn, kiểm tra, cho người dùng duyệt và tạo MP4. App không cần AI local và không gọi OpenAI API trong MVP.
 
 ## Vấn đề người dùng
 
-Quy trình dựng video vẽ tay từ nội dung lời thoại đang tốn nhiều thao tác thủ công: chia cảnh, thiết kế ảnh đồng nhất, đặt thứ tự vẽ, canh thời gian, che vùng chồng lấn, render và ghép video. Người dùng cần một app dễ chạy để kiểm tra từng bước và đưa ra ý tưởng, còn Codex chịu trách nhiệm phát triển và cập nhật code.
+Quy trình hiện tại đòi hỏi sao chép nhiều lần giữa kịch bản, ảnh, voice, annotation và lệnh render. Người dùng muốn chỉ đưa ý tưởng, sau đó nhận dự án đồng bộ để app dựng video mà không phải ghép thủ công từng tài nguyên.
 
 ## Kết quả sản phẩm
 
-Từ một file SRT hợp lệ, người dùng có thể:
+Người dùng có thể:
 
-1. nhận đề xuất chia cảnh và chiến lược hình ảnh;
-2. duyệt ảnh nét vẽ đồng nhất;
-3. chỉnh vùng, thứ tự và thời gian vẽ trong giao diện;
-4. render từng cảnh thành MP4;
-5. ghép các cảnh thành video hoàn chỉnh;
-6. nhận thông báo lỗi rõ ràng và biết cách khắc phục.
+1. chuẩn bị nội dung trong ChatGPT Project;
+2. đưa một folder hoặc ZIP dự án vào app;
+3. thấy ngay lỗi thiếu ảnh, annotation hoặc voice;
+4. xem danh sách cảnh và chọn nơi xuất;
+5. render cảnh, ghép video và gắn voice;
+6. xem `final.mp4` rồi phản hồi ý tưởng tiếp theo.
 
-## Phạm vi MVP
+## Phạm vi MVP app
 
-- Nhập và phân tích SRT tiếng Việt.
-- Chia cảnh mặc định 25–35 giây, cho phép thay đổi tham số.
-- Quản lý ảnh cảnh và `annotation.json` cùng tên.
-- Giao diện chỉnh region, sequence, subtitle, start/end và preview.
-- Render stream whiteboard theo hai pha `ink` rồi `color`.
-- Bảo vệ vùng chưa tới lượt bằng later-region masks và `protectedRegions`.
-- Render MP4 từng cảnh và ghép nhiều cảnh.
-- Tập trung vào trải nghiệm Windows, đường dẫn tiếng Việt và thao tác local.
+- Desktop app ưu tiên Windows 10/11.
+- Input là folder, `project.json` hoặc ZIP theo schema v1.
+- Quản lý ảnh cảnh và `annotation.json` cùng basename.
+- Voice là tùy chọn; gắn vào video bằng FFmpeg.
+- Điều phối renderer upstream, không viết lại thuật toán vẽ.
+- UI tiếng Việt có loading, empty, error, disabled, cancel và log.
+- Unit test cho hợp đồng dữ liệu và an toàn đường dẫn.
+
+## Milestone sau MVP
+
+- Tự tạo/chỉnh annotation trong app.
+- Preview ảnh và timeline đầy đủ.
+- Đồng bộ ChatGPT qua plugin/MCP và kho tệp trung gian.
+- Đóng gói installer hoặc `.exe`.
+- Kiểm tra frame tự động và render regression.
 
 ## Ngoài phạm vi hiện tại
 
-- Đăng video tự động lên TikTok/YouTube/Facebook.
-- Hệ thống tài khoản, thanh toán hoặc cloud multi-user.
-- Voice cloning hoặc TTS tích hợp.
+- AI local/Ollama.
+- OpenAI API gọi từ app.
+- Đăng video tự động lên mạng xã hội.
+- Hệ thống tài khoản hoặc thanh toán.
 - Mobile app native.
-- Tự merge thay đổi vào `main` khi người dùng chưa duyệt.
 
-## Ràng buộc sản phẩm
+## Ràng buộc
 
-- Ngôn ngữ giao diện và thông báo: tiếng Việt.
-- Không commit secret hoặc dữ liệu cá nhân.
-- Không đưa ảnh/video của người dùng lên dịch vụ ngoài nếu chưa được cho phép.
-- Mọi bước tốn chi phí hoặc thời gian render phải tuân theo cổng duyệt của người dùng.
-- Giữ tương thích với định dạng annotation upstream hoặc có migration rõ ràng.
+- Không commit secret, dữ liệu cá nhân hoặc video render nặng.
+- Không tải tài nguyên người dùng lên dịch vụ ngoài nếu chưa được phép.
+- Giữ tương thích annotation upstream.
+- Người dùng quyết định nghiệm thu sau khi chạy app và xem video.
 
 ## Chỉ số thành công MVP
 
-- Người dùng mới có thể chạy luồng mẫu theo tài liệu mà không cần sửa code.
-- SRT lỗi được báo rõ, không crash mơ hồ.
-- Preview và render dùng cùng một annotation làm nguồn dữ liệu.
-- Video không lộ vùng chưa vẽ, đúng thứ tự kể chuyện và có đoạn giữ cuối cảnh.
-- Test/smoke test có thể chạy lặp lại trước mỗi PR.
+- Người dùng chạy app bằng `run_app.bat` mà không sửa code.
+- Gói sai báo lỗi cụ thể, không crash mơ hồ.
+- Render chạy ngoài UI thread và không cho thao tác trùng.
+- `final.mp4` được tạo đúng thứ tự cảnh; voice được gắn khi có.
+- Test/CI có thể chạy lặp lại trước mỗi PR.
+
