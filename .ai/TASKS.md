@@ -10,6 +10,8 @@
 
 ## Hoàn thành
 
+- `TASK-037` — Thuật toán Tối ưu Không Gian Tự Động (Auto Space Maximizer & Large Typography) cho Toàn bộ 330 Slot: Khắc phục lỗi chữ Cảnh 1 bị bé lọt thỏm (giữ tiêu đề 1 dòng to $34px$, bullet $26px$) và Cảnh 3 thừa nhiều khoảng trống bên dưới (nâng khung lên $185px$, chữ mô tả $26px$, line-height $38px$). Đã xuất trọn bộ 4 cảnh tĩnh cho Slot 3 và đạt chuẩn TECHNICALLY_VERIFIED (70/70 pytest pass).
+
 - `TASK-001` — Bộ kiến thức dự án; PR `#1` đã merge.
 - Hợp đồng `project.json` phiên bản 1.
 - Unit test cho import folder/ZIP, tài nguyên thiếu và đường dẫn không an toàn.

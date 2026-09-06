@@ -56,8 +56,10 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
 - Gói bò phiên bản 6 có 5 cue ánh xạ trực tiếp tới 5 món; số thứ tự dùng cụm đầy đủ “Món thứ…” để tránh đặt âm số ngay biên sinh voice.
 - UI coi narration cue là phân cảnh nội dung: gói bò có 1 ảnh nguồn nhưng hiển thị đủ 5 dòng, chọn từng dòng sẽ phóng đúng region món ăn.
 - Chỉ còn một nút **Tạo video**; app tự chạy voice → timeline → render → ghép MP4.
-- ID: `TASK-036` — Cơ chế Tự động Ép Biên An Toàn (Safe Margin Inward Clamping) & Auto-fit Card Cảnh 3 cho Toàn bộ 330 Slot:
-  + Phát hiện nguyên nhân cốt lõi khiến mép phải khung card Cảnh 3 bị xén mất góc ở các slot: `draw_step_pill_badge` nhận tọa độ `x=750` kết hợp `card_width=620` làm mép phải vọt lên $1438px$, vượt quá độ phân giải màn hình $1080px$.
+- ID: `TASK-037` — Thuật toán Tối ưu Không Gian Tự Động (Auto Space Maximizer & Large Typography) cho Toàn bộ 330 Slot:
+  + Phát hiện nguyên nhân cốt lõi khiến chữ Cảnh 1 bị bé: thuật toán `draw_auto_card_text` cũ tự động chém đôi tiêu đề khi dài > 22 ký tự, làm tăng số dòng text khiến vòng lặp ép giảm font xuống $18px/15px$ dù bề ngang khung còn rất rộng ($912px$). Đã nâng cấp ưu tiên giữ tiêu đề 1 dòng to rõ ($34px$), cho phép bullet đạt $26px$ lấp đầy khung bóng thoại.
+  + Phát hiện nguyên nhân Cảnh 3 để thừa nhiều khoảng trống phía dưới: `draw_step_pill_badge` cũ chỉ dùng chiều cao tối thiểu $125px$, làm khung bị ngắn cụn và co cụm chữ lại. Đã nâng cấp `card_height` tự động đạt $185px$, font tiêu đề $32px$, font mô tả $26px$ với khoảng cách dòng $38px$, lấp đầy khoảng trống dọc bên dưới và cân đối hoàn hảo với tranh minh họa.
+  + Đã xuất 4 ảnh preview tĩnh cho Slot 3 mà không cần render video; bộ test 70/70 PASS.
   + Triển khai thuật toán Inward Clamping trong `whiteboard_app/art_shapes.py`: nếu $x_1 > 1040px$, tự động lùi $x$ sang trái theo $\Delta x$ để giữ $x_1 \le 1040px$, đồng thời vẽ huy hiệu số tròn sau khi $x$ đã căn chỉnh để toàn bộ cụm thẻ + huy hiệu luôn đồng bộ và nằm trọn vẹn 100% trong khung hình.
   + Đã xuất ảnh kiểm thử tĩnh cho Cảnh 3 Slot 03 mà không cần render video theo đúng chỉ thị. Đạt chuẩn TECHNICALLY_VERIFIED (70/70 pytest pass).
 - ID: `TASK-023` — Cập nhật Typography thẻ chữ to rõ ràng, loại bỏ âm thanh Whoosh, nâng cấp hiệu ứng chuyển trang (slideleft) và nguyên tắc vẽ từ trên xuống dưới (top-to-bottom).

@@ -187,10 +187,10 @@ class GoldenSlotBuilder:
                     desc=alert_desc,
                     theme_color=RED_COLOR,
                     desc_color=(40, 40, 40),
-                    max_title_font=30,
-                    min_title_font=18,
-                    max_desc_font=22,
-                    min_desc_font=15,
+                    max_title_font=34,
+                    min_title_font=22,
+                    max_desc_font=26,
+                    min_desc_font=18,
                     align="center"
                 )
 
@@ -206,11 +206,11 @@ class GoldenSlotBuilder:
                     title=cfg.get("bot_title", "DẠ DÀY NON NỚT CỦA BÉ CHỈ CẦN GẠO TẺ NGUYÊN CÁM"),
                     desc=cfg.get("bot_desc", "Bảo vệ đường ruột và hệ tiêu hóa khỏe mạnh ngay từ ngày đầu"),
                     theme_color=THEME_COLOR,
-                    desc_color=(70, 70, 70),
-                    max_title_font=28,
-                    min_title_font=16,
-                    max_desc_font=20,
-                    min_desc_font=14,
+                    desc_color=(60, 60, 60),
+                    max_title_font=32,
+                    min_title_font=20,
+                    max_desc_font=25,
+                    min_desc_font=16,
                     icon_left_pad=30,
                     icon_right_pad=30,
                     align="center"
@@ -240,10 +240,10 @@ class GoldenSlotBuilder:
                     desc=cfg.get("good_desc", "Dạ dày 6 tháng chỉ bằng quả trứng, tiêu hóa nhẹ nhàng"),
                     theme_color=(39, 174, 96),
                     desc_color=(50, 50, 50),
-                    max_title_font=30,
-                    min_title_font=18,
-                    max_desc_font=22,
-                    min_desc_font=15,
+                    max_title_font=32,
+                    min_title_font=20,
+                    max_desc_font=25,
+                    min_desc_font=16,
                     align="center"
                 )
 
@@ -256,10 +256,10 @@ class GoldenSlotBuilder:
                     desc=cfg.get("bad_desc", "Đầy bụng, khó tiêu, lên men đường ruột khiến con quấy khóc"),
                     theme_color=RED_COLOR,
                     desc_color=(50, 50, 50),
-                    max_title_font=30,
-                    min_title_font=18,
-                    max_desc_font=22,
-                    min_desc_font=15,
+                    max_title_font=32,
+                    min_title_font=20,
+                    max_desc_font=25,
+                    min_desc_font=16,
                     align="center"
                 )
 
@@ -277,12 +277,13 @@ class GoldenSlotBuilder:
                 draw_ribbon_banner(draw, (110, 40, 970, 155), fill=THEME_COLOR, text=cfg.get("title", "3 BƯỚC NẤU CHÁO RÂY 1:10 CHUẨN Y KHOA"), max_font_size=38)
 
                 # Vẽ 3 thẻ chỉ dẫn nghệ thuật Washi Memo so le Zigzag chuẩn vùng trống (Negative Space)
-                # Bước 1 (Hình bên trái x in [0, 520]): Thẻ đặt bên phải tại x=555 (x0=635..x1=1040, y=270)
-                b1_box = draw_step_pill_badge(draw, 555, 270, "1", cfg.get("step1_title", "BƯỚC 1: GẠO TẺ NGUYÊN CÁM"), cfg.get("step1_desc", ["Vo nhẹ 1 lần với nước sạch", "Giữ trọn vitamin nhóm B"]), tag_text=cfg.get("step1_tag", "GẠO NGUYÊN CÁM"), theme_color=THEME_COLOR, card_width=405)
-                # Bước 2 (Hình bên phải x in [560, 1080]): Thẻ đặt bên trái tại x=40 (x0=120..x1=540, y=870)
-                b2_box = draw_step_pill_badge(draw, 40, 870, "2", cfg.get("step2_title", "BƯỚC 2: TỶ LỆ VÀNG 1:10"), cfg.get("step2_desc", ["10g gạo nấu cùng 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=cfg.get("step2_tag", "TỶ LỆ VÀNG 1:10"), theme_color=GREEN_COLOR, card_width=420)
-                # Bước 3 (Hình bên trái x in [0, 580]): Thẻ đặt bên phải tại x=595 (x0=675..x1=1040, y=1440)
-                b3_box = draw_step_pill_badge(draw, 595, 1440, "3", cfg.get("step3_title", "BƯỚC 3: RÂY MỊN ĐỒNG NHẤT"), cfg.get("step3_desc", ["Đổ qua rây 0.5mm khi còn ấm", "Miết nhẹ lưng thìa 2 lần"]), tag_text=cfg.get("step3_tag", "RÂY MỊN 0.5MM"), theme_color=BLUE_COLOR, card_width=365)
+                # Tận dụng chiều cao vùng trống để khung to đẹp, chữ to rõ ràng (card_height=180..185)
+                # Bước 1 (Hình bên trái x in [0, 520]): Thẻ đặt bên phải tại x=530 (x0=620..x1=1040, y=270, h=185)
+                b1_box = draw_step_pill_badge(draw, 530, 270, "1", cfg.get("step1_title", "BƯỚC 1: GẠO TẺ NGUYÊN CÁM"), cfg.get("step1_desc", ["Vo nhẹ 1 lần với nước sạch", "Giữ trọn vitamin nhóm B"]), tag_text=cfg.get("step1_tag", "GẠO NGUYÊN CÁM"), theme_color=THEME_COLOR, card_width=420, card_height=185)
+                # Bước 2 (Hình bên phải x in [560, 1080]): Thẻ đặt bên trái tại x=40 (x0=130..x1=540, y=860, h=185)
+                b2_box = draw_step_pill_badge(draw, 40, 860, "2", cfg.get("step2_title", "BƯỚC 2: TỶ LỆ VÀNG 1:10"), cfg.get("step2_desc", ["10g gạo nấu cùng 100ml nước", "Ninh nhỏ lửa 45 phút"]), tag_text=cfg.get("step2_tag", "TỶ LỆ VÀNG 1:10"), theme_color=GREEN_COLOR, card_width=410, card_height=185)
+                # Bước 3 (Hình bên trái x in [0, 580]): Thẻ đặt bên phải tại x=580 (x0=670..x1=1040, y=1430, h=185)
+                b3_box = draw_step_pill_badge(draw, 580, 1430, "3", cfg.get("step3_title", "BƯỚC 3: RÂY MỊN ĐỒNG NHẤT"), cfg.get("step3_desc", ["Đổ qua rây 0.5mm khi còn ấm", "Miết nhẹ lưng thìa 2 lần"]), tag_text=cfg.get("step3_tag", "RÂY MỊN 0.5MM"), theme_color=BLUE_COLOR, card_width=370, card_height=185)
 
                 elements = [
                     {"id": "s3_banner", "label": "Ruy Băng Tiêu Đề", "region": {"x": 40, "y": 25, "width": 1000, "height": 135}, "reveal": {"startMs": 100, "durationMs": 1800}},

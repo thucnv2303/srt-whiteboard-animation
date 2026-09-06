@@ -234,10 +234,10 @@ def draw_washi_memo_card(draw, bbox, fill=(255, 255, 255, 248), outline=GREEN_CO
     draw.polygon([(tx0, ty0 + 3), (tx1, ty0 - 3), (tx1, ty1 - 3), (tx0, ty1 + 3)], fill=tape_color)
     draw.line([(tx0, ty0 + 3), (tx1, ty0 - 3), (tx1, ty1 - 3), (tx0, ty1 + 3), (tx0, ty0 + 3)], fill=(180, 120, 60), width=1)
 
-def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_color=THEME_COLOR, card_width=None, is_compact=False, inner_pad=18):
-    """Huy hiệu bước thực hành bo góc cao cấp: tự tính toán auto-fit theo từng câu chữ, không bao giờ tràn viền."""
-    circle_r = 28 if is_compact else 34
-    card_x0 = x + circle_r * 2 + 12
+def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_color=THEME_COLOR, card_width=None, is_compact=False, inner_pad=22, card_height=None):
+    """Huy hiệu bước thực hành bo góc cao cấp: tự tính toán auto-fit theo từng câu chữ, chữ to rõ ràng, không bao giờ tràn viền."""
+    circle_r = 34 if is_compact else 38
+    card_x0 = x + circle_r * 2 + 14
     card_y0 = y
     if card_width is not None:
         card_x1 = card_x0 + card_width
@@ -248,13 +248,13 @@ def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_c
     if card_x1 > 1040:
         overflow_dx = card_x1 - 1040
         x = max(30, x - overflow_dx)
-        card_x0 = x + circle_r * 2 + 12
+        card_x0 = x + circle_r * 2 + 14
         card_x1 = 1040
 
     cx = x + circle_r
     cy = y + circle_r
     draw.ellipse((cx - circle_r, cy - circle_r, cx + circle_r, cy + circle_r), fill=theme_color, outline=(255, 255, 255), width=3)
-    f_num = get_font(FONT_BOLD, 36 if is_compact else 42)
+    f_num = get_font(FONT_BOLD, 40 if is_compact else 46)
     draw.text((cx, cy - 2), str(step_num), font=f_num, fill=(255, 255, 255), anchor="mm")
     
     # Nội dung mô tả (desc): Tự động tính toán số dòng và co giãn linh hoạt
@@ -265,9 +265,9 @@ def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_c
     else:
         desc_raw = [desc]
 
-    f_desc_size = 20 if is_compact else 23
+    f_desc_size = 22 if is_compact else 26
     f_desc = get_font(FONT_REGULAR, f_desc_size)
-    max_desc_w = (card_x1 - card_x0) - inner_pad * 2 - 10
+    max_desc_w = (card_x1 - card_x0) - inner_pad * 2 - 8
 
     # Tính toán toàn bộ các dòng sau khi wrap
     desc_wrapped_lines = []
@@ -277,12 +277,15 @@ def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_c
             item_str = "• " + item_str
         desc_wrapped_lines.extend(wrap_text(draw, item_str, f_desc, max_desc_w))
 
-    # Tính toán chiều cao cần thiết để chữ không bao giờ thò ra ngoài đáy card
-    line_h = 28 if is_compact else 33
-    start_desc_y = card_y0 + (56 if is_compact else 66)
-    min_card_h = 125
-    needed_card_h = (start_desc_y - card_y0) + len(desc_wrapped_lines) * line_h + 14
-    actual_card_h = max(min_card_h, needed_card_h)
+    # Tính toán chiều cao cần thiết để chữ to rõ ràng và không bao giờ thò ra ngoài đáy card
+    line_h = 32 if is_compact else 38
+    start_desc_y = card_y0 + (62 if is_compact else 74)
+    min_card_h = 140 if is_compact else 170
+    needed_card_h = (start_desc_y - card_y0) + len(desc_wrapped_lines) * line_h + 20
+    if card_height is not None:
+        actual_card_h = max(card_height, needed_card_h)
+    else:
+        actual_card_h = max(min_card_h, needed_card_h)
     card_y1 = card_y0 + actual_card_h
 
     # Tự động loại bỏ tiền tố thừa nếu đã có huy hiệu tròn bên cạnh
@@ -305,51 +308,51 @@ def draw_step_pill_badge(draw, x, y, step_num, title, desc, tag_text="", theme_c
         show_tag = False
 
     tag_w = 0
-    f_tag = get_font(FONT_BOLD, 17 if is_compact else 20)
+    f_tag = get_font(FONT_BOLD, 18 if is_compact else 22)
     if show_tag:
         t_bb = draw.textbbox((0, 0), clean_tag, font=f_tag)
-        tag_w = (t_bb[2] - t_bb[0]) + 18
+        tag_w = (t_bb[2] - t_bb[0]) + 22
 
-    # Tính toán tiêu đề auto-fit trong không gian còn lại (chừa khoảng đệm an toàn tới tag >= 14px)
-    gap_to_tag = (tag_w + 14) if show_tag else 0
+    # Tính toán tiêu đề auto-fit trong không gian còn lại (chừa khoảng đệm an toàn tới tag >= 16px)
+    gap_to_tag = (tag_w + 16) if show_tag else 0
     max_title_w = (card_x1 - inner_pad - gap_to_tag) - (card_x0 + inner_pad)
-    f_title_size = 24 if is_compact else 28
+    f_title_size = 26 if is_compact else 32
     f_title = get_font(FONT_BOLD, f_title_size)
     t_bbox = draw.textbbox((0, 0), clean_title, font=f_title)
-    while (t_bbox[2] - t_bbox[0]) > max_title_w and f_title_size > 19:
+    while (t_bbox[2] - t_bbox[0]) > max_title_w and f_title_size > 22:
         f_title_size -= 1
         f_title = get_font(FONT_BOLD, f_title_size)
         t_bbox = draw.textbbox((0, 0), clean_title, font=f_title)
 
-    # Nếu ngay cả ở cỡ chữ 19 mà tiêu đề vẫn quá dài khi có tag, ưu tiên ẩn tag để tiêu đề luôn to rõ ràng
+    # Nếu ngay cả ở cỡ chữ 22 mà tiêu đề vẫn quá dài khi có tag, ưu tiên ẩn tag để tiêu đề luôn to rõ ràng
     if (t_bbox[2] - t_bbox[0]) > max_title_w and show_tag:
         show_tag = False
         tag_w = 0
         gap_to_tag = 0
         max_title_w = (card_x1 - inner_pad) - (card_x0 + inner_pad)
-        f_title_size = 24 if is_compact else 28
+        f_title_size = 26 if is_compact else 32
         f_title = get_font(FONT_BOLD, f_title_size)
         t_bbox = draw.textbbox((0, 0), clean_title, font=f_title)
-        while (t_bbox[2] - t_bbox[0]) > max_title_w and f_title_size > 16:
+        while (t_bbox[2] - t_bbox[0]) > max_title_w and f_title_size > 20:
             f_title_size -= 1
             f_title = get_font(FONT_BOLD, f_title_size)
             t_bbox = draw.textbbox((0, 0), clean_title, font=f_title)
 
     # Vẽ nền thẻ card với chiều cao vừa khít 100%
-    draw.rounded_rectangle((card_x0, card_y0, card_x1, card_y1), radius=20, fill=(255, 255, 255, 248), outline=theme_color, width=3)
+    draw.rounded_rectangle((card_x0, card_y0, card_x1, card_y1), radius=22, fill=(255, 255, 255, 250), outline=theme_color, width=3)
 
     # Vẽ tag pill nếu có
     if show_tag:
-        tag_h = 28 if is_compact else 34
+        tag_h = 32 if is_compact else 38
         tx1 = card_x1 - inner_pad
         tx0 = tx1 - tag_w
-        ty0 = card_y0 + (10 if is_compact else 12)
+        ty0 = card_y0 + (10 if is_compact else 14)
         ty1 = ty0 + tag_h
-        draw.rounded_rectangle((tx0, ty0, tx1, ty1), radius=14, fill=theme_color, outline=(255, 255, 255), width=2)
+        draw.rounded_rectangle((tx0, ty0, tx1, ty1), radius=16, fill=theme_color, outline=(255, 255, 255), width=2)
         draw.text(((tx0 + tx1) / 2, (ty0 + ty1) / 2 - 1), clean_tag, font=f_tag, fill=(255, 255, 255), anchor="mm")
 
     # Vẽ tiêu đề đã căn chỉnh auto-fit
-    draw.text((card_x0 + inner_pad, card_y0 + (24 if is_compact else 32)), clean_title, font=f_title, fill=theme_color, anchor="lm")
+    draw.text((card_x0 + inner_pad, card_y0 + (26 if is_compact else 36)), clean_title, font=f_title, fill=theme_color, anchor="lm")
 
     # Vẽ các dòng mô tả
     curr_y = start_desc_y
@@ -760,20 +763,25 @@ def draw_auto_card_text(
     avail_w = max(100, avail_x1 - avail_x0)
     avail_h = max(30, (y1 - y0) - 2 * pad_v)
     
-    # 1. Tách title thành các dòng cân đối
+    # 1. Tách title thành các dòng cân đối (Ưu tiên giữ 1 dòng to đẹp nếu vừa khung avail_w)
     title_lines = []
     if "\n" in title:
         title_lines = [p.strip() for p in title.split("\n") if p.strip()]
-    elif (" — " in title or " : " in title) and len(title) > 22:
+    elif (" — " in title or " : " in title) and len(title) > 28:
         delim = " — " if " — " in title else " : "
         parts = title.split(delim, 1)
         title_lines = [parts[0].strip(), parts[1].strip()]
-    elif len(title) > 30 and " " in title:
-        words = title.split()
-        mid = len(words) // 2
-        title_lines = [" ".join(words[:mid]), " ".join(words[mid:])]
     else:
-        title_lines = [title]
+        # Kiểm tra xem nếu để 1 dòng với font min_title_font có vừa không
+        f_min_t = get_font(FONT_BOLD, min_title_font)
+        bb_test = draw.textbbox((0, 0), title, font=f_min_t)
+        if (bb_test[2] - bb_test[0]) > avail_w and " " in title:
+            # Chỉ khi 1 dòng ở font tối thiểu bị tràn ngang thì mới tách làm 2 dòng
+            words = title.split()
+            mid = len(words) // 2
+            title_lines = [" ".join(words[:mid]), " ".join(words[mid:])]
+        else:
+            title_lines = [title]
 
     # Tìm font size cho title sao cho vừa khít avail_w
     f_title_size = max_title_font
