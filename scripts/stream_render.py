@@ -52,7 +52,7 @@ def _imread_any(path: str | Path, flags: int = cv2.IMREAD_COLOR) -> np.ndarray |
 # ──────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class Config:
-    fps: int = 60                  # 高频输出让笔尖移动更接近连续书写
+    fps: int = 30                  # 30 FPS phù hợp video ngắn, giảm 50% frame cần xử lý
     grid_edge: int = 10            # 更小的网格减少线稿揭示的块状感
     sample_step: int = 2           # 笔尖轨迹的像素采样间距
     cap_long_edge: int = 1080      # 输入图长边上限
@@ -339,7 +339,7 @@ def classify_stroke_groups(
         density = len(cells) / (height * width)
         if index == subject_index:
             kind, rank = "subject", 0
-        elif height >= 2 and width / height >= 2.2 and density >= 0.5:
+        elif height >= 2 and (width / height >= 1.5 or height <= 25) and 0.04 <= density <= 0.65:
             kind, rank = "text", 1
         else:
             kind, rank = "contour", 2
@@ -508,22 +508,33 @@ def _chain_region_paths(
     tail: tuple[int, int] | None = None
     while remaining:
         if tail is None:
-            pick_index = 0  # groups retain subject/text/contour priority.
-        else:
+            # Ưu tiên phần ở trên cùng nhất (min row), sau đó ở bên trái nhất (min col)
             pick_index = min(
                 range(len(remaining)),
-                key=lambda index: min(
-                    (remaining[index][0][0] - tail[0]) ** 2
-                    + (remaining[index][0][1] - tail[1]) ** 2,
-                    (remaining[index][-1][0] - tail[0]) ** 2
-                    + (remaining[index][-1][1] - tail[1]) ** 2,
+                key=lambda index: (
+                    min(r for r, _ in remaining[index]),
+                    min(c for _, c in remaining[index]),
                 ),
             )
+        else:
+            # Ưu tiên thứ tự đọc tự nhiên từ trên xuống dưới, trái sang phải;
+            # Phạt nặng việc nhảy ngược lên trên
+            def _transition_cost(idx: int) -> float:
+                p = remaining[idx]
+                hr, hc = p[0]
+                dr = hr - tail[0]
+                dc = hc - tail[1]
+                # Nếu nhảy ngược lên trên hơn 2 ô (12px), phạt nặng
+                upward_pen = 4000.0 if dr < -2 else 0.0
+                return (dr ** 2) * 1.5 + (dc ** 2) + upward_pen
+
+            pick_index = min(range(len(remaining)), key=_transition_cost)
         path = remaining.pop(pick_index)
         if tail is not None and len(path) > 1:
             head_distance = (path[0][0] - tail[0]) ** 2 + (path[0][1] - tail[1]) ** 2
             end_distance = (path[-1][0] - tail[0]) ** 2 + (path[-1][1] - tail[1]) ** 2
-            if end_distance < head_distance:
+            # Chỉ đảo chiều nếu điểm cuối gần hơn VÀ điểm cuối không nằm quá cao so với điểm đầu
+            if end_distance < head_distance and path[-1][0] >= path[0][0] - 2:
                 path.reverse()
         ordered.extend(path)
         tail = path[-1]
@@ -549,31 +560,11 @@ def cluster_ink_streams(active: np.ndarray) -> list[list[tuple[int, int]]]:
     if not streams:
         return []
 
-    # 串联：主体（第一支）开局，之后每次挑入口离当前出口最近的墨流，
-    # 并视情况把该墨流整体反向，使其起点更靠近上一支的出口。
-    ordered: list[list[tuple[int, int]]] = []
-    remaining = list(streams)
-    tail: tuple[int, int] | None = None
-    while remaining:
-        if tail is None:
-            pick_idx = 0  # classify 已把主体排在最前
-        else:
-            def dist_to_tail(stream: list[tuple[int, int]]) -> int:
-                head = stream[0]
-                return (head[0] - tail[0]) ** 2 + (head[1] - tail[1]) ** 2
-            pick_idx = min(range(len(remaining)), key=lambda i: dist_to_tail(remaining[i]))
-        pick = remaining.pop(pick_idx)
-        # 视情况反向：若尾离 pick 的终点比离起点更近，则反向
-        if tail is not None and len(pick) > 1:
-            head = pick[0]
-            end = pick[-1]
-            d_end = (end[0] - tail[0]) ** 2 + (end[1] - tail[1]) ** 2
-            d_head = (head[0] - tail[0]) ** 2 + (head[1] - tail[1]) ** 2
-            if d_end < d_head:
-                pick = pick[::-1]
-        ordered.append(pick)
-        tail = pick[-1]
-    return ordered
+    # Quy tắc: Luôn vẽ từ trên xuống dưới (top to bottom)
+    # Sắp xếp các stream/nhóm nét theo tọa độ dòng nhỏ nhất (min_row) tăng dần.
+    # Khi cùng dòng, ưu tiên từ trái sang phải (min_col tăng dần).
+    streams.sort(key=lambda s: (min(r for r, _ in s), min(c for _, c in s)))
+    return streams
 
 
 def flatten_streams(streams: list[list[tuple[int, int]]]) -> list[tuple[int, int]]:
@@ -1611,27 +1602,35 @@ def transcode_h264(src: Path, dst: Path) -> Path:
     把 mp4v 原始视频转码为 H.264（yuv420p），提升播放器兼容性。
 
     优先级：
-      1. 系统 ffmpeg 子进程（编码效率最高、体积最小，CRF=20）
-      2. PyAV（纯 pip 安装，无需系统 ffmpeg；编码效率稍逊，用 CRF=28 控制体积）
-      3. 两者都没有：保留原始 mp4v 编码并告警
+      1. 系统 ffmpeg + GPU 硬件编码器（h264_nvenc → h264_mf）
+      2. 系统 ffmpeg + libx264（CPU）
+      3. PyAV（纯 pip 安装，无需系统 ffmpeg）
+      4. 两者都没有：保留原始 mp4v 编码并告警
     """
-    # 路径1：系统 ffmpeg（推荐，体积最优）
+    # 路径1：系统 ffmpeg（推荐，优先 GPU encoder）
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is not None:
-        cmd = [
-            ffmpeg, "-y", "-loglevel", "error",
-            "-i", str(src),
-            "-c:v", "libx264",
-            "-crf", "20",
-            "-pix_fmt", "yuv420p",
-            str(dst),
+        # GPU encoder 顺序: h264_nvenc > h264_mf > libx264
+        encoder_configs = [
+            ("h264_nvenc", ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "18", "-pix_fmt", "yuv420p"]),
+            ("h264_mf",    ["-c:v", "h264_mf", "-b:v", "15M", "-pix_fmt", "yuv420p"]),
+            ("libx264",    ["-c:v", "libx264", "-crf", "18", "-preset", "veryfast", "-pix_fmt", "yuv420p"]),
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        if res.returncode == 0:
-            src.unlink(missing_ok=True)
-            print(f"  H.264 转码完成(ffmpeg): {dst}")
-            return dst
-        print(f"  [warn] ffmpeg 转码失败: {res.stderr.strip()}")
+        for enc_name, enc_args in encoder_configs:
+            cmd = [
+                ffmpeg, "-y", "-loglevel", "error",
+                "-i", str(src),
+                *enc_args,
+                str(dst),
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0:
+                src.unlink(missing_ok=True)
+                hw_tag = "GPU" if enc_name != "libx264" else "CPU"
+                print(f"  H.264 transcode xong (ffmpeg {enc_name} {hw_tag}): {dst}")
+                return dst
+            # Encoder này không được → thử cái tiếp theo
+        print(f"  [warn] Tat ca encoder FFmpeg deu that bai")
 
     # 路径2：PyAV（备选，纯 pip 安装）
     try:

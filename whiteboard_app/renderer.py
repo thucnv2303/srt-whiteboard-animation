@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from .gpu_encoder import encoder_ffmpeg_args
 from .project import VideoProject
 
 
@@ -30,8 +31,13 @@ class AspectRatio:
 
 ASPECT_RATIOS: dict[str, AspectRatio] = {
     "16:9": AspectRatio(1280, 720),
+    "16:9 2K": AspectRatio(2560, 1440),
+    "16:9 4K": AspectRatio(3840, 2160),
     "9:16": AspectRatio(1080, 1920),
+    "9:16 2K": AspectRatio(1440, 2560),
+    "9:16 4K": AspectRatio(2160, 3840),
     "1:1": AspectRatio(1080, 1080),
+    "1:1 2K": AspectRatio(2160, 2160),
 }
 
 
@@ -72,6 +78,7 @@ def build_commands(
         scene_output = scene_dir / f"{index:02d}-{scene.scene_id}.mp4"
         scene_outputs.append(scene_output)
         annotation = project.runtime_annotations.get(scene.scene_id, scene.annotation)
+        target_cap = max(ASPECT_RATIOS[aspect_ratio].width, ASPECT_RATIOS[aspect_ratio].height)
         scene_argv = [
             python,
             str(renderer),
@@ -83,9 +90,13 @@ def build_commands(
             "grid",
             "--color-fill",
             "contour-wipe",
+            "--cap-long-edge",
+            str(target_cap),
+            "--no-match-bg",
         ]
-        if project.pen_brand:
-            scene_argv.extend(["--pen-brand", project.pen_brand])
+        pen_brand = project.pen_brand or "Ăn dặm mẹ Dâu"
+        if pen_brand:
+            scene_argv.extend(["--pen-brand", pen_brand])
         commands.append(
             RenderCommand(
                 label=f"Dựng cảnh {index}/{len(project.scenes)} — {scene.title}",
@@ -101,17 +112,22 @@ def build_commands(
         merged_output = output_dir / "final-source.mp4"
     else:
         merged_output = final_output
+    merger_argv = [
+        python,
+        str(merger),
+        "--inputs",
+        *[str(path) for path in scene_outputs],
+        "--transition",
+        "slideleft",
+        "--transition-duration",
+        "0.35",
+        "--output",
+        str(merged_output),
+    ]
     commands.append(
         RenderCommand(
             label="Ghép các cảnh",
-            argv=[
-                python,
-                str(merger),
-                "--inputs",
-                *[str(path) for path in scene_outputs],
-                "--output",
-                str(merged_output),
-            ],
+            argv=merger_argv,
         )
     )
     media_for_format = merged_output
@@ -178,10 +194,7 @@ def build_commands(
                     "0:a?",
                     "-vf",
                     video_filter,
-                    "-c:v",
-                    "libx264",
-                    "-pix_fmt",
-                    "yuv420p",
+                    *encoder_ffmpeg_args(),
                     "-c:a",
                     "aac",
                     "-movflags",

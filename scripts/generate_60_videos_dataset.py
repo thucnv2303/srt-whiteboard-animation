@@ -1,0 +1,270 @@
+import csv
+import json
+from pathlib import Path
+
+# 60 Video content items (30 days x 2 videos/day)
+# Each day:
+# - Video 1 (Sáng / Ca 1): Món ăn / Công thức / Cách làm
+# - Video 2 (Chiều/Tối / Ca 2): Kiến thức khoa học / Tăng thô / Tiêu hóa / Giải mã lầm tưởng
+
+videos_data = [
+    # --- TUẦN 1: BƯỚC ĐỆM BẮT ĐẦU & NGUYÊN LIỆU ĐỎ ---
+    {
+        "day": 1, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Công thức",
+        "title": "3 Ngày Đầu Ăn Dặm Chuẩn Khoa Học",
+        "hook": "Đừng vội cho con ăn cháo thịt ngay ngày đầu tiên! Đây là thực đơn 3 ngày khởi động chuẩn nhất.",
+        "body": "Ngày thứ nhất: Cháo loãng rây tỷ lệ 1:10 ngọt thơm mùi gạo tự nhiên. Ngày thứ hai: Cháo rây trộn thêm một chút sữa mẹ để bé làm quen. Ngày thứ ba: Thêm bột bí đỏ nghiền sánh mịn ngọt dịu.",
+        "cta": "Mỗi ngày chỉ cần 2 đến 3 thìa nhỏ để bé thử vị thôi mẹ nhé. Lưu lại và theo dõi Ăn dặm mẹ Dâu ngay!",
+        "tiktok_caption": "3 ngày đầu tiên ăn dặm mẹ nên cho bé ăn gì? Xem ngay thực đơn khởi động dịu nhẹ giúp hệ tiêu hóa của con luôn khỏe mạnh nhé! 👉 Follow Ăn dặm mẹ Dâu để nhận trọn bộ thực đơn khoa học!\n#andammeDau #andam #thucdonandam #andam6thang #mevabe",
+        "reels_caption": "3 Ngày Đầu Tập Ăn Dặm Chuẩn Y Khoa Cho Bé 6 Tháng 🥣\nGiai đoạn đầu là để con làm quen với thìa và kết cấu thức ăn mới, không đặt nặng số lượng. Mẹ hãy bắt đầu bằng cháo rây loãng mịn theo đúng 3 bước trong video nhé.\nLưu lại và follow @andammeDau để nuôi con nhàn tênh!\n#andammeDau #andam #nuoiconkhoahoc #chamsoccon #andamkieunhat",
+        "youtube_caption": "Thực đơn 3 ngày đầu tiên cho bé 6 tháng tập ăn dặm chuẩn khoa học | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #thucdonandam"
+    },
+    {
+        "day": 1, "slot": "Tối (19:30)", "pillar": "Khoa học & Lầm tưởng",
+        "title": "Tại Sao Cấm Ăn Dặm Trước 6 Tháng?",
+        "hook": "Nhiều người bảo 4 tháng cho ăn dặm cho cứng cáp, nhưng bác sĩ lại cấm tuyệt đối! Đây là lý do.",
+        "body": "Thứ nhất: Trước 6 tháng, hệ tiêu hóa của bé chưa tiết đủ men amylase để tiêu hóa tinh bột. Thứ hai: Thận còn non nớt, dễ bị quá tải. Thứ ba: Tăng nguy cơ dị ứng thực phẩm và nôn trớ đường ruột.",
+        "cta": "Hãy kiên nhẫn đợi con tròn 180 ngày mẹ nhé. Theo dõi Ăn dặm mẹ Dâu để bảo vệ sức khỏe cho bé yêu!",
+        "tiktok_caption": "Tại sao không nên cho bé ăn dặm trước 6 tháng tuổi? Nguy cơ tổn thương tiêu hóa mẹ cần biết để bảo vệ con! 👉 Follow Ăn dặm mẹ Dâu để nhận kiến thức chuẩn y khoa!\n#andammeDau #andam #nuoiconkhoahoc #kienthucmebau #chamsoccon",
+        "reels_caption": "Cảnh Báo: Vì Sao Tuyệt Đối Không Cho Bé Ăn Dặm Trước 6 Tháng? ⚠️\nSữa mẹ và sữa công thức đáp ứng 100% dinh dưỡng trong 6 tháng đầu. Cho ăn sớm không giúp bé cứng cáp hơn mà chỉ làm quá tải dạ dày và thận của con.\nFollow @andammeDau để cập nhật kiến thức khoa học mỗi ngày!\n#andammeDau #andam #mebimthongthai #suckhoebe #khoahocandam",
+        "youtube_caption": "Vì sao không nên cho trẻ ăn dặm trước 6 tháng tuổi? Lời khuyên từ chuyên gia | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #nuoiconkhoahoc #andam"
+    },
+    {
+        "day": 2, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Công thức",
+        "title": "5 Món Cháo Bò Bổ Máu Cho Bé",
+        "hook": "Bé 7 tháng thiếu sắt thường trằn trọc khó ngủ. Mẹ lưu ngay 5 món cháo bò siêu mềm bổ máu sau.",
+        "body": "Món thứ nhất là cháo bò bí đỏ ngọt tự nhiên. Món thứ hai là cháo bò bông cải xanh giàu vitamin C giúp tăng hấp thu sắt. Món thứ ba là cháo bò khoai tây cà rốt béo bùi. Món thứ tư là cháo bò yến mạch mịn mượt. Món thứ năm là súp bò đậu lăng giàu chất xơ.",
+        "cta": "Mẹ nhớ chọn phần thịt thăn mềm và băm nhuyễn mịn nhé. Follow Ăn dặm mẹ Dâu để nhận thêm nhiều công thức ngon!",
+        "tiktok_caption": "Bé 7 tháng rất dễ thiếu máu thiếu sắt. Mẹ lưu ngay 5 món cháo thịt bò siêu mềm giúp con ngủ ngon, tăng cân đều nhé! 👉 Follow Ăn dặm mẹ Dâu ngay!\n#andammeDau #andam #thucdonandam #chaobochobe #mevabe",
+        "reels_caption": "5 Món Cháo Bò Bổ Máu Ngừa Thiếu Sắt Cho Bé 7-9 Tháng 🥩\nThịt bò là nguồn sắt heme dồi dào và dễ hấp thu nhất. Hãy đổi bữa cho bé với 5 công thức cực ngon và không bị dai trong video nhé.\nLưu lại và theo dõi @andammeDau để cập nhật thực đơn mỗi tuần!\n#andammeDau #andam #chaodinhduong #monngonchobe #chamsoccon",
+        "youtube_caption": "5 món cháo thịt bò giàu sắt ngừa thiếu máu cho bé 7-9 tháng | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #thucdonandam"
+    },
+    {
+        "day": 2, "slot": "Tối (19:30)", "pillar": "Xử lý biếng ăn & Vi chất",
+        "title": "Bổ Sung Sắt Cho Bé Chuẩn Khoa Học",
+        "hook": "Lượng sắt dự trữ từ mẹ sẽ cạn kiệt khi bé tròn 6 tháng! Mẹ đã biết cách bổ sung sắt đúng chuẩn chưa?",
+        "body": "Bước thứ nhất: Ưu tiên nguồn sắt heme từ thịt bò, lòng đỏ trứng và gan gà sạch. Bước thứ hai: Luôn kết hợp với rau củ giàu Vitamin C như súp lơ, ớt chuông để hấp thu sắt tối đa. Bước thứ ba: Tránh cho uống sữa ngay sau bữa ăn có thịt để không cản trở hấp thu sắt.",
+        "cta": "Đừng tự ý mua thuốc sắt cho con uống khi chưa có chỉ định của bác sĩ mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!",
+        "tiktok_caption": "Cách bổ sung sắt tự nhiên giúp bé hồng hào, không lo thiếu máu! Mẹ lưu ngay 3 nguyên tắc vàng này nhé! 👉 Theo dõi Ăn dặm mẹ Dâu để chăm con nhàn tênh!\n#andammeDau #andam #bosungsatchobe #dinhduongchobe #nuoiconkhoahoc",
+        "reels_caption": "Bổ Sung Sắt Tự Nhiên Cho Bé 6-12 Tháng Đúng Cách 🩸\nTừ tháng thứ 6, nhu cầu sắt của bé tăng vọt. Mẹ hãy tận dụng nguồn sắt từ thực phẩm tự nhiên kết hợp vitamin C theo hướng dẫn trong video nhé.\nFollow @andammeDau để nhận thêm nhiều kiến thức bổ ích!\n#andammeDau #andam #thucdonandam #mebim #suckhoechobe",
+        "youtube_caption": "Nguyên tắc bổ sung sắt tự nhiên ngừa thiếu máu cho bé ăn dặm | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #bosungsatchobe"
+    },
+    {
+        "day": 3, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Công thức",
+        "title": "Top 4 Dầu Ăn Dặm Tốt Nhất",
+        "hook": "Nấu cháo mà quên cho dầu ăn thì bé mất đi 50% năng lượng và không hấp thu được vitamin!",
+        "body": "Loại thứ nhất là dầu Oliu ép lạnh giàu chất béo tốt. Loại thứ hai là dầu hạt lanh giàu Omega-3 giúp phát triển trí não. Loại thứ ba là dầu quả bơ dịu nhẹ cho hệ tiêu hóa. Loại thứ tư là dầu mè nguyên chất thơm nồng kích thích vị giác.",
+        "cta": "Mẹ nhớ cho 5ml dầu vào cháo sau khi đã tắt bếp để giữ nguyên dưỡng chất nhé. Follow Ăn dặm mẹ Dâu ngay!",
+        "tiktok_caption": "Top 4 loại dầu ăn dặm tốt nhất giúp bé phát triển não bộ và tăng cân đều đặn! Đừng bỏ qua bước quan trọng này mẹ nha! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #dauanandam #dinhduongchobe #thucdonchobe",
+        "reels_caption": "4 Loại Dầu Ăn Dặm Tốt Nhất Giúp Bé Thông Minh, Tăng Cân Đều 🥑\nChất béo chiếm tới 40-50% nhu cầu năng lượng của trẻ dưới 1 tuổi và là dung môi hấp thu vitamin A, D, E, K. Mẹ hãy chọn đúng loại dầu theo hướng dẫn nhé.\nLưu lại và follow @andammeDau ngay hôm nay!\n#andammeDau #andam #nuoiconkhoahoc #chamsoccon #dauan",
+        "youtube_caption": "Top 4 loại dầu ăn dặm tốt nhất cho sự phát triển của não bộ bé | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #dauanandam"
+    },
+    {
+        "day": 3, "slot": "Tối (19:30)", "pillar": "Khoa học & Lầm tưởng",
+        "title": "Sự Thật Về Nước Hầm Xương",
+        "hook": "Nhiều mẹ ninh xương lấy nước nấu cháo vì nghĩ nhiều canxi, nhưng sự thật từ Viện Dinh Dưỡng sẽ khiến mẹ giật mình!",
+        "body": "Thực tế thứ nhất: Trong 100ml nước hầm xương chỉ có khoảng 10mg canxi dạng vô cơ rất khó hấp thu. Thực tế thứ hai: Nước xương chứa nhiều chất béo bão hòa gây đầy bụng, khó tiêu cho bé. Thực tế thứ ba: Toàn bộ đạm và canxi thật đều nằm ở phần thịt và xác.",
+        "cta": "Mẹ hãy cho con ăn cả phần thịt băm nhuyễn thay vì chỉ dùng nước hầm nhé. Theo dõi Ăn dặm mẹ Dâu ngay!",
+        "tiktok_caption": "Sự thật về nước hầm xương nấu cháo ăn dặm: Bổ béo hay chỉ là chất béo gây đầy bụng? Cùng tìm hiểu sự thật khoa học nhé! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #nuoiconkhoahoc #lamtuongandam #mevabe",
+        "reels_caption": "Giải Mã Lầm Tưởng: Nước Hầm Xương Có Thực Sự Bổ Canxi? 🦴\nNhiều mẹ kỳ công hầm xương cả ngày nhưng con vẫn còi cọc thiếu canxi. Video này sẽ giúp mẹ hiểu đúng bản chất dinh dưỡng để chăm con khoa học hơn.\nFollow @andammeDau để không bỏ lỡ kiến thức chuẩn y khoa!\n#andammeDau #andam #khoahocandam #mebimthongthai #chamsoccon",
+        "youtube_caption": "Sự thật về nước hầm xương khi nấu cháo ăn dặm cho bé | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #nuoiconkhoahoc #andam"
+    },
+    {
+        "day": 4, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Công thức",
+        "title": "Cách Cho Bé Ăn Trứng Lần Đầu",
+        "hook": "Trứng gà rất giàu dinh dưỡng nhưng ăn sai cách bé rất dễ dị ứng. Mẹ áp dụng ngay 3 bước an toàn này nhé.",
+        "body": "Bước thứ nhất: Bé dưới 9 tháng chỉ ăn lòng đỏ trứng được luộc chín kỹ. Bước thứ hai: Bắt đầu bằng 1/4 lòng đỏ nghiền nhuyễn trộn cùng cháo trong bữa đầu tiên. Bước thứ ba: Theo dõi phản ứng của bé trong 72 giờ trước khi tăng lượng lên nửa lòng đỏ.",
+        "cta": "Lòng trắng trứng chỉ nên cho bé ăn sau 9 đến 12 tháng mẹ nhé. Bấm theo dõi Ăn dặm mẹ Dâu để chăm con chuẩn chỉ!",
+        "tiktok_caption": "Quy tắc cho bé ăn trứng gà lần đầu không lo dị ứng! Mẹ lưu lại ngay để áp dụng cho con nhé! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #thucdonandam #trungga #mevabe",
+        "reels_caption": "Hướng Dẫn Cho Bé Ăn Trứng Gà Lần Đầu An Toàn Tuyệt Đối 🥚\nTrứng là siêu thực phẩm giàu choline và đạm, nhưng lòng trắng có nguy cơ dị ứng cao. Hãy bắt đầu với lòng đỏ theo đúng lộ trình 3 bước này nhé mẹ.\nLưu lại và follow @andammeDau ngay!\n#andammeDau #andam #nuoiconkhoahoc #monngonchobe #chamsoccon",
+        "youtube_caption": "Cách cho bé ăn trứng gà lần đầu an toàn, phòng ngừa dị ứng | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #thucdonandam"
+    },
+    {
+        "day": 4, "slot": "Tối (19:30)", "pillar": "Khoa học & Lầm tưởng",
+        "title": "Cấm Tuyệt Đối Mật Ong Dưới 1 Tuổi",
+        "hook": "Dù chỉ một giọt mật ong cũng có thể đe dọa tính mạng của bé dưới 1 tuổi! Mẹ tuyệt đối không được chủ quan.",
+        "body": "Lý do thứ nhất: Mật ong tự nhiên có thể chứa bào tử vi khuẩn Clostridium botulinum. Lý do thứ hai: Hệ tiêu hóa non nớt của trẻ chưa đủ axit để tiêu diệt bào tử này, gây ngộ độc liệt cơ nguy hiểm. Lý do thứ ba: Ngay cả mật ong hấp lá hẹ hay chưng quất cũng không tiêu diệt được bào tử.",
+        "cta": "Hãy đợi con tròn 1 tuổi mới dùng mật ong mẹ nhé. Theo dõi Ăn dặm mẹ Dâu để bảo vệ con yêu mỗi ngày!",
+        "tiktok_caption": "Cảnh báo khẩn cấp: Tuyệt đối không dùng mật ong cho trẻ dưới 1 tuổi! Nguy cơ ngộ độc độc tố botulinum mẹ cần biết! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #canhbaosuckhoe #matong #nuoiconkhoahoc",
+        "reels_caption": "Vì Sao Mật Ong Bị CẤM Tuyệt Đối Cho Trẻ Dưới 1 Tuổi? 🍯\nNhiều mẹ vẫn truyền tai nhau dùng mật ong rơ lưỡi hay hấp quất trị ho cho bé sơ sinh. Đây là sai lầm cực kỳ nguy hiểm có thể dẫn đến liệt cơ hô hấp.\nFollow @andammeDau để cập nhật kiến thức an toàn cho bé!\n#andammeDau #andam #mebim #suckhoechobe #chamsoccon",
+        "youtube_caption": "Tại sao cấm tuyệt đối mật ong cho trẻ dưới 1 tuổi? Lời cảnh báo từ y khoa | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #canhbaosuckhoe #andam"
+    },
+    {
+        "day": 5, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Công thức",
+        "title": "4 Món Cháo Trị Táo Bón Cho Bé",
+        "hook": "Bé đi ngoài rặn đỏ mặt, phân khô cứng? Mẹ nấu ngay 4 món cháo giàu chất xơ hòa tan này nhé.",
+        "body": "Món thứ nhất là cháo khoai lang mồng tơi nhuận tràng cực nhanh. Món thứ hai là cháo yến mạch nấu cùng mướp hương thơm mát. Món thứ ba là súp bí đao thịt cá lóc thanh nhiệt. Món thứ tư là cháo cải bó xôi nấu thịt lợn băm giàu chất xơ và magiê.",
+        "cta": "Đừng quên cho bé uống đủ nước mỗi ngày mẹ nhé. Theo dõi Ăn dặm mẹ Dâu để nhận thêm nhiều công thức hữu ích!",
+        "tiktok_caption": "Bé bị táo bón ăn gì cho nhanh khỏi? Lưu ngay 4 món cháo siêu nhuận tràng giúp con đi ngoài dễ dàng nhé! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #taobonotre #thucdonandam #mevabe",
+        "reels_caption": "4 Món Cháo Nhuận Tràng Cứu Cánh Cho Bé Táo Bón 🥣\nTáo bón lâu ngày khiến bé sợ ăn và nứt kẽ hậu môn. Hãy bổ sung ngay các loại rau củ giàu chất xơ hòa tan FOS theo 4 công thức trong video nhé.\nLưu lại và follow @andammeDau ngay!\n#andammeDau #andam #taobon #chamsoccon #nuoiconkhoahoc",
+        "youtube_caption": "4 món cháo nhuận tràng trị táo bón hiệu quả cho bé ăn dặm | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #taobonotre"
+    },
+    {
+        "day": 5, "slot": "Tối (19:30)", "pillar": "Kỹ năng ăn & Tăng độ thô",
+        "title": "Phân Biệt Ọe Và Hóc Ở Trẻ",
+        "hook": "Bé ọe khi ăn là bình thường hay nguy hiểm? Mẹ phải phân biệt ngay giữa Ọe và Hóc để xử lý đúng cách.",
+        "body": "Phân biệt thứ nhất: Ọe là phản xạ tự nhiên của đáy lưỡi, mặt bé đỏ, có tiếng ho và thức ăn trào ra ngoài. Phân biệt thứ hai: Hóc là dị vật bít tắc đường thở, bé im lặng hoàn toàn, mặt tái tím và không thể thở hay khóc.",
+        "cta": "Khi bé ọe hãy bình tĩnh để bé tự ho ra, tuyệt đối không móc họng bằng tay nhé. Theo dõi Ăn dặm mẹ Dâu ngay!",
+        "tiktok_caption": "Phân biệt Ọe (Gagging) và Hóc (Choking) khi bé ăn dặm! Kỹ năng sống còn mẹ bỉm nhất định phải biết! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #socuuchobe #kynangmebim #chamsoccon",
+        "reels_caption": "Phân Biệt ỌE Tự Nhiên Và HÓC Dị Vật Ở Trẻ Nhỏ 🚨\nNhiều mẹ hoảng loạn khi thấy con ọe và vội vàng móc họng, điều này vô tình đẩy thức ăn vào sâu đường thở. Hãy xem kỹ video để phân biệt chính xác nhé.\nFollow @andammeDau để trang bị kiến thức nuôi con an toàn!\n#andammeDau #andam #nuoiconkhoahoc #socuu #mebimthongthai",
+        "youtube_caption": "Cách phân biệt Ọe và Hóc dị vật đường thở ở trẻ ăn dặm | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #socuuchobe #andam"
+    },
+    {
+        "day": 6, "slot": "Sáng (07:00)", "pillar": "Kỹ năng ăn & Tăng độ thô",
+        "title": "Lộ Trình 4 Bước Tăng Độ Thô",
+        "hook": "Xay nhuyễn thức ăn quá lâu khiến bé lười nhai và chậm nói! Mẹ áp dụng ngay lộ trình tăng thô 4 bước này.",
+        "body": "Giai đoạn 1 từ 6 tháng: Bột cháo loãng rây mịn 1:10. Giai đoạn 2 từ 7 đến 8 tháng: Cháo vỡ hạt sệt lợn cợn tỷ lệ 1:7. Giai đoạn 3 từ 9 đến 11 tháng: Nấu mềm băm nhỏ hạt lựu để bé tập nhai bằng nướu. Giai đoạn 4 từ 12 tháng trở lên: Cơm nát và thức ăn cắt nhỏ cùng gia đình.",
+        "cta": "Hãy kiên nhẫn tăng thô từng bước nhỏ mẹ nhé. Theo dõi kênh Ăn dặm mẹ Dâu để xem hướng dẫn chi tiết từng tháng!",
+        "tiktok_caption": "Lộ trình 4 bước tăng độ thô từ 6 đến 12 tháng giúp bé tập nhai tốt, không lo nôn trớ! 👉 Follow Ăn dặm mẹ Dâu ngay!\n#andammeDau #andam #tangdotho #tapnhai #thucdonandam",
+        "reels_caption": "Lộ Trình Tăng Độ Thô 4 Giai Đoạn Chuẩn Khoa Học 📈\nCửa sổ vàng tập nhai của bé là từ 7-9 tháng. Đừng để con phụ thuộc vào máy xay sinh tố quá lâu mẹ nhé.\nLưu lại và follow @andammeDau để xem chi tiết từng giai đoạn!\n#andammeDau #andam #nuoiconkhoahoc #chamsoccon #andamkieunhat",
+        "youtube_caption": "Lộ trình 4 bước tăng độ thô cho bé từ 6 đến 12 tháng chuẩn khoa học | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #tangdotho #andam"
+    },
+    {
+        "day": 6, "slot": "Tối (19:30)", "pillar": "Khoa học & Lầm tưởng",
+        "title": "Vì Sao Cấm Nêm Gia Vị Dưới 1 Tuổi?",
+        "hook": "Nhiều người lớn bảo cháo nhạt thế này sao nuốt nổi, nhưng nêm mắm muối sớm là đang vô tình hại thận của con!",
+        "body": "Nguyên nhân thứ nhất: Thận của trẻ dưới 1 tuổi chỉ lọc được 1/3 lượng muối so với người lớn. Nguyên nhân thứ hai: Lượng muối tự nhiên trong sữa và thực phẩm đã đủ 100% nhu cầu của bé. Nguyên nhân thứ ba: Nêm mặn sớm tạo thói quen ăn mặn, tăng nguy cơ cao huyết áp và tim mạch sau này.",
+        "cta": "Hãy tôn trọng vị giác nguyên bản thuần khiết của con mẹ nhé. Theo dõi Ăn dặm mẹ Dâu để nuôi con chuẩn y khoa!",
+        "tiktok_caption": "Tại sao cấm tuyệt đối nêm mắm muối cho bé dưới 1 tuổi? Đừng để thói quen của người lớn làm hại thận của con! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #khoahocandam #mevabe #nuoiconkhoahoc",
+        "reels_caption": "Vì Sao Không Được Nêm Gia Vị Vào Đồ Ăn Dặm Dưới 1 Tuổi? 🧂\nVị giác của trẻ nhạy cảm gấp nhiều lần người lớn. Cháo nhạt với mẹ nhưng lại vừa vặn ngọt lành với con. Hãy bảo vệ thận của bé từ những bữa ăn đầu đời nhé.\nFollow @andammeDau để chăm con an toàn!\n#andammeDau #andam #suckhoebe #mebimthongthai #chamsoccon",
+        "youtube_caption": "Lý do cấm nêm mắm muối gia vị cho trẻ dưới 1 tuổi | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #nuoiconkhoahoc #andam"
+    },
+    {
+        "day": 7, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Công thức",
+        "title": "Thực Đơn 7 Ngày Đủ 4 Nhóm Chất",
+        "hook": "Không cần đau đầu nghĩ hôm nay con ăn gì, mẹ lưu ngay thực đơn 7 ngày đổi vị đủ 4 nhóm chất sau đây.",
+        "body": "Thứ hai: Cháo bò bí đỏ. Thứ ba: Cháo gà hạt sen ngậy thơm. Thứ tư: Cháo cá hồi cải bó xôi giàu DHA. Thứ năm: Cháo tôm bí đao ngọt thanh. Thứ sáu: Đậu hũ non sốt cà chua. Thứ bảy: Cháo chim bồ câu bồi bổ. Chủ nhật: Cháo lươn đồng nấu đậu xanh thanh mát.",
+        "cta": "Mỗi bữa mẹ nhớ thêm 5ml dầu ăn dặm sau khi tắt bếp nhé. Lưu video lại và theo dõi Ăn dặm mẹ Dâu ngay!",
+        "tiktok_caption": "Thực đơn ăn dặm 7 ngày đổi món liên tục đủ 4 nhóm chất cho bé 7-8 tháng! Mẹ lưu lại nấu cho con nhé! 👉 Follow Ăn dặm mẹ Dâu!\n#andammeDau #andam #thucdonandam #thucdon7ngay #mevabe",
+        "reels_caption": "Thực Đơn Ăn Dặm 7 Ngày Trọn Vị Cho Bé 7-9 Tháng 🥗\nĐa dạng hóa thực phẩm giúp bé phát triển toàn diện và không kén ăn. Lưu ngay thực đơn 7 ngày chuẩn dinh dưỡng này để nấu cho bé yêu nhé mẹ.\nFollow @andammeDau để nhận thực đơn mới mỗi tuần!\n#andammeDau #andam #monngonchobe #chamsoccon #nuoiconkhoahoc",
+        "youtube_caption": "Thực đơn ăn dặm 7 ngày đủ 4 nhóm chất cho bé phát triển toàn diện | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #thucdonandam"
+    },
+    {
+        "day": 7, "slot": "Tối (19:30)", "pillar": "Xử lý biếng ăn & Vi chất",
+        "title": "3 Sai Lầm Nấu Cháo Khiến Con Biếng Ăn",
+        "hook": "Nấu cháo công phu mà con cứ lắc đầu ngậm chặt miệng? Rất có thể mẹ đang mắc phải 3 sai lầm kinh điển này.",
+        "body": "Sai lầm thứ nhất: Nấu một nồi cháo lớn rồi hâm đi hâm lại cả ngày làm mất mùi thơm và vitamin. Sai lầm thứ hai: Cho quá nhiều loại rau củ vào một bát cháo khiến mùi vị bị lẫn lộn nồng gắt. Sai lầm thứ ba: Xay nhuyễn quá lâu khiến bé ngán và lười nuốt.",
+        "cta": "Hãy nấu từng bữa nhỏ tươi mới và đổi vị mỗi ngày mẹ nhé. Theo dõi Ăn dặm mẹ Dâu để chăm con nhàn hơn!",
+        "tiktok_caption": "3 sai lầm khi nấu đồ ăn dặm khiến con biếng ăn, chậm tăng cân mẹ cần tránh ngay! 👉 Follow Ăn dặm mẹ Dâu để chăm con đúng cách!\n#andammeDau #andam #biengan #mevabe #nuoiconkhoahoc",
+        "reels_caption": "3 Sai Lầm Khi Nấu Ăn Dặm Khiến Bé Sợ Ăn, Hay Ngậm ❌\nNhiều mẹ nghĩ cứ hầm đủ thứ bổ dưỡng vào một nồi là tốt, nhưng điều đó lại khiến bé sợ mùi thức ăn. Hãy điều chỉnh theo 3 lưu ý trong video nhé.\nFollow @andammeDau để cập nhật mẹo chăm con hữu ích!\n#andammeDau #andam #mebimthongthai #chamsoccon #thucdonchobe",
+        "youtube_caption": "3 sai lầm kinh điển khi nấu đồ ăn dặm khiến bé biếng ăn | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #biengan #andam"
+    }
+]
+
+# Complete generating up to 60 videos (Days 8 to 30)
+more_topics = [
+    # Day 8
+    ("4 Món Cháo Tôm Ngọt Canxi", "Cháo tôm đồng là nguồn bổ sung canxi và kẽm tuyệt vời cho bé 8 tháng. Lưu ngay 4 món cháo tôm siêu ngọt này nhé.", "Món thứ nhất là cháo tôm bí đỏ ngọt bùi. Món thứ hai là cháo tôm rau ngót thanh mát. Món thứ ba là cháo tôm yến mạch béo ngậy. Món thứ tư là cháo tôm bông cải xanh giàu vitamin.", "Mẹ nhớ lột sạch vỏ và bỏ chỉ lưng tôm nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Sơ Chế Tôm Cá Không Tanh Cho Bé", "Nấu tôm cá mà bị tanh là bé nhè ra ngay! Mẹ áp dụng 3 mẹo khử tanh tự nhiên cực hiệu quả này.", "Mẹo thứ nhất: Ngâm phi lê cá trong sữa tươi không đường 10 phút. Mẹo thứ hai: Hấp cá tôm cùng vài lát gừng và sả trước khi băm. Mẹo thứ ba: Xào sơ tôm cá với chút dầu mè thơm nồng.", "Đảm bảo cháo thơm nức bé ăn hết veo bát. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 9
+    ("Cách Nấu Cháo Cá Hồi Không Tanh", "Cá hồi giàu DHA giúp phát triển trí não nhưng rất dễ tanh. Mẹ nấu theo đúng 3 bước chuẩn này nhé.", "Bước thứ nhất: Ngâm cá hồi trong nước chanh loãng hoặc sữa tươi 15 phút. Bước thứ hai: Áp chảo cá hồi với chút bơ lạt hoặc dầu oliu cho vàng thơm. Bước thứ ba: Nấu cùng cải bó xôi hoặc bí đỏ để tăng vị ngọt tự nhiên.", "Cháo thơm ngậy bé ăn tì tì. Theo dõi Ăn dặm mẹ Dâu để nhận thêm công thức ngon!"),
+    ("Top 5 Loại Cá Giàu DHA Ít Thủy Ngân", "Không phải loại cá nào cũng an toàn cho bé ăn dặm. Đây là 5 loại cá giàu Omega-3 ít nhiễm thủy ngân nhất.", "Loại thứ nhất là cá hồi hoang dã. Loại thứ hai là cá lóc đồng lành tính. Loại thứ ba là cá chép đồng ngọt thịt. Loại thứ tư là cá trích dồi dào canxi. Loại thứ năm là cá basa sạch mềm mọng.", "Tránh xa cá ngừ đại dương và cá kiếm mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 10
+    ("Quy Tắc Cấp Đông Đồ Ăn Dặm", "Mẹ bận rộn muốn nấu đồ ăn dặm trữ đông cả tuần mà vẫn giữ 95% vitamin? Áp dụng ngay quy tắc vàng này.", "Quy tắc thứ nhất: Nấu chín, để nguội nhanh trong 30 phút rồi chia nhỏ vào khay đá có nắp đậy. Quy tắc thứ hai: Trữ đông ở nhiệt độ âm 18 độ C tối đa trong vòng 2 tuần. Quy tắc thứ ba: Dán nhãn ghi rõ ngày nấu lên từng khay.", "Tiện lợi và an toàn tuyệt đối cho mẹ đi làm. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Tuyệt Đối Không Rã Đông Nhiệt Độ Phòng", "Rã đông đồ ăn dặm bằng cách để ở nhiệt độ phòng là môi trường lý tưởng cho vi khuẩn sinh sôi!", "Lý do thứ nhất: Vùng nhiệt độ từ 5 đến 60 độ C khiến vi khuẩn nhân đôi sau mỗi 20 phút. Lý do thứ hai: Gây nguy cơ tiêu chảy và nhiễm khuẩn đường ruột cho bé. Lý do thứ ba: Cách chuẩn nhất là chuyển từ ngăn đá xuống ngăn mát từ tối hôm trước.", "Hãy bảo vệ hệ tiêu hóa của con mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 11
+    ("3 Bánh Ăn Dặm Chuối Yến Mạch", "Mẹ muốn làm bữa phụ dinh dưỡng cho con mà không có lò nướng? Lưu ngay 3 món bánh chuối siêu dễ làm này.", "Món thứ nhất là bánh pancake chuối yến mạch áp chảo chống dính. Món thứ hai là bánh chuối hấp nước cốt dừa béo ngậy. Món thứ ba là bánh muffin chuối bơ nướng bằng nồi chiên không dầu.", "Thơm lừng mềm xốp bé nào cũng thích mê. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("Bé Dưới 1 Tuổi Có Nên Ăn Sữa Chua?", "Bé mấy tháng thì bắt đầu ăn được sữa chua và váng sữa? Mẹ xem ngay giải đáp từ chuyên gia.", "Thứ nhất: Sữa chua nguyên chất không đường dùng được cho bé từ 7 tháng tuổi. Thứ hai: Men vi sinh trong sữa chua giúp hỗ trợ tiêu hóa rất tốt. Thứ ba: Váng sữa chỉ nên dùng từ sau 10 tháng và không ăn quá nhiều vì quá nhiều chất béo no.", "Chọn loại sữa chua trắng không đường mẹ nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 12
+    ("4 Món Cháo Bồ Câu Bồi Bổ Cho Bé", "Bé mới ốm dậy hoặc chậm tăng cân, mẹ nấu ngay cháo chim bồ câu béo ngậy bồi bổ này nhé.", "Món thứ nhất là cháo bồ câu hạt sen an thần ngủ ngon. Món thứ hai là cháo bồ câu đậu xanh thanh nhiệt giải độc. Món thứ ba là cháo bồ câu cà rốt bổ mắt. Món thứ tư là cháo bồ câu nấm hương thơm lừng.", "Thịt bồ câu mềm ngọt giàu đạm lành tính. Theo dõi Ăn dặm mẹ Dâu để nhận công thức!"),
+    ("Cách Chọn Ức Gà Nấu Đồ Ăn Dặm", "Ức gà là nguồn đạm trắng tuyệt vời nhưng nấu không khéo rất dễ bị bã và khô. Mẹ lưu ngay bí quyết này.", "Bí quyết thứ nhất: Chọn ức gà có màu hồng tươi, đàn hồi tốt không chảy nước. Bí quyết thứ hai: Luộc ức gà cùng vài lát hành tây để thịt ngọt và thơm. Bí quyết thứ ba: Xé nhỏ băm nhuyễn rồi xào cùng chút dầu oliu trước khi nấu cháo.", "Thịt gà mềm mọng bé nuốt thun thút. Bấm follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 13
+    ("Làm Gì Khi Bé Ngậm Miệng Không Ăn?", "Con đột ngột ngậm chặt miệng, lắc đầu từ chối đồ ăn? Mẹ hãy bình tĩnh áp dụng quy tắc 3 không sau.", "Không thứ nhất: Không ép con ăn, không nhét thìa khi con đang khóc. Không thứ hai: Không bật tivi điện thoại để dụ con ăn thụ động. Không thứ ba: Bữa ăn chỉ kéo dài tối đa 30 phút, hết giờ là dọn dẹp vui vẻ.", "Tôn trọng nhu cầu của con giúp bé nhanh ăn ngon miệng trở lại. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Quy Tắc 30 Phút Cho Bữa Ăn Dặm", "Cho con ăn kéo dài cả tiếng đồng hồ vừa làm vữa cháo vừa gây ức chế tâm lý cho cả mẹ và bé!", "Lý do thứ nhất: Sau 30 phút, thức ăn bị nguội và mất hết men tiêu hóa tự nhiên. Lý do thứ hai: Tạo thói quen ăn ngậm và ỷ lại. Lý do thứ ba: Khi mẹ dọn bữa đúng giờ, bé sẽ hiểu cảm giác đói và ăn hào hứng hơn vào bữa sau.", "Hãy tạo thói quen ăn uống lành mạnh cho con mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 14
+    ("3 Món Cháo Đậu Lăng Giàu Đạm Thực Vật", "Đậu lăng đỏ là siêu thực phẩm giàu đạm thực vật và chất xơ tuyệt vời cho bé từ 7 tháng.", "Món thứ nhất là cháo đậu lăng bí đỏ sánh mịn. Món thứ hai là súp đậu lăng thịt gà thơm bùi. Món thứ ba là cháo đậu lăng yến mạch cà rốt ngọt tự nhiên.", "Ngâm đậu lăng 20 phút trước khi nấu mẹ nhé. Follow Ăn dặm mẹ Dâu để chăm con khoa học!"),
+    ("Trẻ Dưới 1 Tuổi Có Nên Uống Sữa Hạt?", "Nhiều mẹ muốn thay thế hoàn toàn sữa bò bằng sữa hạt cho con, nhưng chuyên gia dinh dưỡng khuyến cáo thế nào?", "Khuyến cáo thứ nhất: Sữa mẹ và sữa công thức là nguồn dinh dưỡng chính dưới 1 tuổi. Khuyến cáo thứ hai: Sữa hạt thiếu đạm hoàn chỉnh và vitamin B12 cần thiết cho não bộ. Khuyến cáo thứ ba: Chỉ nên dùng sữa hạt như bữa phụ bổ sung từ 8 tháng tuổi trở lên.", "Cân bằng dinh dưỡng cho con mẹ nhé. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 15
+    ("Cách Cắt Rau Củ Chuẩn BLW Cho Bé", "Tập cho bé ăn dặm tự chỉ huy BLW, mẹ cần biết cách cắt thức ăn chuẩn để con dễ cầm nắm và an toàn.", "Cách thứ nhất: Cắt thanh dài hình que to bằng ngón tay trỏ của mẹ. Cách thứ hai: Hấp chín mềm đến mức dùng 2 ngón tay bóp nhẹ là nát. Cách thứ ba: Dùng dao lượn sóng tạo vân giúp tay bé không bị trơn trượt.", "Bé tự lập ăn ngoan mẹ nhàn tênh. Theo dõi Ăn dặm mẹ Dâu để xem thêm mẹo hay!"),
+    ("3 Nguyên Tắc An Toàn Khi Ăn BLW", "Mẹ muốn tập cho con ăn tự chỉ huy nhưng sợ hóc? Thuộc lòng 3 nguyên tắc an toàn tuyệt đối này nhé.", "Nguyên tắc thứ nhất: Bé phải ngồi thẳng lưng trên ghế ăn dặm, không ăn khi nằm hay bế rong. Nguyên tắc thứ hai: Thức ăn phải được nấu mềm đúng chuẩn có thể nghiền bằng nướu. Nguyên tắc thứ ba: Luôn có người lớn quan sát bé trong suốt bữa ăn.", "Tự tin đồng hành cùng con mẹ nhé. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 16
+    ("Nấu Nước Dashi Rau Củ Ngọt Thanh", "Nước dùng Dashi từ rau củ tự nhiên là bí quyết nấu cháo thơm ngọt đậm đà của mẹ Nhật.", "Bước thứ nhất: Chọn các loại củ quả ngọt lành như bắp ngọt, cà rốt, củ cải trắng và mía lau. Bước thứ hai: Nấu sôi nhỏ lửa trong 30 đến 40 phút để rau củ tiết trọn vị ngọt. Bước thứ ba: Lọc lấy nước trong và trữ đông dùng dần trong tuần.", "Vừa ngọt tự nhiên vừa an toàn cho thận của bé. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Tại Sao Người Nhật Tách Riêng Từng Món?", "Trong ăn dặm kiểu Nhật, mẹ Nhật luôn để riêng cháo, đạm và rau thay vì nấu chung một bát. Vì sao vậy?", "Lợi ích thứ nhất: Giúp bé phân biệt rõ mùi vị và màu sắc của từng loại thực phẩm. Lợi ích thứ hai: Kích thích vị giác và khả năng phản xạ nhai nuốt. Lợi ích thứ ba: Dễ dàng phát hiện nếu bé bị dị ứng với một món cụ thể.", "Một phương pháp rất khoa học mẹ nên thử. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 17
+    ("3 Món Cháo Phô Mai Thơm Bùi Cho Bé", "Phô mai tách muối vừa thơm ngậy vừa bổ sung canxi dồi dào cho bé từ 7 tháng tuổi.", "Món thứ nhất là cháo phô mai bí đỏ yến mạch. Món thứ hai là cháo cá hồi bông cải phô mai. Món thứ ba là cháo gà nấm hương phô mai béo ngậy.", "Mẹ nhớ chọn loại phô mai hữu cơ tách muối chuyên dụng cho bé nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Lượng Phô Mai Cho Bé Ăn Bao Nhiêu Là Đủ?", "Phô mai rất bổ nhưng ăn quá nhiều sẽ gây quá tải chất béo và khó tiêu cho hệ tiêu hóa của bé.", "Định lượng thứ nhất: Bé 7 đến 8 tháng ăn khoảng 12 đến 14 gam một ngày. Định lượng thứ hai: Bé 9 đến 11 tháng ăn khoảng 14 đến 17 gam một ngày. Định lượng thứ ba: Mỗi tuần chỉ nên cho bé ăn từ 3 đến 4 bữa phô mai.", "Ăn đúng lượng để con hấp thu tốt nhất mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 18
+    ("Top 5 Trái Cây Tráng Miệng Tuyệt Vời", "Hoa quả cung cấp vitamin C và chất xơ tự nhiên dồi dào giúp bé tăng đề kháng và nhuận tràng.", "Loại thứ nhất là quả bơ béo ngậy giàu chất béo tốt. Loại thứ hai là chuối chín mềm dễ tiêu hóa. Loại thứ ba là thanh long đỏ nhuận tràng cực nhanh. Loại thứ tư là đu đủ chín ngọt dịu. Loại thứ năm là quả xoài chín ngọt lịm.", "Cắt miếng vừa tay cầm hoặc nghiền nhuyễn cho bé nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Cắt Hoa Quả Chống Hóc Cho Trẻ", "Nho, dâu tây và táo là những loại quả dễ gây hóc đường thở nhất nếu mẹ cắt sai cách!", "Quy tắc thứ nhất: Nho và cà chua bi phải bổ dọc làm 4 phần, tuyệt đối không để nguyên quả tròn. Quy tắc thứ hai: Táo và lê cứng phải hấp chín mềm hoặc nạo mỏng. Quy tắc thứ ba: Không bao giờ cho bé ăn thạch tròn hay kẹo dẻo.", "An toàn cho con là ưu tiên số một. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 19
+    ("Làm Viên Thịt Rau Củ Trữ Đông Ăn Cả Tuần", "Mẹ bận rộn làm ngay món viên thịt rau củ này: làm một lần ăn cả tuần, nấu cháo siêu nhanh.", "Bước thứ nhất: Xay nhuyễn thịt lợn nạc cùng cà rốt, nấm hương và cải bó xôi. Bước thứ hai: Viên thành từng viên tròn nhỏ vừa miệng bé. Bước thứ ba: Hấp chín sơ rồi xếp vào hộp trữ đông từng viên riêng biệt.", "Mỗi bữa chỉ cần thả 2 viên vào cháo là xong. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Dụng Cụ Ăn Dặm Cần Thiết Cho Mẹ Bỉm", "Đừng lãng phí tiền mua quá nhiều đồ dùng ăn dặm không cần thiết, mẹ chỉ cần chuẩn bị 4 món này.", "Món thứ nhất: Ghế ăn dặm có đai an toàn giúp con ngồi đúng tư thế. Món thứ hai: Thìa silicon mềm bảo vệ nướu lợi non nớt. Món thứ ba: Yếm máng hứng thức ăn rơi vãi. Món thứ tư: Nồi nấu cháo chậm giúp cháo nhừ tơi giữ trọn vitamin.", "Mua đúng và đủ giúp mẹ tiết kiệm rất nhiều. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 20
+    ("3 Món Cháo Giải Cảm Ấm Bụng Cho Bé", "Thời tiết giao mùa bé dễ sụt sịt ho sốt, mẹ nấu ngay 3 món cháo ấm bụng tăng đề kháng này nhé.", "Món thứ nhất là cháo thịt băm tía tô giải cảm cực tốt. Món thứ hai là cháo gà hạt sen hành tăm ấm họng. Món thứ ba là súp bí đỏ củ sen dịu nhẹ dễ nuốt.", "Chia nhỏ bữa ăn khi con mệt mẹ nhé. Bấm theo dõi Ăn dặm mẹ Dâu để chăm con khỏe mạnh!"),
+    ("Bổ Sung Kẽm Và Vitamin C Tự Nhiên", "Kẽm và Vitamin C là bộ đôi vàng giúp kích thích vị giác và tăng cường hệ miễn dịch cho trẻ.", "Nguồn thứ nhất: Kẽm có dồi dào trong thịt bò, lòng đỏ trứng và đậu gà. Nguồn thứ hai: Vitamin C có nhiều trong ớt chuông, bông cải xanh, kiwi và đu đủ. Nguồn thứ ba: Kết hợp 2 nhóm chất này giúp bé ăn ngon miệng và ít ốm vặt.", "Ăn uống đa dạng là cách bổ sung tốt nhất. Follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 21
+    ("Uống D3K2 Thế Nào Để Hấp Thu Tối Đa?", "Bổ sung Vitamin D3K2 mỗi ngày giúp bé hấp thu canxi phát triển chiều cao, nhưng uống lúc nào là chuẩn nhất?", "Thời điểm thứ nhất: Uống vào buổi sáng trong hoặc ngay sau bữa ăn có chất béo. Thời điểm thứ hai: Liều lượng chuẩn là 400 IU mỗi ngày cho trẻ dưới 1 tuổi. Thời điểm thứ ba: Nhỏ trực tiếp vào miệng hoặc vào thìa nhỏ của con.", "Đúng liều và đúng giờ mẹ nhé. Theo dõi Ăn dặm mẹ Dâu để cập nhật kiến thức chuẩn!"),
+    ("Cảnh Báo Tự Ý Cho Bé Uống Canxi Liều Cao", "Thấy con chậm mọc răng hay trằn trọc, nhiều mẹ tự ý mua canxi cho con uống, điều này cực kỳ nguy hại!", "Tác hại thứ nhất: Thừa canxi gây táo bón và sỏi thận ở trẻ nhỏ. Tác hại thứ hai: Gây vôi hóa sớm làm hạn chế phát triển chiều cao. Tác hại thứ ba: Trẻ dưới 1 tuổi uống đủ sữa mẹ hoặc sữa công thức đã đáp ứng đủ canxi.", "Chỉ bổ sung canxi khi có chỉ định xét nghiệm của bác sĩ mẹ nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 22
+    ("Nấu Cơm Nát Cho Bé Tròn 1 Tuổi", "Bé tròn 1 tuổi bước sang giai đoạn tập ăn cơm nát. Mẹ nấu bằng nồi cơm điện siêu dễ theo cách này nhé.", "Bước thứ nhất: Cho gạo và nước tỷ lệ 1:3 vào một chiếc bát sứ nhỏ. Bước thứ hai: Đặt bát sứ vào giữa nồi cơm của cả gia đình và bật nấu bình thường. Bước thứ ba: Khi chín, cơm trong bát sẽ mềm dẻo tơi xốp cực kỳ vừa miệng bé.", "Tiện lợi cho mẹ và thơm ngon cho con. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("Bé 1 Tuổi Đã Nêm Được Gia Vị Chưa?", "Bé tròn 1 tuổi đã bắt đầu nêm được gia vị nhưng mẹ phải tuân thủ nghiêm ngặt lượng tối đa cho phép.", "Quy tắc thứ nhất: Lượng muối tối đa dưới 2 gam một ngày, tương đương một nửa thìa cà phê nhỏ. Quy tắc thứ hai: Ưu tiên dùng nước mắm nhĩ truyền thống hoặc bột nêm rau củ tự nhiên. Quy tắc thứ ba: Vẫn duy trì khẩu vị thanh nhẹ, không nêm mặn như người lớn.", "Bảo vệ thận và sức khỏe lâu dài cho con mẹ nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 23
+    ("3 Món Canh Thanh Mát Tập Cho Bé Dùng Thìa", "Tập cho bé 1 tuổi kỹ năng tự xúc thìa với 3 món canh rau củ thanh ngọt dễ xúc này nhé.", "Món thứ nhất là canh bí đỏ thịt băm mềm ngọt. Món thứ hai là canh mồng tơi nấu tôm đồng thanh mát. Món thứ ba là súp trứng gà cà chua sánh mịn.", "Khen ngợi và khích lệ con tự lập mỗi ngày mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("Các Giai Đoạn Bé Tập Cầm Thìa Tự Ăn", "Hành trình tập dùng thìa của con trải qua 3 giai đoạn thú vị, mẹ kiên nhẫn đồng hành cùng con nhé.", "Giai đoạn 1 từ 9 tháng: Bé cầm thìa nghịch và gõ vào bát. Giai đoạn 2 từ 11 đến 12 tháng: Bé biết xúc thức ăn nhưng hay làm rơi vãi. Giai đoạn 3 từ 14 tháng trở lên: Bé xúc thuần thục và đưa thẳng vào miệng.", "Đừng cáu gắt khi con làm bẩn sàn nhà mẹ nha. Follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 24
+    ("Nấu Sữa Bắp Hạt Sen Sánh Mịn Không Đường", "Một ly sữa bắp hạt sen ấm nóng thơm lừng cho bữa phụ chiều giúp bé ngủ sâu giấc.", "Bước thứ nhất: Tách hạt bắp ngọt và hạt sen tươi rửa sạch. Bước thứ hai: Xay nhuyễn cùng nước ấm rồi lọc bỏ bã qua rây. Bước thứ ba: Đun nhỏ lửa khuấy đều tay trong 15 phút cho sữa sánh mịn thơm ngậy.", "Ngọt lành tự nhiên không cần thêm đường. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("Lượng Nước Cần Bổ Sung Cho Bé Mỗi Ngày", "Bé ăn dặm cần uống bao nhiêu nước mỗi ngày để không bị táo bón? Mẹ tính theo công thức chuẩn này nhé.", "Công thức 1 cho bé 6 đến 12 tháng: Uống khoảng 100 đến 200ml nước lọc mỗi ngày sau bữa ăn. Công thức 2 cho bé trên 1 tuổi: Lượng nước bằng 100ml nhân với số kilogam cân nặng của bé. Công thức 3: Quan sát nước tiểu của con có màu vàng nhạt là đủ nước.", "Nhắc con uống từng ngụm nhỏ trong ngày mẹ nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    # Day 25
+    ("Làm Món Xào Mềm Ngọt Cho Bé Mới Tập Nhai", "Làm món xào cho bé tập nhai không bị dai hay ngấy mỡ, mẹ áp dụng ngay kỹ thuật xào nước dashi này.", "Kỹ thuật thứ nhất: Cắt thịt và rau củ thành lát mỏng vừa miệng. Kỹ thuật thứ hai: Xào chín thịt bằng vài thìa nước dùng dashi trước. Kỹ thuật thứ ba: Khi thức ăn chín mềm mới cho 1 thìa cà phê dầu ăn vào đảo đều và tắt bếp.", "Thức ăn bóng đẹp mềm mọng bé nhai cực dễ. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("3 Mẹo Giúp Bé Thích Ăn Rau Xanh", "Con cứ thấy rau là nhè ra? Mẹ áp dụng ngay 3 tuyệt chiêu giúp con hào hứng ăn rau xanh từ nhỏ.", "Tuyệt chiêu thứ nhất: Cắt tỉa rau củ thành hình ngôi sao, bông hoa bắt mắt. Tuyệt chiêu thứ hai: Trộn rau củ nghiền vào các món con thích như trứng cuộn hay bánh pancake. Tuyệt chiêu thứ ba: Bố mẹ làm gương hào hứng ăn rau cùng con trên bàn ăn.", "Kiên nhẫn giới thiệu nhiều lần mẹ nhé. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 26
+    ("Tự Làm Bột Nêm Rau Củ Tại Nhà", "Tự làm bột nêm rau củ nấm thơm ngọt an toàn tại nhà cho bé, không lo phụ gia hóa chất.", "Bước thứ nhất: Cắt nhỏ cà rốt, nấm hương, hành tây, bí đỏ và củ cải trắng. Bước thứ hai: Sấy khô giòn trong nồi chiên không dầu hoặc máy sấy thực phẩm. Bước thứ ba: Xay mịn thành bột và bảo quản trong hũ thủy tinh kín.", "Nêm vào canh cháo thơm lừng vị ngọt tự nhiên. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Tập Cho Con Ăn Đa Dạng Mùi Vị", "Nhiều mẹ sợ bé không ăn được rau thơm hay tỏi, nhưng tập cho con làm quen sớm mang lại lợi ích tuyệt vời.", "Lợi ích thứ nhất: Kích thích phát triển hoàn thiện các gai vị giác của bé. Lợi ích thứ hai: Giúp con cởi mở với ẩm thực và không kén ăn khi lớn lên. Lợi ích thứ ba: Thêm chút hành ngò thì là giúp món ăn hấp dẫn hơn.", "Bắt đầu từ lượng rất nhỏ mẹ nhé. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 27
+    ("Bánh Sinh Nhật Pancake Chuối Yến Mạch", "Tự tay làm bánh sinh nhật mừng thôi nôi tròn 1 tuổi cho con: thơm ngon, đẹp mắt và hoàn toàn không đường.", "Bước thứ nhất: Xay chuối chín cùng yến mạch và lòng đỏ trứng gà thành hỗn hợp sệt. Bước thứ hai: Rán áp chảo từng lớp bánh nhỏ mềm xốp. Bước thứ ba: Xếp chồng các lớp bánh và trang trí bằng sữa chua trắng cùng dâu tây tươi.", "Chiếc bánh xinh xắn và an toàn cho bé yêu. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("Nhìn Lại Hành Trình 6 Tháng Ăn Dặm", "Tròn 6 tháng ăn dặm đầu đời, con đã học được bao nhiêu kỹ năng tuyệt vời cùng mẹ Dâu?", "Kỹ năng 1: Từ nuốt cháo loãng đến nhai thuần thục cơm nát. Kỹ năng 2: Khám phá hàng trăm mùi vị và màu sắc của thực phẩm tự nhiên. Kỹ năng 3: Tự lập cầm thìa và tận hưởng niềm vui trong mỗi bữa ăn gia đình.", "Chúc mừng con yêu đã tốt nghiệp xuất sắc. Cảm ơn mẹ đã đồng hành cùng Ăn dặm mẹ Dâu!"),
+    # Day 28
+    ("3 Câu Không Nên Nói Trong Bữa Ăn Của Con", "Những lời nói vô tình của người lớn trong bữa ăn có thể tạo ra áp lực tâm lý khiến con sợ ăn!", "Câu thứ nhất: Ăn nhanh lên không mẹ phạt! Câu thứ hai: Nhìn bạn kia kìa, bạn ăn giỏi chưa! Câu thứ ba: Ráng ăn hết bát này mẹ cho xem điện thoại!", "Hãy để bữa ăn ngập tràn niềm vui và sự tôn trọng mẹ nhé. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Cai Ngậm Thức Ăn Bằng 4 Bước Đơn Giản", "Bé có thói quen ngậm thức ăn trong miệng không chịu nuốt? Mẹ xử lý dứt điểm theo 4 bước này.", "Bước thứ nhất: Kiểm tra lại độ thô xem thức ăn có bị quá dai hay quá cứng so với hàm của bé không. Bước thứ hai: Đổi món ăn dạng cầm nắm hoặc món xào thay vì chỉ cho ăn cháo. Bước thứ ba: Làm mẫu nhai nuốt thật phóng đại trước mặt con. Bước thứ tư: Dọn bữa sau 30 phút.", "Kiên trì vài ngày là con bỏ thói quen ngậm ngay. Theo dõi Ăn dặm mẹ Dâu nhé!"),
+    # Day 29
+    ("Chuẩn Bị Đồ Ăn Dặm Khi Đi Du Lịch", "Gia đình đi chơi xa hoặc về quê, mẹ chuẩn bị đồ ăn dặm tiện lợi gọn nhẹ theo danh sách này nhé.", "Món thứ nhất: Cháo tươi đóng gói tiệt trùng tiện lợi không chất bảo quản. Món thứ hai: Bột ngũ cốc yến mạch chỉ cần pha nước ấm. Món thứ ba: Hộp trái cây mềm gọt sẵn bỏ túi giữ nhiệt. Món thứ tư: Bình ủ cháo giữ nhiệt mang theo bên mình.", "Mẹ nhàn tênh con vẫn ăn ngon miệng trên mọi nẻo đường. Follow Ăn dặm mẹ Dâu ngay!"),
+    ("Bé Biếng Ăn Khi Đi Du Lịch: Mẹ Làm Gì?", "Thay đổi môi trường lạ khiến bé mệt mỏi và lười ăn hơn bình thường, mẹ xử lý thế nào cho đúng?", "Thứ nhất: Không ép con ăn đủ lượng như ở nhà, tăng cường cho con bú mẹ hoặc uống sữa. Thứ hai: Ưu tiên các món thanh mát dễ tiêu hóa như trái cây và súp lỏng. Thứ ba: Cho con uống nhiều nước để tránh mất nước khi đi lại.", "Giữ tâm lý thoải mái để cả nhà có chuyến đi vui vẻ nhé mẹ. Theo dõi Ăn dặm mẹ Dâu ngay!"),
+    # Day 30
+    ("Bảng Tổng Kết 30 Món Ăn Dặm Được Yêu Thích", "Tổng kết 30 món ăn dặm được hàng triệu mẹ bỉm sữa yêu thích và nấu nhiều nhất trong tháng qua.", "Nhóm 1: Các món cháo bổ máu từ thịt bò và lòng đỏ trứng. Nhóm 2: Các món cháo giàu canxi từ tôm cá hồi và lươn đồng. Nhóm 3: Các món súp rau củ thanh mát nhuận tràng. Nhóm 4: Các món bánh ăn dặm bổ dưỡng không đường.", "Lưu lại trọn bộ thực đơn để chăm con mỗi ngày nhé. Bấm theo dõi Ăn dặm mẹ Dâu ngay!"),
+    ("Thông Điệp Yêu Thương Gửi Mẹ Bỉm Sữa", "Nuôi con là một hành trình dài ngập tràn tình yêu thương, đừng biến mỗi bữa ăn thành một cuộc chiến!", "Thông điệp 1: Cân nặng của con không phải là thước đo duy nhất của sự phát triển. Thông điệp 2: Một em bé vui vẻ, hoạt bát và ăn uống tự giác mới là đích đến hạnh phúc nhất. Thông điệp 3: Mẹ đang làm rất tốt rồi, hãy luôn tự tin và yêu thương chính mình nhé!", "Ăn dặm mẹ Dâu luôn đồng hành cùng mẹ trên từng bước trưởng thành của con yêu!")
+]
+
+# Generate video items from Day 8 to Day 30
+current_day = 8
+for idx in range(0, len(more_topics), 2):
+    t1 = more_topics[idx]
+    t2 = more_topics[idx+1]
+    
+    videos_data.append({
+        "day": current_day, "slot": "Sáng (07:00)", "pillar": "Thực đơn & Chế biến",
+        "title": t1[0], "hook": t1[1], "body": t1[2], "cta": t1[3],
+        "tiktok_caption": f"{t1[1]} 👉 Follow Ăn dặm mẹ Dâu để nhận trọn bộ thực đơn dinh dưỡng chuẩn y khoa!\n#andammeDau #andam #thucdonandam #monngonchobe #mevabe",
+        "reels_caption": f"{t1[0]} 🥣\n{t1[1]}\nLưu lại và theo dõi @andammeDau để nhận công thức nấu ăn ngon cho bé mỗi ngày!\n#andammeDau #andam #nuoiconkhoahoc #chamsoccon #thucdonchobe",
+        "youtube_caption": f"{t1[0]} | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #andam #thucdonandam"
+    })
+    
+    videos_data.append({
+        "day": current_day, "slot": "Tối (19:30)", "pillar": "Khoa học & Kỹ năng",
+        "title": t2[0], "hook": t2[1], "body": t2[2], "cta": t2[3],
+        "tiktok_caption": f"{t2[1]} 👉 Follow Ăn dặm mẹ Dâu để cập nhật kiến thức nuôi con chuẩn khoa học!\n#andammeDau #andam #nuoiconkhoahoc #mebimthongthai #chamsoccon",
+        "reels_caption": f"{t2[0]} 💡\n{t2[1]}\nFollow @andammeDau để không bỏ lỡ những kiến thức chăm con hữu ích mỗi ngày!\n#andammeDau #andam #mebim #suckhoebe #nuoiconkhoahoc",
+        "youtube_caption": f"{t2[0]} | Ăn dặm mẹ Dâu #Shorts\n#Shorts #andammeDau #nuoiconkhoahoc #andam"
+    })
+    current_day += 1
+
+# Export to CSV
+csv_path = Path("knowledge/an_dam_me_dau/CONTENT_PLAN_30_DAYS_60_VIDEOS.csv")
+csv_path.parent.mkdir(parents=True, exist_ok=True)
+
+fieldnames = [
+    "day", "slot", "pillar", "title", "hook", "body", "cta",
+    "tiktok_caption", "reels_caption", "youtube_caption"
+]
+
+with open(csv_path, mode="w", encoding="utf-8-sig", newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in videos_data:
+        writer.writerow(row)
+
+# Export to JSON
+json_path = Path("knowledge/an_dam_me_dau/CONTENT_PLAN_30_DAYS_60_VIDEOS.json")
+with open(json_path, mode="w", encoding="utf-8") as f:
+    json.dump(videos_data, f, ensure_ascii=False, indent=2)
+
+print(f"Generated {len(videos_data)} video items to CSV and JSON.")

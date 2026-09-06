@@ -10,10 +10,12 @@ from typing import Callable
 from .voice import (
     OmniVoiceError,
     VoiceLibrary,
+    VoiceProfile,
     VoiceSettings,
     play_audio,
     prepare_voice_profile,
     stop_audio,
+    transcribe_audio_text,
 )
 
 
@@ -27,8 +29,8 @@ class VoiceManagerDialog(tk.Toplevel):
     ) -> None:
         super().__init__(parent)
         self.title("Cài đặt và quản lý giọng đọc")
-        self.geometry("760x610")
-        self.minsize(680, 560)
+        self.geometry("820x720")
+        self.minsize(740, 640)
         self.transient(parent)
         self.library = library
         self.on_library_changed = on_library_changed
@@ -38,6 +40,8 @@ class VoiceManagerDialog(tk.Toplevel):
         self.cli_path = tk.StringVar(value=settings.cli_path)
         self.profile_name = tk.StringVar(value="")
         self.source_path = tk.StringVar(value="Chưa chọn file ghi âm")
+        self.reference_text = tk.StringVar(value="")
+        self.selected_ref_text = tk.StringVar(value="")
         self.status_text = tk.StringVar(value="Chọn mẫu giọng sạch, chỉ có một người nói.")
         self._build_ui()
         self._refresh_profiles()
@@ -78,48 +82,77 @@ class VoiceManagerDialog(tk.Toplevel):
         library_frame.grid_columnconfigure(0, weight=1)
         library_frame.grid_rowconfigure(0, weight=1)
         self.profile_tree = ttk.Treeview(
-            library_frame, columns=("name", "duration", "quality"), show="headings", height=6
+            library_frame, columns=("name", "duration", "quality"), show="headings", height=5
         )
         self.profile_tree.heading("name", text="Tên giọng")
         self.profile_tree.heading("duration", text="Đoạn mẫu")
         self.profile_tree.heading("quality", text="Chất lượng")
-        self.profile_tree.column("name", width=320)
+        self.profile_tree.column("name", width=300)
         self.profile_tree.column("duration", width=100, anchor="center")
         self.profile_tree.column("quality", width=110, anchor="center")
         self.profile_tree.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(library_frame, orient="vertical", command=self.profile_tree.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.profile_tree.configure(yscrollcommand=scrollbar.set)
+        self.profile_tree.bind("<<TreeviewSelect>>", self._on_profile_selected)
+
+        detail_box = ttk.Frame(library_frame)
+        detail_box.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        detail_box.grid_columnconfigure(1, weight=1)
+        ttk.Label(detail_box, text="Văn bản mẫu:").grid(row=0, column=0, sticky="w", padx=(0, 6))
+        self.selected_ref_entry = ttk.Entry(detail_box, textvariable=self.selected_ref_text)
+        self.selected_ref_entry.grid(row=0, column=1, sticky="ew", padx=(0, 6))
+        ttk.Button(detail_box, text="Lưu văn bản", command=self._save_selected_reference_text).grid(
+            row=0, column=2
+        )
+
         actions = ttk.Frame(library_frame)
-        actions.grid(row=1, column=0, columnspan=2, sticky="e", pady=(8, 0))
+        actions.grid(row=2, column=0, columnspan=2, sticky="e", pady=(8, 0))
         ttk.Button(actions, text="Nghe thử", command=self._preview_selected).pack(side="left")
         ttk.Button(actions, text="Dừng", command=stop_audio).pack(side="left", padx=(6, 0))
+        ttk.Button(actions, text="Xóa giọng", command=self._delete_selected).pack(side="left", padx=(10, 0))
 
         create = ttk.LabelFrame(body, text="Thêm giọng clone mới", padding=10)
         create.grid(row=2, column=0, sticky="ew")
         create.grid_columnconfigure(0, weight=1)
         ttk.Label(create, text="Tên giọng").grid(row=0, column=0, sticky="w")
         ttk.Entry(create, textvariable=self.profile_name).grid(row=1, column=0, sticky="ew", padx=(0, 8))
+        
         ttk.Label(create, text="File ghi âm nguồn").grid(row=2, column=0, sticky="w", pady=(8, 0))
         ttk.Label(create, textvariable=self.source_path, foreground="#667085").grid(
             row=3, column=0, sticky="ew", padx=(0, 8)
         )
         self.source_button = ttk.Button(create, text="Chọn file…", command=self._choose_source)
         self.source_button.grid(row=3, column=1)
+
+        ttk.Label(
+            create,
+            text="Văn bản đối chiếu (ngăn hallucination, tự động đồng bộ giọng):",
+        ).grid(row=4, column=0, sticky="w", pady=(8, 0))
+        ref_row = ttk.Frame(create)
+        ref_row.grid(row=5, column=0, columnspan=2, sticky="ew")
+        ref_row.grid_columnconfigure(0, weight=1)
+        self.ref_entry = ttk.Entry(ref_row, textvariable=self.reference_text)
+        self.ref_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self.transcribe_button = ttk.Button(
+            ref_row, text="Nhận diện tự động", command=self._auto_transcribe_source
+        )
+        self.transcribe_button.grid(row=0, column=1)
+
         ttk.Label(
             create,
             text="Tự chọn đoạn nói tốt nhất 3–8 giây, lọc ù/rít, giảm nhiễu nền và chuẩn hóa âm lượng.",
             foreground="#667085",
-        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(7, 0))
+        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(7, 0))
         self.process_button = ttk.Button(
             create, text="Phân tích, làm sạch và lưu giọng", command=self._start_processing
         )
-        self.process_button.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(9, 0))
+        self.process_button.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(9, 0))
         ttk.Label(create, textvariable=self.status_text, foreground="#667085").grid(
-            row=6, column=0, columnspan=2, sticky="w", pady=(7, 0)
+            row=8, column=0, columnspan=2, sticky="w", pady=(7, 0)
         )
         self.progress = ttk.Progressbar(create, mode="indeterminate")
-        self.progress.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+        self.progress.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(5, 0))
 
     def _choose_cli(self) -> None:
         selected = filedialog.askopenfilename(
@@ -147,6 +180,60 @@ class VoiceManagerDialog(tk.Toplevel):
         )
         if selected:
             self.source_path.set(selected)
+            if not self.reference_text.get().strip():
+                self._auto_transcribe_source()
+
+    def _auto_transcribe_source(self) -> None:
+        source = self.source_path.get()
+        if source == "Chưa chọn file ghi âm" or not Path(source).is_file():
+            messagebox.showinfo("Chưa chọn file", "Hãy chọn file ghi âm trước khi nhận diện.", parent=self)
+            return
+        self.status_text.set("Đang dùng Whisper trích xuất văn bản từ audio mẫu…")
+        self.progress.start(12)
+        self.transcribe_button.configure(state="disabled")
+
+        def worker() -> None:
+            text = transcribe_audio_text(Path(source))
+            self.events.put(("transcribe_done", text))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_profile_selected(self, _event: object = None) -> None:
+        selected = self.profile_tree.selection()
+        if not selected:
+            self.selected_ref_text.set("")
+            return
+        profile = self.library.get(selected[0])
+        if profile:
+            self.selected_ref_text.set(profile.reference_text or "")
+
+    def _save_selected_reference_text(self) -> None:
+        selected = self.profile_tree.selection()
+        if not selected:
+            messagebox.showinfo("Chưa chọn giọng", "Hãy chọn một giọng trong bảng để lưu văn bản.", parent=self)
+            return
+        profile = self.library.get(selected[0])
+        if not profile:
+            return
+        new_text = self.selected_ref_text.get().strip() or None
+        updated_profile = VoiceProfile(
+            profile_id=profile.profile_id,
+            name=profile.name,
+            audio_path=profile.audio_path,
+            source_path=profile.source_path,
+            duration_seconds=profile.duration_seconds,
+            quality_score=profile.quality_score,
+            snr_db=profile.snr_db,
+            reference_text=new_text,
+        )
+        for idx, p in enumerate(self.library.profiles):
+            if p.profile_id == profile.profile_id:
+                self.library.profiles[idx] = updated_profile
+                break
+        self.library.save()
+        self.on_log(f"Đã cập nhật văn bản đối chiếu cho giọng '{profile.name}'.")
+        self.status_text.set(f"Đã cập nhật văn bản mẫu cho '{profile.name}'.")
+        self.on_library_changed()
 
     def _refresh_profiles(self) -> None:
         for item in self.profile_tree.get_children():
@@ -156,6 +243,7 @@ class VoiceManagerDialog(tk.Toplevel):
                 "", "end", iid=profile.profile_id,
                 values=(profile.name, f"{profile.duration_seconds:.1f} giây", f"{profile.quality_score}/100"),
             )
+        self.selected_ref_text.set("")
 
     def _preview_selected(self) -> None:
         selected = self.profile_tree.selection()
@@ -169,6 +257,32 @@ class VoiceManagerDialog(tk.Toplevel):
             except OmniVoiceError as exc:
                 messagebox.showerror("Không thể nghe thử", str(exc), parent=self)
 
+    def _delete_selected(self) -> None:
+        selected = self.profile_tree.selection()
+        if not selected:
+            messagebox.showinfo("Chưa chọn giọng", "Hãy chọn một giọng trong bảng để xóa.", parent=self)
+            return
+        profile_id = selected[0]
+        profile = self.library.get(profile_id)
+        if not profile:
+            return
+        confirm = messagebox.askyesno(
+            "Xác nhận xóa giọng",
+            f"Bạn có chắc muốn xóa giọng '{profile.name}' khỏi thư viện?\nFile audio mẫu đã làm sạch cũng sẽ bị xóa.",
+            parent=self,
+        )
+        if not confirm:
+            return
+        stop_audio()
+        self.library.delete_profile(profile_id)
+        settings = VoiceSettings.load()
+        if settings.selected_profile_id == profile_id:
+            VoiceSettings(cli_path=settings.cli_path, selected_profile_id="").save()
+        self._refresh_profiles()
+        self.on_log(f"Đã xóa giọng '{profile.name}' khỏi thư viện.")
+        self.status_text.set(f"Đã xóa giọng '{profile.name}'.")
+        self.on_library_changed()
+
     def _start_processing(self) -> None:
         self._save_cli_settings(show_status=False)
         source = self.source_path.get()
@@ -176,8 +290,10 @@ class VoiceManagerDialog(tk.Toplevel):
             messagebox.showwarning("Thiếu thông tin", "Hãy nhập tên giọng và chọn file ghi âm.", parent=self)
             return
         profile_name = self.profile_name.get().strip()
+        ref_text = self.reference_text.get().strip() or None
         self.process_button.configure(state="disabled")
         self.source_button.configure(state="disabled")
+        self.transcribe_button.configure(state="disabled")
         self.progress.start(12)
         self.status_text.set("Đang phân tích chất lượng và làm sạch mẫu…")
 
@@ -186,6 +302,7 @@ class VoiceManagerDialog(tk.Toplevel):
                 profile = prepare_voice_profile(
                     profile_name, Path(source),
                     lambda line: self.events.put(("log", line)), library=self.library,
+                    reference_text=ref_text,
                 )
                 self.events.put(("done", profile))
             except (OmniVoiceError, OSError) as exc:
@@ -200,12 +317,22 @@ class VoiceManagerDialog(tk.Toplevel):
                 if kind == "log":
                     self.on_log(str(payload))
                     self.status_text.set(str(payload))
+                elif kind == "transcribe_done":
+                    self.progress.stop()
+                    self.transcribe_button.configure(state="normal")
+                    if payload and isinstance(payload, str):
+                        self.reference_text.set(payload)
+                        self.status_text.set("Đã trích xuất văn bản mẫu thành công.")
+                    else:
+                        self.status_text.set("Không nhận diện được lời nói từ mẫu.")
                 elif kind == "done":
                     self.progress.stop()
                     self.process_button.configure(state="normal")
                     self.source_button.configure(state="normal")
+                    self.transcribe_button.configure(state="normal")
                     self._refresh_profiles()
                     self.profile_tree.selection_set(payload.profile_id)
+                    self._on_profile_selected()
                     current = VoiceSettings.load()
                     VoiceSettings(
                         cli_path=current.cli_path,
@@ -217,11 +344,13 @@ class VoiceManagerDialog(tk.Toplevel):
                     )
                     self.profile_name.set("")
                     self.source_path.set("Chưa chọn file ghi âm")
+                    self.reference_text.set("")
                     self.on_library_changed()
                 elif kind == "error":
                     self.progress.stop()
                     self.process_button.configure(state="normal")
                     self.source_button.configure(state="normal")
+                    self.transcribe_button.configure(state="normal")
                     self.status_text.set("Xử lý thất bại.")
                     messagebox.showerror("Không thể xử lý giọng mẫu", str(payload), parent=self)
         except queue.Empty:

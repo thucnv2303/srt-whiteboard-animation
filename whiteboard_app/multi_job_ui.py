@@ -1018,7 +1018,9 @@ class MultiJobView(ttk.Frame):
         )
         ratio_row = ttk.Frame(card)
         ratio_row.grid(row=4, column=1, sticky="w", pady=7)
-        for column, ratio in enumerate(ASPECT_RATIOS):
+        for idx, ratio in enumerate(ASPECT_RATIOS):
+            r_row = idx // 4
+            r_col = idx % 4
             ttk.Radiobutton(
                 ratio_row,
                 text=ratio,
@@ -1026,7 +1028,7 @@ class MultiJobView(ttk.Frame):
                 variable=aspect_ratio,
                 state="normal" if editable else "disabled",
                 command=render_settings_preview,
-            ).grid(row=0, column=column, padx=(0, 18))
+            ).grid(row=r_row, column=r_col, padx=(0, 14), pady=(2, 2), sticky="w")
 
         ttk.Label(card, text="Chữ trên bút", font=("Segoe UI", 9, "bold")).grid(
             row=5, column=0, sticky="w", padx=(0, 14), pady=7

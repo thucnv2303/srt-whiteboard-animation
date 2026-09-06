@@ -36,6 +36,11 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 import stream_render as sr  # noqa: E402
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 DEFAULT_HAND = _SCRIPT_DIR.parent / "assets" / "drawing-hand.png"
 
 
@@ -146,6 +151,20 @@ class RegionStreamRenderer:
         self.sy = self.out_h / ch
 
         self.color_img = cv2.resize(image_bgr, (self.out_w, self.out_h), interpolation=cv2.INTER_AREA)
+
+        # Nếu không match_bg (giữ nền ảnh gốc), tự động lấy màu nền thực tế của ảnh
+        # làm màu canvas khởi tạo để các vùng ngoài bounding box hoàn toàn liền lạc,
+        # không bị lệch màu hay giật nhấp nháy khi chuyển sang frame kết thúc.
+        if not cfg.match_bg:
+            margin = max(3, min(self.out_h, self.out_w) // 50)
+            samples = [
+                self.color_img[:margin, :margin],
+                self.color_img[:margin, -margin:],
+                self.color_img[-margin:, :margin],
+                self.color_img[-margin:, -margin:],
+            ]
+            self.canvas_bgr = np.median(np.concatenate([s.reshape(-1, 3) for s in samples]), axis=0).astype(np.uint8)
+
         gray = cv2.cvtColor(self.color_img, cv2.COLOR_BGR2GRAY)
         self.thresh_map = cv2.adaptiveThreshold(
             gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 10
@@ -153,23 +172,25 @@ class RegionStreamRenderer:
         self.grid_blocks = sr._to_grid_blocks(self.thresh_map, cfg.grid_edge)
         self.active_all = sr._active_mask(self.thresh_map, cfg.grid_edge, cfg.ink_threshold)
         self.ink_pixels = self.thresh_map < cfg.ink_threshold
-        self.ink_paint = np.repeat(self.thresh_map[:, :, None], 3, axis=2).astype(np.float32)
+        self.ink_paint = np.repeat(self.thresh_map[:, :, None], 3, axis=2)
 
         # 背景染成画布底色，让上色阶段背景与起笔一致（不碰墨迹）
         if cfg.match_bg:
             self._match_original_background()
 
-        # 共享持久画布
-        self.drawn = np.empty((self.out_h, self.out_w, 3), dtype=np.float32)
-        self.drawn[...] = self.canvas_bgr.astype(np.float32)
+        # 共享持久画布 — dùng uint8 trực tiếp để tránh chuyển đổi kiểu mỗi frame
+        self.drawn = np.empty((self.out_h, self.out_w, 3), dtype=np.uint8)
+        self.drawn[...] = self.canvas_bgr
 
-        # 笔尖覆盖
+        # 笔尖覆盖: Co giãn kích thước tay theo tỷ lệ chiều cao khung hình (chuẩn 493px ở 1080p)
         self.tip: sr.TipOverlay | None = None
         if not bare_tip:
-            hand_data = sr._load_hand(hand_png, cfg.target_hand_height) if hand_png else None
+            hand_h = int(round(cfg.target_hand_height * (self.out_h / 1080.0))) if self.out_h > 0 else cfg.target_hand_height
+            hand_h = max(200, hand_h)
+            hand_data = sr._load_hand(hand_png, hand_h) if hand_png else None
             ax, ay = cfg.tip_anchor_x, cfg.tip_anchor_y
             if hand_data is None:
-                hand_data = sr._procedural_tip(cfg.target_hand_height)
+                hand_data = sr._procedural_tip(hand_h)
                 ax, ay = 0.5, 0.70
             elif pen_brand:
                 hand_data = (_brand_hand_asset(hand_data[0], pen_brand), hand_data[1])
@@ -192,10 +213,24 @@ class RegionStreamRenderer:
         return (c * e + e // 2, r * e + e // 2)
 
     def _snapshot_with_tip(self, px: int, py: int) -> np.ndarray:
-        snap = self.drawn.astype(np.uint8)
-        if self.tip is not None:
-            self.tip.stamp(snap, px, py)
-        return snap
+        if self.tip is None:
+            # Không có bàn tay → ghi thẳng canvas, không cần copy
+            return self.drawn
+        # Chỉ sao lưu và khôi phục vùng bounding-box của bàn tay thay vì toàn bộ frame
+        tip = self.tip
+        ax = px - tip.tip_px
+        ay = py - tip.tip_py
+        x0 = max(0, ax)
+        y0 = max(0, ay)
+        x1 = min(self.out_w, ax + tip.w)
+        y1 = min(self.out_h, ay + tip.h)
+        if x1 <= x0 or y1 <= y0:
+            return self.drawn
+        backup = self.drawn[y0:y1, x0:x1].copy()
+        tip.stamp(self.drawn, px, py)
+        frame = self.drawn.copy()
+        self.drawn[y0:y1, x0:x1] = backup
+        return frame
 
     # ── 单区域的允许掩码：矩形 - 后续区域 - protectedRegions ──
     def _allowed_mask(self, element: dict, later_elements: list[dict]) -> np.ndarray:
@@ -242,13 +277,33 @@ class RegionStreamRenderer:
                 out.append([(int(round(x)), int(round(y))) for x, y in pts])
         return sr._order_skeleton_strokes(out)
 
-    # ── 落墨（限制在 allowed 内）──
-    def _reveal_ink_segment(self, a: tuple[int, int], b: tuple[int, int], allowed: np.ndarray) -> None:
-        seg = np.zeros((self.out_h, self.out_w), dtype=np.uint8)
+    def _reveal_ink_segments(self, seg_pairs: list[tuple[tuple[int, int], tuple[int, int]]], allowed: np.ndarray) -> None:
+        if not seg_pairs:
+            return
         thick = max(1, self.cfg.ink_reveal_radius * 2 + 1)
-        cv2.line(seg, a, b, 255, thickness=thick, lineType=cv2.LINE_AA)
-        revealed = (seg > 0) & self.ink_pixels & allowed
-        self.drawn[revealed] = self.ink_paint[revealed]
+        pad = thick + 2
+        xs = [p[0] for seg in seg_pairs for p in seg]
+        ys = [p[1] for seg in seg_pairs for p in seg]
+        x_min = max(0, min(xs) - pad)
+        y_min = max(0, min(ys) - pad)
+        x_max = min(self.out_w, max(xs) + pad + 1)
+        y_max = min(self.out_h, max(ys) + pad + 1)
+        if x_max <= x_min or y_max <= y_min:
+            return
+        h_crop, w_crop = y_max - y_min, x_max - x_min
+        seg_img = np.zeros((h_crop, w_crop), dtype=np.uint8)
+        for a, b in seg_pairs:
+            pt_a = (a[0] - x_min, a[1] - y_min)
+            pt_b = (b[0] - x_min, b[1] - y_min)
+            cv2.line(seg_img, pt_a, pt_b, 255, thickness=thick, lineType=cv2.LINE_AA)
+        crop_ink = self.ink_pixels[y_min:y_max, x_min:x_max]
+        crop_allowed = allowed[y_min:y_max, x_min:x_max]
+        mask = (seg_img > 0) & crop_ink & crop_allowed
+        if mask.any():
+            self.drawn[y_min:y_max, x_min:x_max][mask] = self.ink_paint[y_min:y_max, x_min:x_max][mask]
+
+    def _reveal_ink_segment(self, a: tuple[int, int], b: tuple[int, int], allowed: np.ndarray) -> None:
+        self._reveal_ink_segments([(a, b)], allowed)
 
     def _ink_stamp_cell(self, cell: tuple[int, int], allowed: np.ndarray) -> None:
         r, c = cell
@@ -272,9 +327,12 @@ class RegionStreamRenderer:
         m = disk[by0:by1, bx0:bx1] * allowed[y0:y1, x0:x1]
         inv = 1.0 - m
         target = self.drawn[y0:y1, x0:x1]
-        source = self.color_img[y0:y1, x0:x1].astype(np.float32)
+        source = self.color_img[y0:y1, x0:x1]
+        blended = np.empty_like(target, dtype=np.float32)
         for ch in range(3):
-            target[:, :, ch] = target[:, :, ch] * inv + source[:, :, ch] * m
+            blended[:, :, ch] = target[:, :, ch] * inv + source[:, :, ch] * m
+        np.clip(blended, 0, 255, out=blended)
+        target[...] = blended.astype(np.uint8)
 
     # ── 起笔段（骨架模式）：沿笔迹逐段揭原图墨迹，无块填充 ──
     def _lay_ink(self, writer, frames: int, samples: list[tuple[int, int]],
@@ -290,12 +348,14 @@ class RegionStreamRenderer:
         last: int | None = None
         for si in idx_for_frame:
             if last is None:
-                self._reveal_ink_segment(samples[si], samples[si], allowed)
+                self._reveal_ink_segments([(samples[si], samples[si])], allowed)
             else:
-                for k in range(last + 1, si + 1):
-                    if k in pen_lifts:
-                        continue
-                    self._reveal_ink_segment(samples[k - 1], samples[k], allowed)
+                pairs = [
+                    (samples[k - 1], samples[k])
+                    for k in range(last + 1, si + 1)
+                    if k not in pen_lifts
+                ]
+                self._reveal_ink_segments(pairs, allowed)
             sx, sy = samples[si]
             writer.write(self._snapshot_with_tip(sx, sy))
             last = si
@@ -358,7 +418,7 @@ class RegionStreamRenderer:
         blocks = max(1, cfg.wipe_blocks)
 
         allowed_crop = allowed[top:bottom + 1, left:right + 1]
-        color_crop = self.color_img[top:bottom + 1, left:right + 1].astype(np.float32)
+        color_crop = self.color_img[top:bottom + 1, left:right + 1]
         drawn_crop = self.drawn[top:bottom + 1, left:right + 1]
 
         for fi in range(frames):
@@ -422,7 +482,7 @@ class RegionStreamRenderer:
             n = int(round((until_ms - cur_ms) / ms_per_frame))
             if n <= 0:
                 return
-            snap = self.drawn.astype(np.uint8)
+            snap = self.drawn
             for _ in range(n):
                 writer.write(snap)
             cur_ms += n * ms_per_frame
@@ -475,7 +535,7 @@ class RegionStreamRenderer:
             # 凝视：补到 total_ms，并确保结尾至少停留 0.5s 完整原图
             gaze_until = max(total_ms, cur_ms + 500)
             # 最终帧显示完整原图（凝视）
-            self.drawn[...] = self.color_img.astype(np.float32)
+            self.drawn[...] = self.color_img
             fill_static(gaze_until)
         finally:
             writer.release()
@@ -495,12 +555,14 @@ class RegionStreamRenderer:
         last: int | None = None
         for si in idx_for_frame:
             if last is None:
-                self._reveal_ink_segment(samples[si], samples[si], allowed)
+                self._reveal_ink_segments([(samples[si], samples[si])], allowed)
             else:
-                for k in range(last + 1, si + 1):
-                    if k in pen_lifts:
-                        continue
-                    self._reveal_ink_segment(samples[k - 1], samples[k], allowed)
+                pairs = [
+                    (samples[k - 1], samples[k])
+                    for k in range(last + 1, si + 1)
+                    if k not in pen_lifts
+                ]
+                self._reveal_ink_segments(pairs, allowed)
             target_cell = sample_cell[si]
             while cells_done <= target_cell and cells_done < len(path):
                 self._ink_stamp_cell(path[cells_done], allowed)
@@ -534,6 +596,8 @@ def _parse_args(argv=None):
     p.add_argument("--brush-radius", type=int, default=None)
     p.add_argument("--cap-long-edge", type=int, default=None,
                    help="输出长边像素上限（预览可调小加速，默认 1080）")
+    p.add_argument("--no-match-bg", action="store_true",
+                   help="Không thay thế nền gốc để bảo toàn 100% màu sắc và độ mịn của hình ảnh")
     return p.parse_args(argv)
 
 
@@ -547,6 +611,8 @@ def _build_cfg(args) -> sr.Config:
         kw["brush_radius"] = args.brush_radius
     if args.cap_long_edge is not None:
         kw["cap_long_edge"] = args.cap_long_edge
+    if getattr(args, "no_match_bg", False):
+        kw["match_bg"] = False
     kw["ink_path_mode"] = args.ink_path
     kw["color_fill"] = args.color_fill
     kw["pause_mode"] = args.pause

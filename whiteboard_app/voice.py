@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .project import NarrationCue
+from .project import NarrationCue, VideoProject
 
 
 class OmniVoiceError(RuntimeError):
@@ -24,12 +24,12 @@ class OmniVoiceError(RuntimeError):
 
 
 def prepare_synthesis_text(text: str) -> str:
-    """Cho model một nhịp đệm token trước từ đầu tiên mà không thêm lời đọc."""
-    return f"… {text.strip()}"
+    """Giữ nguyên văn bản tự nhiên, không thêm dấu câu thừa ở đầu làm gián đoạn nhịp đọc."""
+    return text.strip()
 
 
-def protect_voice_onset(path: Path, leading_silence_ms: int = 60) -> float:
-    """Nâng thích ứng phụ âm đầu và thêm đệm an toàn; trả mức boost tối đa theo dB."""
+def protect_voice_onset(path: Path, leading_silence_ms: int = 30) -> float:
+    """Bảo vệ âm đầu tránh hụt hơi (Adaptive Onset Energy Compensation) và đệm an toàn."""
     try:
         with wave.open(str(path), "rb") as source:
             channels = source.getnchannels()
@@ -37,9 +37,9 @@ def protect_voice_onset(path: Path, leading_silence_ms: int = 60) -> float:
             rate = source.getframerate()
             frames = source.readframes(source.getnframes())
     except (OSError, wave.Error) as exc:
-        raise OmniVoiceError(f"Không đọc được cue voice để bảo vệ âm đầu: {path}") from exc
+        raise OmniVoiceError(f"Không đọc được cue voice: {path}") from exc
     if channels != 1 or sample_width != 2 or rate <= 0:
-        raise OmniVoiceError("Cue voice phải là WAV PCM 16-bit mono để cân bằng âm đầu.")
+        raise OmniVoiceError("Cue voice phải là WAV PCM 16-bit mono.")
     samples = array("h")
     samples.frombytes(frames)
     if sys.byteorder != "little":
@@ -47,43 +47,44 @@ def protect_voice_onset(path: Path, leading_silence_ms: int = 60) -> float:
     if not samples:
         raise OmniVoiceError(f"Cue voice rỗng: {path}")
 
-    block_samples = max(1, round(rate * 0.01))
-    levels = [
-        audioop.rms(samples[start:start + block_samples].tobytes(), 2)
-        for start in range(0, len(samples), block_samples)
-    ]
-    peak_level = max(levels, default=0)
-    threshold = max(180, round(peak_level * 0.04))
-    onset_block = next((index for index, level in enumerate(levels) if level >= threshold), 0)
-    first_levels = levels[onset_block:onset_block + 10]
-    reference_levels = sorted(levels[onset_block + 10:onset_block + 70])
-    first_rms = math.sqrt(sum(level * level for level in first_levels) / max(1, len(first_levels)))
-    if reference_levels:
-        reference = reference_levels[min(len(reference_levels) - 1, round(len(reference_levels) * 0.7))]
-    else:
-        reference = first_rms
-    target = reference * 0.72
-    gain = min(1.8, max(1.0, target / max(1.0, first_rms)))
+    # Tìm vị trí bắt đầu tiếng nói thực tế (> 4% max amplitude)
+    max_abs = max(abs(s) for s in samples)
+    thresh = int(max_abs * 0.04)
+    first_speech_idx = 0
+    for idx, s in enumerate(samples):
+        if abs(s) >= thresh:
+            first_speech_idx = idx
+            break
 
-    onset_sample = onset_block * block_samples
-    hold_samples = max(1, round(rate * 0.06))
-    release_samples = max(1, round(rate * 0.08))
-    protected = array("h", samples)
-    for index in range(onset_sample, min(len(protected), onset_sample + hold_samples + release_samples)):
-        relative = index - onset_sample
-        if relative < hold_samples:
-            local_gain = gain
-        else:
-            progress = (relative - hold_samples) / release_samples
-            local_gain = gain + (1.0 - gain) * progress
-        value = protected[index] * local_gain
-        absolute = abs(value)
-        if absolute > 30000:
-            value = math.copysign(30000 + (absolute - 30000) * 0.2, value)
-        protected[index] = max(-32767, min(32767, round(value)))
+    # Đo năng lượng RMS trong 250ms đầu kể từ first_speech_idx
+    onset_len = min(int(rate * 0.25), len(samples) - first_speech_idx)
+    boost_applied = 0.0
+    if onset_len > 0:
+        onset_samples = samples[first_speech_idx : first_speech_idx + onset_len]
+        rms_onset = math.sqrt(sum(s * s for s in onset_samples) / len(onset_samples))
 
+        # Đo năng lượng thân câu (0.4s đến 2.5s sau first_speech_idx)
+        body_start = min(len(samples), first_speech_idx + int(rate * 0.4))
+        body_end = min(len(samples), first_speech_idx + int(rate * 2.5))
+        if body_end > body_start:
+            body_samples = samples[body_start:body_end]
+            rms_body = math.sqrt(sum(s * s for s in body_samples) / len(body_samples))
+            ratio = rms_onset / max(rms_body, 1.0)
+            # Nếu âm đầu quá nhỏ (< 70% thân câu), áp dụng bù năng lượng mượt
+            if ratio < 0.70 and rms_onset > 0:
+                target_boost = min(1.8, (rms_body * 0.85) / rms_onset)
+                # Nhân đường cong ramp từ target_boost về 1.0 trong onset_len
+                for i in range(onset_len):
+                    pos = first_speech_idx + i
+                    alpha = i / max(1, onset_len - 1)
+                    factor = target_boost * (1.0 - alpha) + 1.0 * alpha
+                    val = round(samples[pos] * factor)
+                    samples[pos] = max(-32767, min(32767, val))
+                boost_applied = 20 * math.log10(target_boost)
+
+    # Đệm silence nhẹ ở đầu để chống click và giữ khoảng nghỉ tự nhiên
     padding = array("h", [0]) * max(0, round(rate * leading_silence_ms / 1000))
-    output_samples = padding + protected
+    output_samples = padding + samples
     temporary = path.with_suffix(".onset.tmp.wav")
     try:
         with wave.open(str(temporary), "wb") as target_file:
@@ -96,8 +97,56 @@ def protect_voice_onset(path: Path, leading_silence_ms: int = 60) -> float:
         temporary.replace(path)
     except (OSError, wave.Error) as exc:
         temporary.unlink(missing_ok=True)
-        raise OmniVoiceError(f"Không thể ghi cue voice đã cân bằng: {path}") from exc
-    return 20 * math.log10(gain)
+        raise OmniVoiceError(f"Không thể ghi cue voice: {path}") from exc
+    return boost_applied
+
+
+def trim_leading_hallucination(path: Path, expected_first_words: list[str]) -> float:
+    """Tự động phát hiện và cắt bỏ âm hallucination rác ở đầu câu bằng Whisper timestamps."""
+    if not path.is_file() or not expected_first_words:
+        return 0.0
+    try:
+        import numpy as np
+        from faster_whisper import WhisperModel
+        whisper = WhisperModel("base", device="cpu", compute_type="int8")
+        segments, _ = whisper.transcribe(str(path), language="vi", word_timestamps=True)
+        all_words = []
+        for s in segments:
+            for w in s.words:
+                all_words.append(w)
+        if not all_words:
+            return 0.0
+        matched_idx = -1
+        cut_time = 0.0
+        for idx, w in enumerate(all_words[:6]):
+            w_clean = w.word.strip().lower().strip(",.?!:")
+            for exp in expected_first_words:
+                exp_clean = exp.lower().strip(",.?!:")
+                if exp_clean == w_clean or exp_clean in w_clean or w_clean in exp_clean:
+                    matched_idx = idx
+                    if idx > 0 and w.start > 0.25:
+                        cut_time = max(0.0, w.start - 0.08)
+                    break
+            if matched_idx >= 0:
+                break
+        if cut_time > 0.20:
+            with wave.open(str(path), "rb") as r:
+                params = r.getparams()
+                sr = r.getframerate()
+                data = np.frombuffer(r.readframes(r.getnframes()), dtype=np.int16)
+            start_idx = int(cut_time * sr)
+            trimmed = data[start_idx:].copy()
+            fade_len = int(0.02 * sr)
+            fade = np.linspace(0.0, 1.0, fade_len)
+            trimmed[:fade_len] = (trimmed[:fade_len] * fade).astype(np.int16)
+            with wave.open(str(path), "wb") as w:
+                w.setparams(params)
+                w.setnframes(len(trimmed))
+                w.writeframes(trimmed.tobytes())
+            return cut_time
+    except Exception:
+        pass
+    return 0.0
 
 
 def settings_path() -> Path:
@@ -173,6 +222,7 @@ class VoiceProfile:
     duration_seconds: float
     quality_score: int
     snr_db: float
+    reference_text: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, object]) -> "VoiceProfile":
@@ -184,10 +234,11 @@ class VoiceProfile:
             duration_seconds=float(data.get("durationSeconds", 0)),
             quality_score=int(data.get("qualityScore", 0)),
             snr_db=float(data.get("snrDb", 0)),
+            reference_text=str(data["referenceText"]) if data.get("referenceText") else None,
         )
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        res = {
             "id": self.profile_id,
             "name": self.name,
             "audioPath": str(self.audio_path),
@@ -196,6 +247,9 @@ class VoiceProfile:
             "qualityScore": self.quality_score,
             "snrDb": round(self.snr_db, 2),
         }
+        if self.reference_text:
+            res["referenceText"] = self.reference_text
+        return res
 
 
 @dataclass
@@ -228,6 +282,19 @@ class VoiceLibrary:
 
     def get(self, profile_id: str) -> VoiceProfile | None:
         return next((profile for profile in self.profiles if profile.profile_id == profile_id), None)
+
+    def delete_profile(self, profile_id: str) -> bool:
+        target = self.get(profile_id)
+        if not target:
+            return False
+        self.profiles = [p for p in self.profiles if p.profile_id != profile_id]
+        self.save()
+        try:
+            if target.audio_path.is_file():
+                target.audio_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return True
 
 
 @dataclass(frozen=True)
@@ -319,12 +386,26 @@ def analyze_pcm_wav(path: Path) -> AudioAnalysis:
     return choose_best_segment(levels)
 
 
+def transcribe_audio_text(audio_path: Path) -> str | None:
+    """Tự động nhận diện văn bản từ audio bằng faster_whisper nếu có."""
+    try:
+        from faster_whisper import WhisperModel
+
+        model = WhisperModel("tiny", device="cpu", compute_type="int8")
+        segments, _ = model.transcribe(str(audio_path), language="vi")
+        text = " ".join(s.text for s in segments).strip()
+        return text if text else None
+    except Exception:
+        return None
+
+
 def prepare_voice_profile(
     name: str,
     source_audio: Path,
     on_log: Callable[[str], None],
     library: VoiceLibrary | None = None,
     assets_dir: Path | None = None,
+    reference_text: str | None = None,
 ) -> VoiceProfile:
     if not name.strip():
         raise OmniVoiceError("Hãy đặt tên cho giọng đọc.")
@@ -370,6 +451,14 @@ def prepare_voice_profile(
         if result.returncode != 0 or not output.is_file():
             raise OmniVoiceError(f"Làm sạch giọng mẫu thất bại: {result.stderr.strip()}")
 
+    # Xử lý văn bản đối chiếu (reference_text)
+    final_ref_text = reference_text.strip() if reference_text and reference_text.strip() else None
+    if not final_ref_text:
+        on_log("Đang tự động nhận diện văn bản đối chiếu từ đoạn mẫu…")
+        final_ref_text = transcribe_audio_text(output)
+        if final_ref_text:
+            on_log(f"Đã tự nhận diện văn bản mẫu: {final_ref_text[:40]}…")
+
     profile = VoiceProfile(
         profile_id=profile_id,
         name=name.strip(),
@@ -378,6 +467,7 @@ def prepare_voice_profile(
         duration_seconds=analysis.duration_seconds,
         quality_score=analysis.quality_score,
         snr_db=analysis.snr_db,
+        reference_text=final_ref_text,
     )
     target_library.profiles.append(profile)
     target_library.save()
@@ -437,6 +527,7 @@ def generate_clone_voice(
     output: Path,
     on_log: Callable[[str], None],
     cancel_event: threading.Event | None = None,
+    reference_text: str | None = None,
 ) -> Path:
     executable = Path(cli_path).expanduser()
     if not executable.is_file():
@@ -450,7 +541,9 @@ def generate_clone_voice(
 
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    command = build_omnivoice_command(str(executable), text.strip(), reference_audio.resolve(), output)
+    command = build_omnivoice_command(
+        str(executable), text.strip(), reference_audio.resolve(), output, reference_text=reference_text
+    )
     on_log("Đang chạy OmniVoice dùng chung…")
     process = subprocess.Popen(
         command,
@@ -498,6 +591,7 @@ def generate_cue_voices(
     output_dir: Path,
     on_log: Callable[[str], None],
     cancel_event: threading.Event | None = None,
+    reference_text: str | None = None,
 ) -> dict[str, Path]:
     if not cues:
         raise OmniVoiceError("Dự án chưa có narration cue để đồng bộ timeline.")
@@ -545,6 +639,8 @@ def generate_cue_voices(
         "--language",
         "vi",
     ]
+    if reference_text:
+        command.extend(["--ref-text", reference_text])
     on_log(f"Đang tạo {len(cues)} đoạn voice; OmniVoice chỉ nạp model một lần…")
     process = subprocess.Popen(
         command,
@@ -573,3 +669,117 @@ def generate_cue_voices(
         boost_db = protect_voice_onset(outputs[cue.cue_id])
         on_log(f"Đã bảo vệ âm đầu {cue.cue_id}: +{boost_db:.1f} dB, đệm 60 ms.")
     return outputs
+
+
+def generate_scene_voices(
+    cli_path: str,
+    project: VideoProject,
+    reference_audio: Path,
+    output_dir: Path,
+    on_log: Callable[[str], None],
+    cancel_event: threading.Event | None = None,
+    reference_text: str | None = None,
+) -> dict[str, Path]:
+    if not project.scenes:
+        raise OmniVoiceError("Dự án chưa có cảnh nào để tạo voice.")
+    if not reference_audio.is_file():
+        raise OmniVoiceError(f"Không tìm thấy giọng mẫu: {reference_audio}")
+    python = python_for_omnivoice_cli(cli_path)
+    helper = Path(__file__).resolve().parents[1] / "scripts" / "generate_omnivoice_cues.py"
+    if not helper.is_file():
+        raise OmniVoiceError(f"Thiếu bộ tạo voice timeline: {helper}")
+
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    scene_cues_map: dict[str, list[NarrationCue]] = {scene.scene_id: [] for scene in project.scenes}
+    for cue in project.narration_cues:
+        if cue.scene_id in scene_cues_map:
+            scene_cues_map[cue.scene_id].append(cue)
+
+    manifest_cues: list[dict[str, str]] = []
+    outputs: dict[str, Path] = {}
+
+    for index, scene in enumerate(project.scenes, start=1):
+        cues = scene_cues_map[scene.scene_id]
+        if cues:
+            scene_text = " ".join(prepare_synthesis_text(c.text) for c in cues)
+        elif len(project.scenes) == 1 and project.script_text.strip():
+            scene_text = prepare_synthesis_text(project.script_text.strip())
+        else:
+            scene_text = ""
+        if not scene_text:
+            continue
+        out_path = output_dir / f"{index:02d}-{scene.scene_id}.wav"
+        outputs[scene.scene_id] = out_path
+        manifest_cues.append({
+            "id": scene.scene_id,
+            "text": scene_text,
+            "synthesisText": scene_text,
+            "output": str(out_path),
+        })
+
+    if not manifest_cues:
+        raise OmniVoiceError("Không tìm thấy nội dung kịch bản để tạo voice cho các cảnh.")
+
+    manifest = output_dir / "scene-manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "cues": manifest_cues,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    command = [
+        str(python),
+        str(helper),
+        "--manifest",
+        str(manifest),
+        "--ref-audio",
+        str(reference_audio.resolve()),
+        "--language",
+        "vi",
+    ]
+    if reference_text:
+        command.extend(["--ref-text", reference_text])
+
+    on_log(f"Đang tạo {len(manifest_cues)} đoạn voice liền mạch theo cảnh; OmniVoice chỉ nạp model một lần…")
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    assert process.stdout is not None
+    for line in process.stdout:
+        on_log(line.rstrip())
+        if cancel_event and cancel_event.is_set():
+            process.terminate()
+            process.wait(timeout=10)
+            raise OmniVoiceError("Đã hủy tạo voice theo cảnh.")
+    code = process.wait()
+    if code != 0:
+        raise OmniVoiceError(f"Tạo voice theo cảnh thất bại với mã lỗi {code}.")
+    missing = [str(path) for path in outputs.values() if not path.is_file()]
+    if missing:
+        raise OmniVoiceError(f"OmniVoice chưa tạo đủ voice cho các cảnh: {', '.join(missing)}")
+    for scene_id, path in outputs.items():
+        first_cues = [c for c in project.narration_cues if c.scene_id == scene_id]
+        if first_cues:
+            words = first_cues[0].text.strip().split()[:3]
+            cut = trim_leading_hallucination(path, words)
+            if cut > 0:
+                on_log(f"Đã loại bỏ {cut:.2f}s âm thừa đầu cảnh {scene_id}.")
+        boost_db = protect_voice_onset(path)
+        on_log(f"Đã bảo vệ âm đầu cảnh {scene_id}: +{boost_db:.1f} dB.")
+    return outputs
+

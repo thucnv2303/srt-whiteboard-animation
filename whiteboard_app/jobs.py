@@ -4,15 +4,22 @@ import os
 import sqlite3
 import threading
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Iterator
 
 from .project import ProjectError, VideoProject, load_project
 from .renderer import RenderError, create_video_poster, create_video_preview_audio, run_pipeline
-from .timeline import TimelineError, compile_timeline
-from .voice import OmniVoiceError, generate_clone_voice, generate_cue_voices
+from .timeline import TimelineError, compile_scene_timeline, compile_timeline
+from .voice import (
+    OmniVoiceError,
+    VoiceLibrary,
+    generate_clone_voice,
+    generate_cue_voices,
+    generate_scene_voices,
+)
 
 
 WAITING = "WAITING"
@@ -110,11 +117,16 @@ class JobStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         connection = sqlite3.connect(self.path, timeout=15)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
-        return connection
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
     def _initialize(self) -> None:
         with self._connect() as connection:
@@ -443,16 +455,18 @@ def execute_video_job(
         if project.narration_cues:
             assert job.voice_audio_path is not None
             on_progress("Đang tạo voice", 10)
-            cue_audio = generate_cue_voices(
+            profile = VoiceLibrary.load().get(job.voice_profile_id) if job.voice_profile_id else None
+            scene_audio = generate_scene_voices(
                 cli_path=job.cli_path,
-                cues=project.narration_cues,
+                project=project,
                 reference_audio=job.voice_audio_path,
-                output_dir=output_dir / "audio-cues",
+                output_dir=output_dir / "audio-scenes",
                 on_log=on_log,
                 cancel_event=cancel_event,
+                reference_text=profile.reference_text if profile else None,
             )
             on_progress("Đang đồng bộ timeline", 38)
-            timeline = compile_timeline(project, cue_audio, output_dir, on_log)
+            timeline = compile_scene_timeline(project, scene_audio, output_dir, on_log)
             project.voice = timeline.voice_path
             project.runtime_annotations = timeline.runtime_annotations
             duration_seconds = timeline.total_duration_ms / 1000
@@ -466,6 +480,7 @@ def execute_video_job(
                 output=output_dir / "voice-clone.wav",
                 on_log=on_log,
                 cancel_event=cancel_event,
+                reference_text=profile.reference_text if profile else None,
             )
 
         on_progress("Đang dựng video", 45)
@@ -549,6 +564,8 @@ class SequentialJobRunner:
         self._stop.set()
         self._active_cancel.set()
         self._wake.set()
+        if self._thread.is_alive():
+            self._thread.join(timeout=2.0)
 
     def _run(self) -> None:
         while not self._stop.is_set():

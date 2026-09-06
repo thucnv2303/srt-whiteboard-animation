@@ -128,6 +128,19 @@ class RendererCommandTests(unittest.TestCase):
             )
             self.assertEqual(final, (root / "output" / "final.mp4").resolve())
 
+            with (
+                patch("whiteboard_app.renderer.repository_root", return_value=repo),
+                patch("whiteboard_app.renderer.shutil.which", return_value="ffmpeg-fixture"),
+            ):
+                commands_2k, _ = build_commands(
+                    project, root / "output_2k", "python-fixture", aspect_ratio="9:16 2K"
+                )
+            self.assertEqual(commands_2k[-1].label, "Định dạng video 9:16 2K — 1440×2560")
+            self.assertIn(
+                "scale=1440:2560:force_original_aspect_ratio=increase,crop=1440:2560",
+                commands_2k[-1].argv,
+            )
+
     def test_creates_poster_for_result_preview(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

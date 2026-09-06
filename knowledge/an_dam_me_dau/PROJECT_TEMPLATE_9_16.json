@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "title": "5 món cháo thịt bò giàu sắt ngừa thiếu máu cho bé",
+  "version": 1,
+  "aspectRatio": "9:16",
+  "script": "script.txt",
+  "penBrand": "Ăn dặm mẹ Dâu",
+  "subtitles": "subtitles.srt",
+  "narration": [
+    {
+      "id": "cue-01",
+      "sceneId": "scene-01",
+      "text": "Bé bước vào giai đoạn 7 tháng tuổi rất dễ thiếu sắt. Mẹ lưu ngay 5 món cháo bò siêu mềm sau đây nhé.",
+      "elementIds": ["header-iron"],
+      "pauseBeforeMs": 200,
+      "pauseAfterMs": 300
+    },
+    {
+      "id": "cue-02",
+      "sceneId": "scene-01",
+      "text": "Món thứ nhất là cháo bò bí đỏ. Vị ngọt tự nhiên giúp bé dễ làm quen với đạm đỏ.",
+      "elementIds": ["dish-pumpkin-beef"],
+      "pauseBeforeMs": 150,
+      "pauseAfterMs": 250
+    },
+    {
+      "id": "cue-03",
+      "sceneId": "scene-01",
+      "text": "Món thứ hai là cháo bò bông cải xanh, bổ sung thêm vitamin C giúp tăng cường hấp thu sắt.",
+      "elementIds": ["dish-broccoli-beef"],
+      "pauseBeforeMs": 150,
+      "pauseAfterMs": 250
+    },
+    {
+      "id": "cue-04",
+      "sceneId": "scene-01",
+      "text": "Món thứ ba là cháo bò khoai tây cà rốt, giàu năng lượng và thơm ngậy.",
+      "elementIds": ["dish-potato-beef"],
+      "pauseBeforeMs": 150,
+      "pauseAfterMs": 250
+    },
+    {
+      "id": "cue-05",
+      "sceneId": "scene-01",
+      "text": "Món thứ tư là cháo bò yến mạch nấu cùng cải bó xôi mịn mượt.",
+      "elementIds": ["dish-oat-spinach-beef"],
+      "pauseBeforeMs": 150,
+      "pauseAfterMs": 250
+    },
+    {
+      "id": "cue-06",
+      "sceneId": "scene-01",
+      "text": "Món thứ năm là súp bò đậu lăng, nguồn đạm và chất xơ tuyệt vời. Mẹ nhớ băm nhuyễn và tăng độ thô theo tháng tuổi của bé nhé. Theo dõi Ăn dặm mẹ Dâu để nhận thêm nhiều thực đơn khoa học!",
+      "elementIds": ["dish-lentil-soup", "footer-brand"],
+      "pauseBeforeMs": 150,
+      "pauseAfterMs": 500
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene-01",
+      "title": "5 món cháo bò cho bé",
+      "image": "scenes/scene-01.png",
+      "annotation": "scenes/scene-01.annotation.json"
+    }
+  ]
+}

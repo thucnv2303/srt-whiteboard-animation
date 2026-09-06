@@ -19,7 +19,7 @@ from .renderer import (
     create_video_preview_audio,
     run_pipeline,
 )
-from .timeline import TimelineError, TimelineResult, compile_timeline
+from .timeline import TimelineError, TimelineResult, compile_scene_timeline, compile_timeline
 from .video_player import TkVideoPlayer, VideoPlaybackError, format_media_time
 from .multi_job_ui import MultiJobView
 from .preferences import VideoPreferences
@@ -31,6 +31,7 @@ from .voice import (
     VoiceSettings,
     generate_clone_voice,
     generate_cue_voices,
+    generate_scene_voices,
     play_audio,
     stop_audio,
 )
@@ -408,12 +409,14 @@ class WhiteboardApp(tk.Tk):
         )
         ratio = ttk.Frame(video_settings)
         ratio.grid(row=1, column=1, columnspan=4, sticky="ew", pady=(10, 0))
-        for column, (key, spec) in enumerate(ASPECT_RATIOS.items()):
-            ratio.grid_columnconfigure(column, weight=1)
+        for idx, (key, spec) in enumerate(ASPECT_RATIOS.items()):
+            r_row = idx // 4
+            r_col = idx % 4
+            ratio.grid_columnconfigure(r_col, weight=1)
             ttk.Radiobutton(
-                ratio, text=f"{key}  {spec.width}×{spec.height}", value=key,
+                ratio, text=f"{key} ({spec.width}×{spec.height})", value=key,
                 variable=self.aspect_ratio, command=self._aspect_ratio_selected,
-            ).grid(row=0, column=column, sticky="w", padx=(0, 8))
+            ).grid(row=r_row, column=r_col, sticky="w", padx=(0, 6), pady=(2, 2))
 
         ttk.Label(video_settings, text="Chữ trên bút", style="Subtitle.TLabel").grid(
             row=2, column=0, sticky="w", padx=(0, 8), pady=(10, 0)
@@ -868,16 +871,17 @@ class WhiteboardApp(tk.Tk):
                 log = lambda line: self.events.put(("log", line))
                 if project.narration_cues:
                     assert profile is not None
-                    cue_audio = generate_cue_voices(
+                    scene_audio = generate_scene_voices(
                         cli_path=cli,
-                        cues=project.narration_cues,
+                        project=project,
                         reference_audio=profile.audio_path,
-                        output_dir=output_dir / "audio-cues",
+                        output_dir=output_dir / "audio-scenes",
                         on_log=log,
                         cancel_event=self.cancel_event,
+                        reference_text=profile.reference_text,
                     )
                     self.events.put(("stage", "Bước 2/3 — đang đồng bộ voice với hình ảnh…"))
-                    timeline = compile_timeline(project, cue_audio, output_dir, log)
+                    timeline = compile_scene_timeline(project, scene_audio, output_dir, log)
                     project.voice = timeline.voice_path
                     project.runtime_annotations = timeline.runtime_annotations
                     self.events.put(("pipeline_timeline", timeline))
@@ -891,6 +895,7 @@ class WhiteboardApp(tk.Tk):
                         output=voice_output,
                         on_log=log,
                         cancel_event=self.cancel_event,
+                        reference_text=profile.reference_text,
                     )
                     project.voice = result_voice
                     self.events.put(("pipeline_voice", result_voice))
