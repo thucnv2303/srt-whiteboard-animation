@@ -81,7 +81,13 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
   + Giải phóng hoàn toàn tranh doodle đáy Cảnh 4: Đẩy khối CTA capsule lên $y \in [1500, 1650]$, giúp hình trái tim và quả dâu tây ở $y \in [1680, 1850]$ lộ diện trọn vẹn 100%, không bị che khuất.
   + Thiết lập Quy chuẩn Bố cục Negative Space Architecture & Bộ Prompt GPT mẫu (`knowledge/an_dam_me_dau/PROMPT_TEMPLATES_GPT.md`): Phân bổ chính xác các vùng cấm vẽ (Safe Zones / Negative Space) cho 4 cảnh: dải trên $y < 180$ cho Banner, $y \in [180, 500]$ Cảnh 1 cho thẻ cảnh báo, $y \in [880, 1060]$ Cảnh 2 cho thẻ xanh, bố cục 2 cột so le Zigzag Cảnh 3, và dải $y \in [1050, 1660]$ Cảnh 4 cho 3 huy hiệu + CTA. Đảm bảo bất kỳ ai tạo ảnh bằng GPT cũng không bao giờ bị lỗi đè chữ khi render hàng loạt.
   + Re-render hoàn tất video 2K Day 01 Slot 02 (1440x2560 30FPS, 114.19 MB, 83.9s) xuất tự động sang Google Drive `G:\My Drive\Đăng video\Day_01_Slot_02_Gạo_Tẻ_Nấu_Cháo_Rây_Bé_Mấy_Tháng_Ăn_Được_2K.mp4` và đồng bộ Sheets webhook thành công.
-- Trạng thái kỹ thuật: TECHNICALLY_VERIFIED.
+- ID: `TASK-029` — Mở rộng Kế hoạch 330 Video với 8 cột Prompt & Chuẩn hóa Quy tắc Đặt tên File Ảnh GPT (`day_{DD}_slot_{SS}_scene_{CC}.jpg`):
+  + Bổ sung 8 cột mới trong `CONTENT_PLAN_30_DAYS_330_VIDEOS.csv` và `.json` (tổng cộng 22 cột) gồm cặp `file_name_scene_X` và `prompt_scene_X` cho 4 cảnh của 330 slot (1.320 prompt chi tiết phong cách minh họa màu sáp dầu, tôn trọng tuyệt đối Negative Space Architecture).
+  + Quy định nguyên tắc đặt tên file ảnh bất biến: `day_{DD}_slot_{SS}_scene_{CC}.jpg` (định dạng 2 chữ số), giúp tránh nhầm lẫn khi sinh và phân loại ảnh hàng loạt.
+  + Cập nhật System Prompt cho GPT (`agents/an_dam_me_dau.agent.md`) và cẩm nang hướng dẫn `PROMPT_TEMPLATES_GPT.md` để GPT tự đọc repo Git và tạo ảnh theo ngày.
+  + Nâng cấp động cơ `scripts/generate_lively_slot.py` tự động nạp ảnh từ `projects/day_{DD}_slot_{SS}_golden/raw_gpt_images/` theo đúng tên chuẩn.
+  + Tạo script Google Apps Script đồng bộ 1 chạm lên Google Sheets (`scripts/auto_import_to_google_sheet.js`).
+  + Trạng thái kỹ thuật: TECHNICALLY_VERIFIED (70/70 unit tests pass).
 - Cột trái có trình phát MP4 tích hợp bằng PyAV + pygame: phát/tạm dừng, dừng, tua, thời gian và âm thanh. FFmpeg tạo `preview-audio.wav`; nút mở ngoài chỉ là fallback.
 - Nghiệm thu player phát hiện raw PCM 24 kHz có thể bị mixer Windows 48 kHz hiểu sai, làm voice nhanh/méo; đã đổi sang WAV-header resampling và bỏ toàn bộ frame canvas bị trễ để giữ A/V sync.
 - Player preview đã được tối ưu cho video nguồn 60 FPS: trình xem giới hạn 30 FPS, scale bằng libswscale, tái sử dụng canvas item và throttle cập nhật timeline còn 5 lần/giây; chất lượng/FPS của MP4 đầu ra không đổi.

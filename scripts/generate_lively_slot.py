@@ -44,12 +44,22 @@ def main():
     raw_gpt_dir = project_dir / "raw_gpt_images"
 
     # Thư mục gốc ảnh nền minh họa (ưu tiên ảnh vẽ chất lượng cao raw_gpt_images nếu có)
-    if raw_gpt_dir.is_dir() and (raw_gpt_dir / "s1.jpg").is_file():
+    d_str = f"{args.day:02d}"
+    s_str = f"{args.slot:02d}"
+    std_f1 = raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_01.jpg"
+    std_f1_png = raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_01.png"
+
+    if raw_gpt_dir.is_dir() and (std_f1.is_file() or std_f1_png.is_file()):
+        ext = ".jpg" if std_f1.is_file() else ".png"
         base_images = [
-            raw_gpt_dir / "s1.jpg",
-            raw_gpt_dir / "s2.jpg",
-            raw_gpt_dir / "s3.jpg",
-            raw_gpt_dir / "s4.jpg"
+            raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_{c:02d}{ext}"
+            for c in range(1, 5)
+        ]
+        print(f"  Đang sử dụng bộ ảnh vẽ tay nghệ thuật GPT (tên chuẩn) từ: {raw_gpt_dir}")
+    elif raw_gpt_dir.is_dir() and (raw_gpt_dir / "s1.jpg").is_file():
+        base_images = [
+            raw_gpt_dir / f"s{c}.jpg"
+            for c in range(1, 5)
         ]
         print(f"  Đang sử dụng bộ ảnh vẽ tay nghệ thuật GPT từ: {raw_gpt_dir}")
     else:

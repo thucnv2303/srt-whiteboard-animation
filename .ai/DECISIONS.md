@@ -1,5 +1,16 @@
 # Nhật ký quyết định
 
+## DEC-20260906-09 — Chuẩn Hóa Cấu Trúc 22 Cột Kế Hoạch 330 Video, Bổ Sung 8 Cột Prompt & Quy Tắc Đặt Tên File GPT day_{DD}_slot_{SS}_scene_{CC}.jpg
+- Status: approved
+- Decision owner: người dùng
+- Context: Cần tạo ảnh đồng loạt bằng GPT từ xa mà không bị nhầm lẫn giữa các ngày, slot và cảnh; cần chuẩn hóa tên file để hệ thống local tự động nạp chính xác; mở rộng kế hoạch Google Sheets từ 14 lên 22 cột để chứa sẵn prompt chi tiết của 4 cảnh cho cả 330 slot.
+- Decision:
+  1. Ban hành cấu trúc 22 cột bất biến cho kế hoạch nội dung: `day`, `slot_id`, `slot`, `pillar`, `title`, `hook`, `body`, `cta`, `tiktok_caption`, `reels_caption`, `youtube_title`, `youtube_description`, `file_name_scene_1`, `prompt_scene_1`, `file_name_scene_2`, `prompt_scene_2`, `file_name_scene_3`, `prompt_scene_3`, `file_name_scene_4`, `prompt_scene_4`, `video_path`, `status`.
+  2. Quy tắc đặt tên file ảnh bất biến: `day_{DD}_slot_{SS}_scene_{CC}.jpg` (hoặc `.png`), bắt buộc 2 chữ số (ví dụ: `day_01_slot_02_scene_01.jpg`).
+  3. Cập nhật System Prompt cho Custom GPT (`agents/an_dam_me_dau.agent.md`) để GPT có thể đọc trực tiếp GitHub repository và tiến hành tạo ảnh tuần tự từng ngày theo đúng cấu trúc thư mục `projects/day_{DD}_slot_{SS}_golden/raw_gpt_images/`.
+  4. Nâng cấp `scripts/generate_lively_slot.py` ưu tiên tự động phát hiện và nạp ảnh theo cú pháp chuẩn này.
+- Files affected: `knowledge/an_dam_me_dau/CONTENT_PLAN_30_DAYS_330_VIDEOS.csv`, `knowledge/an_dam_me_dau/CONTENT_PLAN_30_DAYS_330_VIDEOS.json`, `knowledge/an_dam_me_dau/PROMPT_TEMPLATES_GPT.md`, `agents/an_dam_me_dau.agent.md`, `scripts/generate_lively_slot.py`, `scripts/auto_import_to_google_sheet.js`, `scripts/google_apps_script_auto_sync.js`, `.ai/CURRENT_CONTEXT.md`, `.ai/TASKS.md`.
+
 ## DEC-20260906-08 — Khắc phục Va Chạm Title/Tag, Giải Phóng Doodle Đáy và Chuẩn Hóa Quy Chuẩn Negative Space + Prompt GPT Cho 330 Slot
 - Status: approved
 - Decision owner: người dùng

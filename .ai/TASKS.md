@@ -63,6 +63,13 @@
   + Giải phóng hoàn toàn tranh doodle đáy Cảnh 4: Đẩy khối CTA capsule lên $y \in [1500, 1650]$, giúp hình trái tim và quả dâu tây ở $y \in [1680, 1850]$ lộ diện trọn vẹn 100%, không bị che khuất.
   + Thiết lập Quy chuẩn Bố cục Negative Space Architecture & Bộ Prompt GPT mẫu (`knowledge/an_dam_me_dau/PROMPT_TEMPLATES_GPT.md`): Phân bổ chính xác các vùng cấm vẽ (Safe Zones / Negative Space) cho 4 cảnh: dải trên $y < 180$ cho Banner, $y \in [180, 500]$ Cảnh 1 cho thẻ cảnh báo, $y \in [880, 1060]$ Cảnh 2 cho thẻ xanh, bố cục 2 cột so le Zigzag Cảnh 3, và dải $y \in [1050, 1660]$ Cảnh 4 cho 3 huy hiệu + CTA. Đảm bảo bất kỳ ai tạo ảnh bằng GPT cũng không bao giờ bị lỗi đè chữ khi render hàng loạt.
   + Re-render hoàn tất video 2K Day 01 Slot 02 (1440x2560 30FPS, 114.19 MB, 83.9s) xuất tự động sang Google Drive `G:\My Drive\Đăng video\Day_01_Slot_02_Gạo_Tẻ_Nấu_Cháo_Rây_Bé_Mấy_Tháng_Ăn_Được_2K.mp4` và đồng bộ Sheets webhook thành công.
+- `TASK-029` — Mở rộng Kế hoạch 330 Video với 8 cột Prompt & Chuẩn hóa Quy tắc Đặt tên File Ảnh GPT (`day_{DD}_slot_{SS}_scene_{CC}.jpg`):
+  + Cập nhật `CONTENT_PLAN_30_DAYS_330_VIDEOS.csv` và `.json` lên 22 cột hoàn chỉnh: bổ sung cặp `file_name_scene_X` và `prompt_scene_X` cho toàn bộ 4 cảnh trong cả 330 slot (tổng cộng 1.320 prompt ảnh chuyên biệt tuân thủ tuyệt đối Negative Space Architecture).
+  + Ban hành nguyên tắc đặt tên file ảnh bất biến: `day_{DD}_slot_{SS}_scene_{CC}.jpg` (định dạng 2 chữ số như `day_01_slot_02_scene_01.jpg`), tránh nhầm lẫn dữ liệu khi sinh và nạp hàng loạt.
+  + Cập nhật System Prompt cho Custom GPT (`agents/an_dam_me_dau.agent.md`) và cẩm nang hướng dẫn (`knowledge/an_dam_me_dau/PROMPT_TEMPLATES_GPT.md`) để GPT tự động đọc repo GitHub và tạo ảnh chuẩn từng ngày.
+  + Nâng cấp động cơ `scripts/generate_lively_slot.py` tự động nhận diện và nạp ảnh GPT chuẩn tên từ `projects/day_{DD}_slot_{SS}_golden/raw_gpt_images/`.
+  + Xây dựng bộ mã Apps Script đồng bộ 1 chạm lên Google Sheets (`scripts/auto_import_to_google_sheet.js` và `scripts/google_apps_script_auto_sync.js`).
+  + 70/70 unit tests PASS 100%.
 
 ## Backlog ưu tiên
 

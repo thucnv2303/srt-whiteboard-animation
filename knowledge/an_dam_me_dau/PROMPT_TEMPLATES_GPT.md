@@ -145,12 +145,43 @@ Trước khi đưa bất kỳ ảnh nào vào thư mục `raw_gpt_images/` để
 
 ---
 
-## 4. TÍCH HỢP HÀNG LOẠT VÀO HỆ THỐNG AGENT & TOOLS
+## 4. NGUYÊN TẮC ĐẶT TÊN FILE CHUẨN ĐỂ KHÔNG BAO GIỜ NHẦM LẪN
+### (Bắt buộc tuân thủ cho toàn bộ 330 Slot và AI tạo ảnh)
 
-1. **Thư mục lưu trữ mẫu:** Bộ ảnh tạo bằng GPT cho từng slot được lưu tại:
-   `projects/day_{DD}_slot_{SS}_golden/raw_gpt_images/s1.jpg .. s4.jpg`
-2. **Cơ chế Fallback thông minh của `slot_builder.py`:**
-   - Nếu thư mục `raw_gpt_images/` có sẵn 4 file `s1.jpg` .. `s4.jpg`, hệ thống **tự động ưu tiên nạp bộ ảnh nghệ thuật này**.
-   - Nếu chưa có, hệ thống sử dụng bộ ảnh vector đồ họa sạch sẽ mặc định để không làm gián đoạn tiến trình sản xuất.
-3. **Thuật toán Auto-Fit:**
-   - Dù ảnh có xê dịch nhẹ vài chục pixel, hàm `draw_ribbon_banner`, `draw_step_pill_badge`, `wrap_text` và `draw_cta_capsule` luôn tự động tính toán giới hạn vùng an toàn để chữ luôn hiển thị to, rõ và đẹp nhất.
+Để đảm bảo quy trình chạy hàng loạt và quản lý tài nguyên tuyệt đối chính xác giữa ChatGPT Project và App Renderer, toàn bộ ảnh tạo ra **BẮT BUỘC** phải tuân theo cấu trúc định danh:
+
+```text
+day_{DD}_slot_{SS}_scene_{CC}.jpg
+```
+* **Trong đó:**
+  * `{DD}`: Số thứ tự Ngày (từ `01` đến `30`, 2 chữ số).
+  * `{SS}`: Số thứ tự Slot trong ngày (từ `01` đến `11`, 2 chữ số).
+  * `{CC}`: Số thứ tự Cảnh trong video (từ `01` đến `04`, 2 chữ số).
+* **Ví dụ mẫu chuẩn:**
+  * Cảnh 1 Ngày 1 Slot 1: `day_01_slot_01_scene_01.jpg`
+  * Cảnh 2 Ngày 1 Slot 1: `day_01_slot_01_scene_02.jpg`
+  * Cảnh 3 Ngày 1 Slot 1: `day_01_slot_01_scene_03.jpg`
+  * Cảnh 4 Ngày 1 Slot 1: `day_01_slot_01_scene_04.jpg`
+  * Cảnh 1 Ngày 1 Slot 2: `day_01_slot_02_scene_01.jpg`
+  * Cảnh 3 Ngày 2 Slot 5: `day_02_slot_05_scene_03.jpg`
+
+### Quy định thư mục lưu trữ:
+1. **Lưu trữ cục bộ cho dự án từng slot:**
+   `projects/day_{DD}_slot_{SS}_golden/raw_gpt_images/`
+   * Trong thư mục này, hệ thống hỗ trợ cả 2 cách đặt tên:
+     * Cách 1 (Khuyên dùng): `day_{DD}_slot_{SS}_scene_01.jpg` .. `scene_04.jpg`
+     * Cách 2 (Tên ngắn gọn): `s1.jpg`, `s2.jpg`, `s3.jpg`, `s4.jpg`
+2. **Thư mục tập trung xuất kho hàng loạt:**
+   `knowledge/an_dam_me_dau/raw_images/day_{DD}/`
+   * Toàn bộ 44 ảnh của 11 slot trong ngày được đặt theo tên chuẩn `day_{DD}_slot_{SS}_scene_{CC}.jpg`.
+
+---
+
+## 5. TÍCH HỢP HÀNG LOẠT VÀO HỆ THỐNG AGENT & TOOLS
+
+1. **Cơ chế Fallback thông minh của `slot_builder.py`:**
+   - Khi chạy `python scripts/generate_lively_slot.py --day D --slot S`, hệ thống tự động quét thư mục `raw_gpt_images/`.
+   - Nếu có sẵn ảnh vẽ nghệ thuật đúng tên chuẩn, hệ thống **ưu tiên nạp 100% ảnh vẽ GPT**.
+   - Nếu chưa có, hệ thống tự động chuyển sang bộ đồ họa vector clean để hoàn thành video mà không gây lỗi dừng tiến trình.
+2. **Thuật toán Auto-Fit:**
+   - Dù ảnh vẽ GPT có xê dịch nhẹ vài chục pixel, hàm `draw_ribbon_banner`, `draw_step_pill_badge`, `wrap_text` và `draw_cta_capsule` luôn tự động co giãn và căn chỉnh để các thẻ chữ, huy hiệu không bao giờ bị tràn khung hay đè lên tranh vẽ.
