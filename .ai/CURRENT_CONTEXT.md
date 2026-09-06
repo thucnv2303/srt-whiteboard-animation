@@ -200,17 +200,19 @@ M1 — Dựng desktop app MVP nhận gói dự án và điều phối renderer l
     * Slot 11: `Day_01_Slot_11_Bát_Cháo_Đầu_Tiên_Và_Giọt_Nước_Mắt_Của_Mẹ_2K.mp4` (61.91 MB, 46.1s)
   + Tự động gọi Webhook Google Sheets cập nhật đường dẫn Google Drive và trạng thái `READY_TO_PUBLISH (2K 1440x2560)` cho cả 11 dòng của Ngày 1.
 
+- ID: `TASK-030` — Đồng bộ toàn bộ 1.320 Prompt tạo ảnh của 330 Slot lên Google Sheets:
+  + Đã gửi thành công toàn bộ 330 video (30 ngày x 11 video/ngày) với đầy đủ cấu trúc 22 cột (bao gồm 8 cột `file_name_scene_1..4` và `prompt_scene_1..4`) qua Google Sheets Webhook Gateway.
+  + Đã kiểm tra và đối chiếu live export từ Google Sheets: 331 dòng (1 header + 330 video) hiển thị đầy đủ 22 cột, giữ nguyên link Google Drive và trạng thái xuất bản cho Ngày 1.
+  + Trạng thái kỹ thuật: TECHNICALLY_VERIFIED.
+
 ## Trạng thái kiểm tra
 - 70 unit test: PASS (toàn bộ test suite chạy đạt 100%).
 - `py_compile`: PASS.
 - Whisper Audio Verification: 100% các câu thoại trong toàn bộ 11 video bắt đầu đúng từ khóa kịch bản, giọng Xuân Dung chuẩn truyền cảm, không tạp âm.
-- Google Sheets Live Sync: Toàn bộ 11 dòng Ngày 1 trên Google Sheets đã cập nhật đầy đủ link Drive và trạng thái sẵn sàng đăng.
+- Google Sheets Live Sync: Toàn bộ 330 dòng trên Google Sheets đã cập nhật đầy đủ cấu trúc 22 cột cùng 1.320 prompt ảnh chi tiết và tên file chuẩn `day_{DD}_slot_{SS}_scene_{CC}.jpg`.
 - Google Drive File Export: 11/11 file video chuẩn 2K (1440x2560, thời lượng 38.8s - 47.3s) đã có mặt đầy đủ trong `G:\My Drive\Đăng video`.
 - Trạng thái kỹ thuật: TECHNICALLY_VERIFIED.
 
 ## Task an toàn tiếp theo
 
-Người dùng mở thư mục Google Drive `G:\My Drive\Đăng video` để nghiệm thu toàn bộ 11 video thực tế của Ngày 1 và kiểm tra trang tính Google Sheets.
-
-
-
+Người dùng mở Google Sheets kiểm tra toàn bộ 22 cột và 1.320 prompt tạo ảnh, và kiểm tra thư mục Google Drive `G:\My Drive\Đăng video` để nghiệm thu video Ngày 1.

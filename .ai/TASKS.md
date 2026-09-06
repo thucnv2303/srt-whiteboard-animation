@@ -70,6 +70,11 @@
   + Nâng cấp động cơ `scripts/generate_lively_slot.py` tự động nhận diện và nạp ảnh GPT chuẩn tên từ `projects/day_{DD}_slot_{SS}_golden/raw_gpt_images/`.
   + Xây dựng bộ mã Apps Script đồng bộ 1 chạm lên Google Sheets (`scripts/auto_import_to_google_sheet.js` và `scripts/google_apps_script_auto_sync.js`).
   + 70/70 unit tests PASS 100%.
+- `TASK-030` — Đồng bộ toàn bộ 1.320 Prompt tạo ảnh của 330 Slot lên Google Sheets:
+  + Nạp toàn bộ 330 video x 4 cảnh = 1.320 prompt ảnh và 1.320 tên file chuẩn lên Google Sheet thực tế qua Webhook Gateway `action: reset_all`.
+  + Trang tính đã mở rộng lên 22 cột hoàn chỉnh, hiển thị đầy đủ thông tin kịch bản, hashtag và prompt tạo ảnh.
+  + Kiểm tra live export thành công: 331 dòng (1 header + 330 rows) hiển thị đầy đủ 22 cột.
+  + Trạng thái kỹ thuật: TECHNICALLY_VERIFIED (70/70 unit tests pass).
 
 ## Backlog ưu tiên
 

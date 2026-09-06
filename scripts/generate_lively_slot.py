@@ -43,13 +43,21 @@ def main():
     project_dir = REPO_ROOT / "projects" / f"day_{args.day:02d}_slot_{args.slot:02d}_golden"
     raw_gpt_dir = project_dir / "raw_gpt_images"
 
-    # Thư mục gốc ảnh nền minh họa (ưu tiên ảnh vẽ chất lượng cao raw_gpt_images nếu có)
+    # Thư mục gốc ảnh nền minh họa (ưu tiên Input pic hoặc raw_gpt_images)
     d_str = f"{args.day:02d}"
     s_str = f"{args.slot:02d}"
+    input_pic_dir = REPO_ROOT / "Input pic"
+    input_f1 = input_pic_dir / f"day_{d_str}_slot_{s_str}_scene_01.jpg"
     std_f1 = raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_01.jpg"
     std_f1_png = raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_01.png"
 
-    if raw_gpt_dir.is_dir() and (std_f1.is_file() or std_f1_png.is_file()):
+    if input_pic_dir.is_dir() and input_f1.is_file() and input_f1.stat().st_size > 0:
+        base_images = [
+            input_pic_dir / f"day_{d_str}_slot_{s_str}_scene_{c:02d}.jpg"
+            for c in range(1, 5)
+        ]
+        print(f"  Đang sử dụng bộ ảnh vẽ tay nghệ thuật GPT từ: {input_pic_dir}")
+    elif raw_gpt_dir.is_dir() and (std_f1.is_file() or std_f1_png.is_file()):
         ext = ".jpg" if std_f1.is_file() else ".png"
         base_images = [
             raw_gpt_dir / f"day_{d_str}_slot_{s_str}_scene_{c:02d}{ext}"

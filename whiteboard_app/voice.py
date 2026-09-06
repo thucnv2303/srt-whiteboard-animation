@@ -94,7 +94,18 @@ def protect_voice_onset(path: Path, leading_silence_ms: int = 30) -> float:
             if sys.byteorder != "little":
                 output_samples.byteswap()
             target_file.writeframes(output_samples.tobytes())
-        temporary.replace(path)
+        
+        # Thử replace, nếu Windows giữ lock thì thử lại sau sleep ngắn hoặc copy đè
+        import time, shutil
+        for attempt in range(5):
+            try:
+                os.replace(str(temporary), str(path))
+                break
+            except PermissionError:
+                time.sleep(0.1)
+        else:
+            shutil.copyfile(str(temporary), str(path))
+            temporary.unlink(missing_ok=True)
     except (OSError, wave.Error) as exc:
         temporary.unlink(missing_ok=True)
         raise OmniVoiceError(f"Không thể ghi cue voice: {path}") from exc
